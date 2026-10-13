@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import toast from 'react-hot-toast';
@@ -12,15 +12,29 @@ import WalletRegistrationPrereq from '@/components/ui/WalletRegistrationPrereq';
 import { API_BASE } from '@/lib/apiFetch';
 import { API_DOCS_URL } from '@/lib/apiDocs';
 import { useOptionalBrand, usePartnerBrand } from '@conduit-ucpi/whitelabel-sdk';
+import { usePageT } from '@/config/locales';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Fills `{name}` placeholders in a translated sentence with JSX — inline code, a link — so the
+ * sentence stays one key and each language puts the elements where its own word order wants them.
+ * Placeholders with no node given are left as written.
+ */
+function withNodes(template: string, nodes: Record<string, ReactNode>): ReactNode {
+  return template.split(/(\{\w+\})/g).map((part, i) => {
+    const name = /^\{(\w+)\}$/.exec(part)?.[1];
+    return name && name in nodes ? <Fragment key={i}>{nodes[name]}</Fragment> : part;
+  });
+}
+
 function CodeBlock({ id, children, language = 'javascript' }: { id: string; children: string; language?: string }) {
+  const t = usePageT();
   const copy = () => {
     navigator.clipboard.writeText(children);
-    toast.success('Copied to clipboard');
+    toast.success(t('integrate.copied'));
   };
 
   return (
@@ -29,7 +43,7 @@ function CodeBlock({ id, children, language = 'javascript' }: { id: string; chil
         onClick={copy}
         className={`${btnPrimary} absolute top-3 right-3 !py-1.5 !px-3 !text-xs`}
       >
-        Copy
+        {t('integrate.copy')}
       </button>
       <code id={id} className="text-sm font-mono text-secondary-900 dark:text-secondary-100 whitespace-pre">
         {children}
@@ -47,28 +61,24 @@ function StepNumber({ n }: { n: number }) {
 }
 
 // ---------------------------------------------------------------------------
-// Tabs
-// ---------------------------------------------------------------------------
-
-const exampleTabs = [
-  { id: 'basic', label: 'Basic Payment' },
-  { id: 'extended', label: 'Extended Protection' },
-  { id: 'custom', label: 'Custom Amount' },
-  { id: 'usdt', label: 'USDT Payment' },
-];
-
-const modeTabs = [
-  { id: 'popup', label: 'Popup Window' },
-  { id: 'redirect', label: 'Full Redirect' },
-];
-
-// ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 
 export default function IntegratePage() {
   const [exampleTab, setExampleTab] = useState('basic');
   const [modeTab, setModeTab] = useState('popup');
+  const t = usePageT();
+
+  const exampleTabs = [
+    { id: 'basic', label: t('integrate.examples.tab.basic') },
+    { id: 'extended', label: t('integrate.examples.tab.extended') },
+    { id: 'custom', label: t('integrate.examples.tab.custom') },
+    { id: 'usdt', label: t('integrate.examples.tab.usdt') },
+  ];
+  const modeTabs = [
+    { id: 'popup', label: t('integrate.modes.tab.popup') },
+    { id: 'redirect', label: t('integrate.modes.tab.redirect') },
+  ];
 
   const { config } = useConfig();
   // Named from the brand's own record in the white-label service, as the other pages are; the
@@ -105,15 +115,15 @@ export default function IntegratePage() {
   const brandField = partnerBrandId ? `,\n    "brand": "${partnerBrandId}"` : '';
 
   const currencyList = config?.supportedTokens?.length
-    ? config.supportedTokens.map(t => t.symbol).join('/')
+    ? config.supportedTokens.map(token => token.symbol).join('/')
     : config?.tokenSymbol || 'USDC';
 
   return (
     <>
       <SEO
-        title={`Integration Guide — Add Stablecoin Checkout to Your Website | ${siteName}`}
-        description="Add secure stablecoin escrow payments to your website in minutes. No backend required. 1% fee, escrow protection, webhook support."
-        keywords="integrate crypto payments, USDC checkout widget, stablecoin payment integration, escrow checkout, accept crypto payments website"
+        title={t('integrate.seo.title', { siteName })}
+        description={t('integrate.seo.description')}
+        keywords={t('integrate.seo.keywords')}
         canonical="/integrate"
       />
       <Head>
@@ -128,27 +138,27 @@ export default function IntegratePage() {
         {/* ================================================================ */}
         {/* HERO                                                             */}
         {/* ================================================================ */}
-        <section className="flex items-center" aria-label="Hero">
+        <section className="flex items-center" aria-label={t('integrate.hero.ariaLabel')}>
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-24 lg:py-32 w-full">
             <Fade>
               <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
-                Integration Guide
+                {t('integrate.hero.eyebrow')}
               </p>
               <h1 className="text-4xl sm:text-5xl font-semibold text-secondary-900 dark:text-white leading-[1.1] tracking-tight max-w-3xl">
-                Add stablecoin checkout to your website.
+                {t('integrate.hero.title')}
               </h1>
               <p
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Include one script, configure your wallet, and start accepting payments. No backend integration required.
+                {t('integrate.hero.subtitle')}
               </p>
               <div className="mt-14 flex flex-wrap gap-x-8 gap-y-2 text-xs text-secondary-400 dark:text-secondary-500">
-                <span>3-step setup</span>
-                <span>No backend required</span>
-                <span>Webhook support</span>
-                <a href="/checkout-example.html" target="_blank" rel="noopener noreferrer" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors underline">Live demo</a>
-                <a href={API_DOCS_URL} target="_blank" rel="noopener noreferrer" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors underline">API reference</a>
+                <span>{t('integrate.hero.setup')}</span>
+                <span>{t('integrate.hero.noBackend')}</span>
+                <span>{t('integrate.hero.webhooks')}</span>
+                <a href="/checkout-example.html" target="_blank" rel="noopener noreferrer" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors underline">{t('integrate.hero.liveDemo')}</a>
+                <a href={API_DOCS_URL} target="_blank" rel="noopener noreferrer" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors underline">{t('integrate.apiReference')}</a>
               </div>
             </Fade>
           </div>
@@ -164,21 +174,21 @@ export default function IntegratePage() {
         {/* ================================================================ */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800"
-          aria-label="Quick start"
+          aria-label={t('integrate.quick.eyebrow')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
             <Fade>
               <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
-                Quick start
+                {t('integrate.quick.eyebrow')}
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Three steps to accepting payments.
+                {t('integrate.quick.title')}
               </h2>
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-12 max-w-md">
-                No backend integration required. Add the script, configure your wallet, and create payment buttons.
+                {t('integrate.quick.subtitle')}
               </p>
             </Fade>
 
@@ -186,9 +196,11 @@ export default function IntegratePage() {
               <Fade>
                 <div>
                   <StepNumber n={1} />
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Include the script</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.quick.step1.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    Add this line just before the closing <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">&lt;/body&gt;</code> tag.
+                    {withNodes(t('integrate.quick.step1.body'), {
+                      tag: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">&lt;/body&gt;</code>,
+                    })}
                   </p>
                   <CodeBlock id="step1" language="html">
                     {`<script src="${origin}/conduit-checkout.js"></script>`}
@@ -199,9 +211,9 @@ export default function IntegratePage() {
               <Fade delay={0.1}>
                 <div>
                   <StepNumber n={2} />
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Initialize with your wallet</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.quick.step2.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    Configure the checkout with your merchant wallet address.
+                    {t('integrate.quick.step2.body')}
                   </p>
                   <CodeBlock id="step2">
                     {`<script>
@@ -250,9 +262,9 @@ export default function IntegratePage() {
               <Fade delay={0.2}>
                 <div>
                   <StepNumber n={3} />
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Add payment buttons</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.quick.step3.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    Create buttons that open the checkout.
+                    {t('integrate.quick.step3.body')}
                   </p>
                   <CodeBlock id="step3" language="html">
                     {`<button onclick="ConduitCheckout.open({
@@ -273,18 +285,18 @@ export default function IntegratePage() {
         {/* ================================================================ */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800 bg-secondary-50 dark:bg-secondary-900"
-          aria-label="Display modes"
+          aria-label={t('integrate.modes.eyebrow')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
             <Fade>
               <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
-                Display modes
+                {t('integrate.modes.eyebrow')}
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-10"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Choose how checkout appears.
+                {t('integrate.modes.title')}
               </h2>
             </Fade>
 
@@ -293,9 +305,9 @@ export default function IntegratePage() {
             <TabPanel isActive={modeTab === 'popup'}>
               <Fade>
                 <div>
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Popup window</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.modes.popup.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    Opens in a centered popup. Best for minimal disruption to the shopping experience.
+                    {t('integrate.modes.popup.body')}
                   </p>
                   <CodeBlock id="mode-popup">{`mode: 'popup'`}</CodeBlock>
                 </div>
@@ -305,9 +317,9 @@ export default function IntegratePage() {
             <TabPanel isActive={modeTab === 'redirect'}>
               <Fade>
                 <div>
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Full redirect</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.modes.redirect.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    Redirects to checkout page. Best for mobile devices and single-product flows.
+                    {t('integrate.modes.redirect.body')}
                   </p>
                   <CodeBlock id="mode-redirect">{`mode: 'redirect'`}</CodeBlock>
                 </div>
@@ -321,18 +333,18 @@ export default function IntegratePage() {
         {/* ================================================================ */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800"
-          aria-label="Examples"
+          aria-label={t('integrate.examples.eyebrow')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
             <Fade>
               <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
-                Examples
+                {t('integrate.examples.eyebrow')}
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-10"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Common integration patterns.
+                {t('integrate.examples.title')}
               </h2>
             </Fade>
 
@@ -341,9 +353,9 @@ export default function IntegratePage() {
             <TabPanel isActive={exampleTab === 'basic'}>
               <Fade>
                 <div>
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Basic product payment</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.examples.basic.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    Simple checkout for a single product with order tracking.
+                    {t('integrate.examples.basic.body')}
                   </p>
                   <CodeBlock id="ex-basic" language="html">
                     {`<button onclick="ConduitCheckout.open({
@@ -361,9 +373,9 @@ export default function IntegratePage() {
             <TabPanel isActive={exampleTab === 'extended'}>
               <Fade>
                 <div>
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Extended buyer protection</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.examples.extended.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    Set a longer escrow period for services or high-value items.
+                    {t('integrate.examples.extended.body')}
                   </p>
                   <CodeBlock id="ex-extended" language="html">
                     {`<button onclick="ConduitCheckout.open({
@@ -383,9 +395,9 @@ export default function IntegratePage() {
             <TabPanel isActive={exampleTab === 'custom'}>
               <Fade>
                 <div>
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Custom amount (donations, tips)</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.examples.custom.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    Let the user enter their own amount before checkout.
+                    {t('integrate.examples.custom.body')}
                   </p>
                   <CodeBlock id="ex-custom" language="html">
                     {`<input type="number" id="amount" placeholder="Enter amount" min="1.001" step="0.01">
@@ -407,9 +419,9 @@ export default function IntegratePage() {
             <TabPanel isActive={exampleTab === 'usdt'}>
               <Fade>
                 <div>
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Accept USDT instead of USDC</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.examples.usdt.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    Override the default token on a per-payment basis.
+                    {t('integrate.examples.usdt.body')}
                   </p>
                   <CodeBlock id="ex-usdt" language="html">
                     {`<button onclick="ConduitCheckout.open({
@@ -432,18 +444,18 @@ export default function IntegratePage() {
         {/* ================================================================ */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800 bg-secondary-50 dark:bg-secondary-900"
-          aria-label="Configuration reference"
+          aria-label={t('integrate.reference.ariaLabel')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
             <Fade>
               <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
-                Reference
+                {t('integrate.reference.eyebrow')}
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-10"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Configuration options.
+                {t('integrate.reference.title')}
               </h2>
             </Fade>
 
@@ -457,32 +469,32 @@ export default function IntegratePage() {
                   <table className="min-w-full border border-secondary-200 dark:border-secondary-700 rounded-lg text-sm">
                     <thead className="bg-secondary-100 dark:bg-secondary-800">
                       <tr>
-                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Option</th>
-                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Type</th>
-                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Required</th>
-                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Default</th>
-                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Description</th>
+                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.option')}</th>
+                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.type')}</th>
+                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.required')}</th>
+                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.default')}</th>
+                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.description')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-secondary-200 dark:divide-secondary-700">
                       {[
-                        { opt: 'sellerAddress', type: 'string', req: true, def: '-', desc: 'Your wallet address to receive payments' },
-                        { opt: 'baseUrl', type: 'string', req: true, def: '-', desc: 'Base URL of checkout page' },
-                        { opt: 'brand', type: 'string', req: false, def: '-', desc: "A white-label partner's brand id: the checkout shows its branding and payments are attributed to it" },
-                        { opt: 'webhookUrl', type: 'string', req: false, def: '-', desc: 'Webhook URL for payment verification' },
-                        { opt: 'webhookSecret', type: 'string', req: false, def: '-', desc: 'Optional HMAC secret for webhook signatures. Set in the browser, so confirm against /api/results before fulfilling' },
-                        { opt: 'tokenSymbol', type: 'string', req: false, def: "'USDC'", desc: "'USDC' or 'USDT'" },
-                        { opt: 'expiryDays', type: 'number', req: false, def: '7', desc: 'Days until auto-release to seller' },
-                        { opt: 'mode', type: 'string', req: false, def: "'popup'", desc: "'popup' or 'redirect'" },
-                        { opt: 'onSuccess', type: 'function', req: false, def: '-', desc: 'Callback when payment completes' },
-                        { opt: 'onError', type: 'function', req: false, def: '-', desc: 'Callback when payment fails' },
-                        { opt: 'onCancel', type: 'function', req: false, def: '-', desc: 'Callback when user cancels' },
+                        { opt: 'sellerAddress', type: 'string', req: true, def: '-', desc: t('integrate.init.sellerAddress') },
+                        { opt: 'baseUrl', type: 'string', req: true, def: '-', desc: t('integrate.init.baseUrl') },
+                        { opt: 'brand', type: 'string', req: false, def: '-', desc: t('integrate.init.brand') },
+                        { opt: 'webhookUrl', type: 'string', req: false, def: '-', desc: t('integrate.init.webhookUrl') },
+                        { opt: 'webhookSecret', type: 'string', req: false, def: '-', desc: t('integrate.init.webhookSecret') },
+                        { opt: 'tokenSymbol', type: 'string', req: false, def: "'USDC'", desc: t('integrate.init.tokenSymbol') },
+                        { opt: 'expiryDays', type: 'number', req: false, def: '7', desc: t('integrate.init.expiryDays') },
+                        { opt: 'mode', type: 'string', req: false, def: "'popup'", desc: t('integrate.init.mode') },
+                        { opt: 'onSuccess', type: 'function', req: false, def: '-', desc: t('integrate.init.onSuccess') },
+                        { opt: 'onError', type: 'function', req: false, def: '-', desc: t('integrate.init.onError') },
+                        { opt: 'onCancel', type: 'function', req: false, def: '-', desc: t('integrate.init.onCancel') },
                       ].map((row, i) => (
                         <tr key={row.opt} className={i % 2 === 1 ? 'bg-secondary-50 dark:bg-secondary-800/50' : ''}>
                           <td className="px-4 py-3 font-mono text-secondary-900 dark:text-white">{row.opt}</td>
                           <td className="px-4 py-3 text-secondary-500 dark:text-secondary-400">{row.type}</td>
                           <td className={`px-4 py-3 font-medium ${row.req ? 'text-primary-600 dark:text-primary-400' : 'text-secondary-500 dark:text-secondary-400'}`}>
-                            {row.req ? 'Yes' : 'No'}
+                            {row.req ? t('integrate.yes') : t('integrate.no')}
                           </td>
                           <td className="px-4 py-3 text-secondary-500 dark:text-secondary-400">{row.def}</td>
                           <td className="px-4 py-3 text-secondary-500 dark:text-secondary-400">{row.desc}</td>
@@ -504,28 +516,28 @@ export default function IntegratePage() {
                   <table className="min-w-full border border-secondary-200 dark:border-secondary-700 rounded-lg text-sm">
                     <thead className="bg-secondary-100 dark:bg-secondary-800">
                       <tr>
-                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Parameter</th>
-                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Type</th>
-                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Required</th>
-                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Description</th>
+                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.parameter')}</th>
+                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.type')}</th>
+                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.required')}</th>
+                        <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.description')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-secondary-200 dark:divide-secondary-700">
                       {[
-                        { param: 'amount', type: 'string/number', req: true, desc: "Payment amount (e.g., '50.00')" },
-                        { param: 'description', type: 'string', req: true, desc: 'Payment description (max 160 chars)' },
-                        { param: 'orderId', type: 'string', req: false, desc: 'Your internal order/transaction ID' },
-                        { param: 'email', type: 'string', req: false, desc: 'Customer email address' },
-                        { param: 'tokenSymbol', type: 'string', req: false, desc: 'Override default token for this payment' },
-                        { param: 'expiryDays', type: 'number', req: false, desc: 'Override default expiry' },
-                        { param: 'webhookUrl', type: 'string', req: false, desc: 'Override webhook URL for this payment' },
-                        { param: 'metadata', type: 'object', req: false, desc: 'Custom metadata to include' },
+                        { param: 'amount', type: 'string/number', req: true, desc: t('integrate.open.amount') },
+                        { param: 'description', type: 'string', req: true, desc: t('integrate.open.description') },
+                        { param: 'orderId', type: 'string', req: false, desc: t('integrate.open.orderId') },
+                        { param: 'email', type: 'string', req: false, desc: t('integrate.open.email') },
+                        { param: 'tokenSymbol', type: 'string', req: false, desc: t('integrate.open.tokenSymbol') },
+                        { param: 'expiryDays', type: 'number', req: false, desc: t('integrate.open.expiryDays') },
+                        { param: 'webhookUrl', type: 'string', req: false, desc: t('integrate.open.webhookUrl') },
+                        { param: 'metadata', type: 'object', req: false, desc: t('integrate.open.metadata') },
                       ].map((row, i) => (
                         <tr key={row.param} className={i % 2 === 1 ? 'bg-secondary-50 dark:bg-secondary-800/50' : ''}>
                           <td className="px-4 py-3 font-mono text-secondary-900 dark:text-white">{row.param}</td>
                           <td className="px-4 py-3 text-secondary-500 dark:text-secondary-400">{row.type}</td>
                           <td className={`px-4 py-3 font-medium ${row.req ? 'text-primary-600 dark:text-primary-400' : 'text-secondary-500 dark:text-secondary-400'}`}>
-                            {row.req ? 'Yes' : 'No'}
+                            {row.req ? t('integrate.yes') : t('integrate.no')}
                           </td>
                           <td className="px-4 py-3 text-secondary-500 dark:text-secondary-400">{row.desc}</td>
                         </tr>
@@ -543,34 +555,32 @@ export default function IntegratePage() {
         {/* ================================================================ */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800"
-          aria-label="Server-side payments"
+          aria-label={t('integrate.server.ariaLabel')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
             <Fade>
               <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
-                Server-side
+                {t('integrate.server.eyebrow')}
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                No script: prepare, fund, settle.
+                {t('integrate.server.title')}
               </h2>
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-12 max-w-xl">
-                With a backend you can skip the checkout script. Call{' '}
-                <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">/api/ap2/prepare</code> with the
-                terms; it answers with where the money goes, how to fund it, a link that opens the payment for your
-                customer, and the exact request that creates the escrow once paid. No sign-in or API key is needed.
+                {withNodes(t('integrate.server.intro'), {
+                  prepare: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">/api/ap2/prepare</code>,
+                })}
               </p>
             </Fade>
             <div className="space-y-12">
               <Fade>
                 <div>
                   <StepNumber n={1} />
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Prepare the payment</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.server.step1.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    Amounts are in the token&apos;s base units (1 USDC = 1000000). The seller and buyer may be wallets or
-                    email addresses; the buyer is who can dispute.
+                    {t('integrate.server.step1.body')}
                   </p>
                   <CodeBlock id="server-prepare" language="bash">
                     {`curl -X POST ${apiOrigin}/api/ap2/prepare \\
@@ -588,37 +598,39 @@ export default function IntegratePage() {
               <Fade delay={0.1}>
                 <div>
                   <StepNumber n={2} />
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Get paid</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.server.step2.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    Send your customer <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">share_with_payer.pay_link</code>{' '}
-                    (or a QR of it): it opens this exact payment, and they pay by wallet, card or transfer. Or fund{' '}
-                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">escrow_address</code> yourself
-                    using <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">fund_by_transfer</code>.
+                    {withNodes(t('integrate.server.step2.body'), {
+                      payLink: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">share_with_payer.pay_link</code>,
+                      escrowAddress: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">escrow_address</code>,
+                      fundByTransfer: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">fund_by_transfer</code>,
+                    })}
                   </p>
                 </div>
               </Fade>
               <Fade delay={0.2}>
                 <div>
                   <StepNumber n={3} />
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Settle</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.server.step3.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    Once the money has arrived, send the request in the answer&apos;s{' '}
-                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">settle</code> block, unchanged:{' '}
-                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">POST /api/ap2/settle</code>. It
-                    creates the escrow and returns a signed receipt. Sent too early, it says what the address holds and spends
-                    nothing; if you never send it, a funded escrow is still activated within about 30 minutes.
+                    {withNodes(t('integrate.server.step3.body'), {
+                      settle: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">settle</code>,
+                      settleRequest: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">POST /api/ap2/settle</code>,
+                    })}
                   </p>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                    Every field is described in the{' '}
-                    <a
-                      href={API_DOCS_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline hover:text-primary-600 dark:hover:text-primary-400"
-                    >
-                      API reference
-                    </a>
-                    .
+                    {withNodes(t('integrate.server.step3.reference'), {
+                      link: (
+                        <a
+                          href={API_DOCS_URL}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-primary-600 dark:hover:text-primary-400"
+                        >
+                          {t('integrate.apiReference')}
+                        </a>
+                      ),
+                    })}
                   </p>
                 </div>
               </Fade>
@@ -628,24 +640,23 @@ export default function IntegratePage() {
 
         <section
           className="border-t border-secondary-100 dark:border-secondary-800"
-          aria-label="Webhook integration"
+          aria-label={t('integrate.webhook.ariaLabel')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
             <Fade>
               <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
-                Backend integration
+                {t('integrate.webhook.eyebrow')}
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Webhook-based order fulfillment.
+                {t('integrate.webhook.title')}
               </h2>
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-12 max-w-md">
-                Get told when a payment completes, then confirm it yourself. The webhook says
-                something happened; <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">/api/results</code>{' '}
-                is the source of truth, and it is a public endpoint you can query from your server
-                with no key and no setup.
+                {withNodes(t('integrate.webhook.intro'), {
+                  results: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">/api/results</code>,
+                })}
               </p>
             </Fade>
 
@@ -653,9 +664,11 @@ export default function IntegratePage() {
               <Fade>
                 <div>
                   <StepNumber n={1} />
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Configure SDK with webhook</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.webhook.step1.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    The SDK handles verification and webhook delivery automatically. No manual <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">fetch()</code> calls needed.
+                    {withNodes(t('integrate.webhook.step1.body'), {
+                      fetch: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">fetch()</code>,
+                    })}
                   </p>
                   <CodeBlock id="webhook-init">
                     {`ConduitCheckout.init({
@@ -685,12 +698,11 @@ export default function IntegratePage() {
               <Fade delay={0.1}>
                 <div>
                   <StepNumber n={2} />
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Confirm it, then fulfil</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.webhook.step2.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    Ask <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">/api/results</code>{' '}
-                    what really happened before you ship anything. It reads the same record the
-                    checkout polls, so it settles the amount, the currency and who was paid — and a
-                    request that never arrives changes nothing.
+                    {withNodes(t('integrate.webhook.step2.body'), {
+                      results: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">/api/results</code>,
+                    })}
                   </p>
                   <CodeBlock id="webhook-handler">
                     {`// POST /api/conduit-webhook
@@ -766,12 +778,25 @@ app.post('/api/conduit-webhook', async (req, res) => {
               <Fade delay={0.15}>
                 <div>
                   <StepNumber n={3} />
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">Check a payment yourself</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-2">{t('integrate.webhook.step3.title')}</h3>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
-                    The same query, on its own. Public, unauthenticated, no key to request — give it
-                    a <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">contractid</code>{' '}
-                    and it tells you what was paid and to whom. Useful for reconciliation, for
-                    support, and for replaying anything a webhook missed.
+                    {withNodes(t('integrate.webhook.step3.body'), {
+                      contractid: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded text-xs">contractid</code>,
+                    })}
+                  </p>
+                  <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-4">
+                    {withNodes(t('integrate.webhook.step3.openapi'), {
+                      link: (
+                        <a
+                          href={`${apiOrigin}/resultservice/v3/api-docs`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-primary-600 dark:hover:text-primary-400 break-all"
+                        >
+                          {`${apiOrigin}/resultservice/v3/api-docs`}
+                        </a>
+                      ),
+                    })}
                   </p>
                   <CodeBlock id="results-query-curl" language="bash">
                     {`curl -X POST ${apiOrigin}/api/results \\
@@ -779,7 +804,7 @@ app.post('/api/conduit-webhook', async (req, res) => {
   -d '{"contractid": "507f1f77bcf86cd799439011"}'`}
                   </CodeBlock>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-4 mb-3">
-                    Response:
+                    {t('integrate.webhook.step3.response')}
                   </p>
                   <CodeBlock id="results-query-response" language="json">
                     {`{
@@ -802,21 +827,21 @@ app.post('/api/conduit-webhook', async (req, res) => {
                   </CodeBlock>
                   {/* Query fields — the request side of /api/results. */}
                   <div className="overflow-x-auto mt-8">
-                    <h4 className="text-sm font-medium text-secondary-900 dark:text-white mb-3">Query fields</h4>
+                    <h4 className="text-sm font-medium text-secondary-900 dark:text-white mb-3">{t('integrate.results.queryTitle')}</h4>
                     <table className="min-w-full border border-secondary-200 dark:border-secondary-700 rounded-lg text-sm">
                       <thead className="bg-secondary-100 dark:bg-secondary-800">
                         <tr>
-                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Field</th>
-                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Type</th>
-                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Description</th>
+                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.field')}</th>
+                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.type')}</th>
+                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.description')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-secondary-200 dark:divide-secondary-700">
                         {[
-                          { f: 'contractid', t: 'string', d: 'Exact match on the contract id the checkout returns' },
-                          { f: 'chainAddress', t: 'string', d: 'Exact match on the escrow address' },
-                          { f: 'chainAddresses', t: 'string[]', d: 'The batch form. OR within the list, so one round trip fills in a whole page of contracts instead of one call each. Case-insensitive, because addresses read from event logs are lower case while records may be checksummed' },
-                          { f: 'sellerWalletId', t: 'string', d: 'Matches seller OR buyer, case-insensitively — this is how you list everything paid to your wallet' },
+                          { f: 'contractid', t: 'string', d: t('integrate.results.query.contractid') },
+                          { f: 'chainAddress', t: 'string', d: t('integrate.results.query.chainAddress') },
+                          { f: 'chainAddresses', t: 'string[]', d: t('integrate.results.query.chainAddresses') },
+                          { f: 'sellerWalletId', t: 'string', d: t('integrate.results.query.sellerWalletId') },
                         ].map((row, i) => (
                           <tr key={row.f} className={i % 2 === 1 ? 'bg-secondary-50 dark:bg-secondary-800/50' : ''}>
                             <td className="px-4 py-3 font-mono text-secondary-900 dark:text-white">{row.f}</td>
@@ -827,34 +852,33 @@ app.post('/api/conduit-webhook', async (req, res) => {
                       </tbody>
                     </table>
                     <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-3">
-                      All optional, but at least one is required — an empty body returns 400.
-                      Multiple fields combine with AND.
+                      {t('integrate.results.queryNote')}
                     </p>
                   </div>
 
                   {/* Response fields — every key ResultItem actually returns. */}
                   <div className="overflow-x-auto mt-8">
-                    <h4 className="text-sm font-medium text-secondary-900 dark:text-white mb-3">Response fields</h4>
+                    <h4 className="text-sm font-medium text-secondary-900 dark:text-white mb-3">{t('integrate.results.responseTitle')}</h4>
                     <table className="min-w-full border border-secondary-200 dark:border-secondary-700 rounded-lg text-sm">
                       <thead className="bg-secondary-100 dark:bg-secondary-800">
                         <tr>
-                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Field</th>
-                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Type</th>
-                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Description</th>
+                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.field')}</th>
+                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.type')}</th>
+                          <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.description')}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-secondary-200 dark:divide-secondary-700">
                         {[
-                          { f: 'contractid', t: 'string', d: 'The contract id' },
-                          { f: 'chainAddress', t: 'string', d: 'The escrow address. Assigned when the buyer opens the payment page, so its presence says nothing about whether they paid — read state for that' },
-                          { f: 'sellerWalletId', t: 'string', d: 'Who gets paid. Compare against your own wallet' },
-                          { f: 'amount', t: 'number', d: 'In the units of currency below, so divide by 1,000,000 for a micro currency' },
-                          { f: 'description', t: 'string', d: 'What the payment was for' },
-                          { f: 'currency', t: 'string', d: 'e.g. microUSDC. There is no separate currencySymbol field' },
-                          { f: 'state', t: 'string', d: 'Whether the money arrived. ACTIVE, DISPUTED, RESOLVED, CLAIMED and COMPLETED all mean it did; treat anything else as not yet paid, including states you do not recognise' },
-                          { f: 'chainId', t: 'string', d: 'e.g. 8453 for Base' },
-                          { f: 'createdate', t: 'number', d: 'Unix seconds when the record was made' },
-                          { f: 'maturity', t: 'number', d: 'Unix seconds when the cashflow unlocks. Distinct from createdate' },
+                          { f: 'contractid', t: 'string', d: t('integrate.results.response.contractid') },
+                          { f: 'chainAddress', t: 'string', d: t('integrate.results.response.chainAddress') },
+                          { f: 'sellerWalletId', t: 'string', d: t('integrate.results.response.sellerWalletId') },
+                          { f: 'amount', t: 'number', d: t('integrate.results.response.amount') },
+                          { f: 'description', t: 'string', d: t('integrate.results.response.description') },
+                          { f: 'currency', t: 'string', d: t('integrate.results.response.currency') },
+                          { f: 'state', t: 'string', d: t('integrate.results.response.state') },
+                          { f: 'chainId', t: 'string', d: t('integrate.results.response.chainId') },
+                          { f: 'createdate', t: 'number', d: t('integrate.results.response.createdate') },
+                          { f: 'maturity', t: 'number', d: t('integrate.results.response.maturity') },
                         ].map((row, i) => (
                           <tr key={row.f} className={i % 2 === 1 ? 'bg-secondary-50 dark:bg-secondary-800/50' : ''}>
                             <td className="px-4 py-3 font-mono text-secondary-900 dark:text-white">{row.f}</td>
@@ -867,24 +891,21 @@ app.post('/api/conduit-webhook', async (req, res) => {
                   </div>
 
                   <p className="text-xs text-secondary-500 dark:text-secondary-400 mt-4">
-                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">count: 0</code>{' '}
-                    means no such payment — treat it as unpaid, never as an error. You can also query
-                    by <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">chainAddress</code>, or by{' '}
-                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">sellerWalletId</code>{' '}
-                    to list everything paid to your wallet. Amounts in a{' '}
-                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">micro</code>-prefixed
-                    currency are in millionths, so divide by 1,000,000.{' '}
-                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">state</code>{' '}
-                    is the escrow&apos;s lifecycle, not a pass/fail — a completed payment reads{' '}
-                    <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">CLAIMED</code>,
-                    so check for the failure states rather than for one success value.
+                    {withNodes(t('integrate.results.note'), {
+                      countZero: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">count: 0</code>,
+                      chainAddress: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">chainAddress</code>,
+                      sellerWalletId: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">sellerWalletId</code>,
+                      micro: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">micro</code>,
+                      state: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">state</code>,
+                      claimed: <code className="bg-secondary-100 dark:bg-secondary-800 px-1 rounded">CLAIMED</code>,
+                    })}
                   </p>
                 </div>
               </Fade>
 
               <Fade delay={0.2}>
                 <div>
-                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-3">Webhook payload</h3>
+                  <h3 className="text-lg font-medium text-secondary-900 dark:text-white mb-3">{t('integrate.webhook.payloadTitle')}</h3>
                   <CodeBlock id="webhook-payload" language="json">
                     {`{
   "contractId": "507f1f77bcf86cd799439011",
@@ -915,18 +936,18 @@ app.post('/api/conduit-webhook', async (req, res) => {
         {/* ================================================================ */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800 bg-secondary-50 dark:bg-secondary-900"
-          aria-label="Verified data"
+          aria-label={t('integrate.verified.ariaLabel')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
             <Fade>
               <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
-                Verification
+                {t('integrate.verified.eyebrow')}
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-10"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                What verified data means.
+                {t('integrate.verified.title')}
               </h2>
             </Fade>
 
@@ -935,17 +956,17 @@ app.post('/api/conduit-webhook', async (req, res) => {
                 <table className="min-w-full border border-secondary-200 dark:border-secondary-700 rounded-lg text-sm">
                   <thead className="bg-secondary-100 dark:bg-secondary-800">
                     <tr>
-                      <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Field</th>
-                      <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">Meaning</th>
+                      <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.field')}</th>
+                      <th className="px-4 py-3 text-left font-medium text-secondary-900 dark:text-white">{t('integrate.col.meaning')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-secondary-200 dark:divide-secondary-700">
                     {[
-                      { field: 'verified: true', meaning: 'Backend confirmed payment exists in blockchain' },
-                      { field: 'state: "ACTIVE"', meaning: 'Funds are locked in escrow contract' },
-                      { field: 'seller: "0x..."', meaning: 'Matches your wallet (verified by SDK)' },
-                      { field: 'amount: 50.0', meaning: 'Matches expected amount (verified by SDK)' },
-                      { field: 'chainAddress', meaning: 'Blockchain contract address (permanent record)' },
+                      { field: 'verified: true', meaning: t('integrate.verified.verified') },
+                      { field: 'state: "ACTIVE"', meaning: t('integrate.verified.state') },
+                      { field: 'seller: "0x..."', meaning: t('integrate.verified.seller') },
+                      { field: 'amount: 50.0', meaning: t('integrate.verified.amount') },
+                      { field: 'chainAddress', meaning: t('integrate.verified.chainAddress') },
                     ].map((row, i) => (
                       <tr key={i} className={i % 2 === 1 ? 'bg-secondary-50 dark:bg-secondary-800/50' : ''}>
                         <td className="px-4 py-3 font-mono text-secondary-900 dark:text-white">{row.field}</td>
@@ -956,7 +977,7 @@ app.post('/api/conduit-webhook', async (req, res) => {
                 </table>
               </div>
               <p className="mt-4 text-sm text-secondary-500 dark:text-secondary-400">
-                Once you receive verified data, it is safe to fulfil the order. The SDK has confirmed everything on-chain.
+                {t('integrate.verified.note')}
               </p>
             </Fade>
           </div>
@@ -967,38 +988,58 @@ app.post('/api/conduit-webhook', async (req, res) => {
         {/* ================================================================ */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800"
-          aria-label="Features and security"
+          aria-label={t('integrate.platform.ariaLabel')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
             <Fade>
               <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
-                Platform
+                {t('integrate.platform.eyebrow')}
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-16"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Built-in protection for every transaction.
+                {t('integrate.platform.title')}
               </h2>
             </Fade>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-x-12 gap-y-10">
               {[
                 {
-                  label: 'Buyer protection',
-                  items: ['Funds held in escrow smart contract', 'Time-delayed release (default 7 days)', 'Dispute mechanism', 'Independent tiebreaker'],
+                  label: t('integrate.platform.buyer.label'),
+                  items: [
+                    t('integrate.platform.buyer.1'),
+                    t('integrate.platform.buyer.2'),
+                    t('integrate.platform.buyer.3'),
+                    t('integrate.platform.buyer.4'),
+                  ],
                 },
                 {
-                  label: 'No gas fees',
-                  items: ['Platform covers all blockchain fees', 'Users pay 1% platform fee', 'Minimum payment: $1.001', 'Fee included in payment amount'],
+                  label: t('integrate.platform.gas.label'),
+                  items: [
+                    t('integrate.platform.gas.1'),
+                    t('integrate.platform.gas.2'),
+                    t('integrate.platform.gas.3'),
+                    t('integrate.platform.gas.4'),
+                  ],
                 },
                 {
-                  label: 'Client-side security',
-                  items: ['Users sign with own wallet', 'No custody of user funds', 'HTTPS required', 'Open-source smart contracts'],
+                  label: t('integrate.platform.security.label'),
+                  items: [
+                    t('integrate.platform.security.1'),
+                    t('integrate.platform.security.2'),
+                    t('integrate.platform.security.3'),
+                    t('integrate.platform.security.4'),
+                  ],
                 },
                 {
-                  label: 'Multi-token support',
-                  items: ['USDC (default)', 'USDT (optional)', 'Base network (Ethereum L2)', 'Low transaction costs'],
+                  label: t('integrate.platform.tokens.label'),
+                  items: [
+                    t('integrate.platform.tokens.1'),
+                    t('integrate.platform.tokens.2'),
+                    t('integrate.platform.tokens.3'),
+                    t('integrate.platform.tokens.4'),
+                  ],
                 },
               ].map((feat, i) => (
                 <Fade key={i} delay={i * 0.06}>
@@ -1023,22 +1064,22 @@ app.post('/api/conduit-webhook', async (req, res) => {
         {/* ================================================================ */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800 bg-secondary-50 dark:bg-secondary-900"
-          aria-label="Customer experience"
+          aria-label={t('integrate.flow.ariaLabel')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
             <Fade>
               <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-16">
-                End-to-end flow
+                {t('integrate.flow.eyebrow')}
               </p>
             </Fade>
 
             <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-x-12 gap-y-12">
               {[
-                { num: '01', title: 'Customer clicks pay', desc: 'Opens checkout popup or redirect.' },
-                { num: '02', title: 'Wallet connects & pays', desc: 'Customer signs the transaction.' },
-                { num: '03', title: 'SDK verifies on-chain', desc: 'Automatic blockchain verification.' },
-                { num: '04', title: 'Webhook sent to backend', desc: 'Your server receives verified data.' },
-                { num: '05', title: 'Order fulfilled', desc: 'Ship goods, deliver product, send receipt.' },
+                { num: '01', title: t('integrate.flow.1.title'), desc: t('integrate.flow.1.desc') },
+                { num: '02', title: t('integrate.flow.2.title'), desc: t('integrate.flow.2.desc') },
+                { num: '03', title: t('integrate.flow.3.title'), desc: t('integrate.flow.3.desc') },
+                { num: '04', title: t('integrate.flow.4.title'), desc: t('integrate.flow.4.desc') },
+                { num: '05', title: t('integrate.flow.5.title'), desc: t('integrate.flow.5.desc') },
               ].map((step, i) => (
                 <Fade key={step.num} delay={i * 0.08}>
                   <div>
@@ -1063,50 +1104,50 @@ app.post('/api/conduit-webhook', async (req, res) => {
         {/* ================================================================ */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800"
-          aria-label="FAQ"
+          aria-label={t('integrate.faq.eyebrow')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-16 lg:py-20">
             <Fade>
               <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
-                FAQ
+                {t('integrate.faq.eyebrow')}
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-10"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Frequently asked questions.
+                {t('integrate.faq.title')}
               </h2>
             </Fade>
 
             <div className="space-y-4">
               {[
                 {
-                  q: 'What tokens are supported?',
-                  a: `Currently ${currencyList} on the Base network (Ethereum Layer 2).`,
+                  q: t('integrate.faq.tokens.q'),
+                  a: t('integrate.faq.tokens.a', { currencies: currencyList }),
                 },
                 {
-                  q: 'What are the fees?',
-                  a: '1% platform fee per transaction. No setup costs, no monthly fees. Minimum payment is $1.001. Gas fees are covered by the platform.',
+                  q: t('integrate.faq.fees.q'),
+                  a: t('integrate.faq.fees.a'),
                 },
                 {
-                  q: 'How long until I receive funds?',
-                  a: 'Funds are automatically released after the expiry period (default 7 days) unless the buyer raises a dispute. You can customize the expiry period per payment.',
+                  q: t('integrate.faq.payout.q'),
+                  a: t('integrate.faq.payout.a'),
                 },
                 {
-                  q: 'Can buyers get refunds?',
-                  a: 'Buyers can raise a dispute within the protection period. Our admin team reviews disputes and can release funds to either party based on the evidence.',
+                  q: t('integrate.faq.refunds.q'),
+                  a: t('integrate.faq.refunds.a'),
                 },
                 {
-                  q: 'Do I need a crypto wallet?',
-                  a: 'Yes, you need a wallet address to receive payments. We recommend MetaMask, Coinbase Wallet, or any Web3-compatible wallet. Buyers can use email + social login (we create embedded wallets for them).',
+                  q: t('integrate.faq.wallet.q'),
+                  a: t('integrate.faq.wallet.a'),
                 },
                 {
-                  q: 'Is this secure?',
-                  a: 'Yes. Payments are secured by immutable smart contracts on the Base blockchain. Users sign transactions with their own wallets. All transactions are auditable on-chain. HTTPS is required for all integrations.',
+                  q: t('integrate.faq.secure.q'),
+                  a: t('integrate.faq.secure.a'),
                 },
                 {
-                  q: 'What about chargebacks?',
-                  a: 'Cryptocurrency transactions are irreversible — there are no chargebacks like with credit cards. The escrow system provides buyer protection through the dispute mechanism during the protection period.',
+                  q: t('integrate.faq.chargebacks.q'),
+                  a: t('integrate.faq.chargebacks.a'),
                 },
               ].map((item, i) => (
                 <Fade key={i} delay={i * 0.04}>
@@ -1129,7 +1170,7 @@ app.post('/api/conduit-webhook', async (req, res) => {
         {/* ================================================================ */}
         <section
           className="border-t border-secondary-100 dark:border-secondary-800"
-          aria-label="Get started"
+          aria-label={t('integrate.cta.ariaLabel')}
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 pt-24 lg:pt-28 pb-16 lg:pb-20">
             <Fade>
@@ -1137,10 +1178,10 @@ app.post('/api/conduit-webhook', async (req, res) => {
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-3"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Ready to integrate?
+                {t('integrate.cta.title')}
               </h2>
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-8 max-w-md">
-                Try the interactive demo or start integrating directly into your site.
+                {t('integrate.cta.body')}
               </p>
               <div className="flex flex-wrap gap-3">
                 <a
@@ -1149,10 +1190,10 @@ app.post('/api/conduit-webhook', async (req, res) => {
                   rel="noopener noreferrer"
                   className={btnPrimary}
                 >
-                  View Live Demo
+                  {t('integrate.cta.demo')}
                 </a>
                 <Link href="/merchant" className={btnOutline}>
-                  Merchant Overview
+                  {t('integrate.cta.merchant')}
                 </Link>
               </div>
             </Fade>
@@ -1161,13 +1202,13 @@ app.post('/api/conduit-webhook', async (req, res) => {
             <Fade delay={0.2}>
               <div className="mt-14 pt-8 border-t border-secondary-100 dark:border-secondary-800 flex flex-wrap gap-x-8 gap-y-3 text-xs text-secondary-400 dark:text-secondary-500">
                 <Link href="/how-it-works" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
-                  How it works
+                  {t('integrate.footer.howItWorks')}
                 </Link>
                 <Link href="/faq" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
-                  FAQ
+                  {t('integrate.footer.faq')}
                 </Link>
                 <Link href="/shopify/install-button" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
-                  Shopify integration
+                  {t('integrate.footer.shopify')}
                 </Link>
                 <a
                   href={API_DOCS_URL}
@@ -1175,10 +1216,10 @@ app.post('/api/conduit-webhook', async (req, res) => {
                   rel="noopener noreferrer"
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
                 >
-                  API reference
+                  {t('integrate.apiReference')}
                 </a>
                 <Link href="/white-label" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
-                  White-label partners
+                  {t('integrate.footer.whiteLabel')}
                 </Link>
                 <a
                   href="https://github.com/conduit-ucpi/contracts"
@@ -1186,7 +1227,7 @@ app.post('/api/conduit-webhook', async (req, res) => {
                   rel="noopener noreferrer"
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
                 >
-                  Source code
+                  {t('integrate.footer.source')}
                 </a>
                 <a
                   href={supportHref}

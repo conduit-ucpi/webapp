@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { contractStatusDisplay } from '@/utils/contractStatusDisplay';
 import { Contract, PendingContract } from '@/types';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
@@ -60,12 +61,8 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
     }
   };
   
-  // Use centralized status display with role information
-  // Use backend-provided status display
-  const statusDisplay = {
-    label: contract.ctaLabel || status || 'Unknown',
-    color: contract.ctaVariant?.toLowerCase() === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-secondary-50 text-secondary-600 border-secondary-200'
-  };
+  // The same status label and colours as the dashboard card — the status, never the CTA.
+  const statusDisplay = contractStatusDisplay(status, isPending);
   
   // Calculate time remaining for active contracts
   const timeRemaining = () => {
@@ -108,7 +105,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
           <div className="flex items-start space-x-3 mb-3 sm:mb-0">
             <StatusBadge 
               status={status} 
-              label={contract.ctaLabel || statusDisplay.label}
+              label={statusDisplay.label}
               color={statusDisplay.color}
             />
             <div>

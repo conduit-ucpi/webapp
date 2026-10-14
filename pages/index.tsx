@@ -33,8 +33,7 @@ import {
 } from '@/components/landing-test/content';
 
 /*
- * The homepage. Chosen from the landing experiments as landing-test-16, which still serves
- * this same page for comparison with the others.
+ * The homepage, chosen from the landing-page experiments.
  *
  * Sticky-left chapters: the right column is only ever titles, the detail lives on the
  * left and follows the pointer, so nothing on the right ever grows or shifts. The nav's
@@ -153,7 +152,7 @@ export default function Home() {
           }
         />
 
-        <Chapter label="Developers" title="Put it on your site in 20 mins." ariaLabel="Embed in your platform" aside={<EmbedExamples layout="side" />}>
+        <Chapter label="Developers" title="Put it on your site in 10 mins." ariaLabel="Embed in your platform" aside={<EmbedExamples layout="side" />}>
           <p className={lt.muted}>A plugin for WordPress and Shopify, one script tag for everything else, and one URL for any AI agent.</p>
           <div className="mt-6">
             <Link href="/integrate" className={lt.btnSecondary}>Read the SDK guide</Link>

@@ -1,20 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import LandingTest01 from '@/pages/landing-test-01';
-import LandingTest02 from '@/pages/landing-test-02';
-import LandingTest03 from '@/pages/landing-test-03';
-import LandingTest04 from '@/pages/landing-test-04';
-import LandingTest05 from '@/pages/landing-test-05';
-import LandingTest06 from '@/pages/landing-test-06';
-import LandingTest07 from '@/pages/landing-test-07';
-import LandingTest08 from '@/pages/landing-test-08';
-import LandingTest09 from '@/pages/landing-test-09';
-import LandingTest10 from '@/pages/landing-test-10';
-import LandingTest11 from '@/pages/landing-test-11';
-import LandingTest12 from '@/pages/landing-test-12';
-import LandingTest13 from '@/pages/landing-test-13';
-import LandingTest14 from '@/pages/landing-test-14';
-import LandingTest15 from '@/pages/landing-test-15';
-import LandingTest16 from '@/pages/landing-test-16';
+import Home from '../../pages/index';
 import {
   AGENT_POINTS,
   API_DOC_URL,
@@ -32,13 +17,11 @@ import {
 } from '@/components/landing-test/content';
 
 /*
- * The landing tests are an experiment in presentation only. If one of them dropped
- * a button, the experiment would be measuring the missing button rather than the design.
- * So every page is held to the same functional inventory, drawn from the content module
- * they all share.
+ * The homepage's functional inventory, drawn from the content module it renders. It was
+ * chosen from the landing experiments; this holds it to every button they all had to carry.
  */
 
-// The homepage (landing-test-16) carries the site-wide nav, which reads the router, auth and config.
+// The homepage carries the site-wide nav, which reads the router, auth and config.
 jest.mock('next/router', () => ({
   useRouter: () => ({ pathname: '/', push: jest.fn(), events: { on: jest.fn(), off: jest.fn() } }),
 }));
@@ -78,30 +61,13 @@ jest.mock('framer-motion', () => {
   };
 });
 
-const PAGES = [
-  ['landing-test-01', LandingTest01],
-  ['landing-test-02', LandingTest02],
-  ['landing-test-03', LandingTest03],
-  ['landing-test-04', LandingTest04],
-  ['landing-test-05', LandingTest05],
-  ['landing-test-06', LandingTest06],
-  ['landing-test-07', LandingTest07],
-  ['landing-test-08', LandingTest08],
-  ['landing-test-09', LandingTest09],
-  ['landing-test-10', LandingTest10],
-  ['landing-test-11', LandingTest11],
-  ['landing-test-12', LandingTest12],
-  ['landing-test-13', LandingTest13],
-  ['landing-test-14', LandingTest14],
-  ['landing-test-15', LandingTest15],
-  ['landing-test-16', LandingTest16],
-] as const;
 
 function hrefs(): string[] {
   return screen.getAllByRole('link').map((a) => a.getAttribute('href') || '');
 }
 
-describe.each(PAGES)('%s', (_name, Page) => {
+describe('homepage', () => {
+  const Page = Home;
   let openSpy: jest.SpyInstance;
 
   beforeEach(() => {
@@ -134,13 +100,13 @@ describe.each(PAGES)('%s', (_name, Page) => {
 
   it('F2: hero links to create and to the dashboard, and cites the proof points', () => {
     render(<Page />);
-    // The Products menu holds the make-payment entry on every page; open it so its links count.
+    // The Products menu holds the make-payment entry; open it so its links count.
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Primary' })).getByRole('button', { name: 'Products' }));
     const links = hrefs();
     expect(links).toContain('/create');
     expect(links).toContain('/dashboard');
     expect(links).toContain(SOURCE_URL);
-    // Every page offers "make payment" somewhere (the nav at least; the scrolly heroes as a button).
+    // "Make payment" is offered at least in the nav.
     expect(links).toContain(MAKE_PAYMENT_HREF);
     for (const p of PROOF_POINTS) expect(screen.getAllByText(new RegExp(p)).length).toBeGreaterThan(0);
   });

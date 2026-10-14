@@ -8,7 +8,7 @@ interface Props {
   brand: string;
 }
 
-/** The links landing7 keeps at the bottom, plus the legal pair the site footer carries. */
+/** The homepage's footer links, plus the legal pair the site footer carries. */
 export default function LandingFooter({ className = '', brand }: Props) {
   return (
     <footer className={`border-t ${lt.border} ${className}`}>

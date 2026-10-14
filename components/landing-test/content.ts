@@ -1,11 +1,6 @@
 /**
- * Everything the /landing-test-0N pages say and link to, in one place.
- *
- * The five pages are an A/B of *presentation*: each borrows a different look from
- * Stripe, Mercury and Wise. They must be functionally identical so that a visitor's
- * behaviour, not a missing button, is what differs between them. Sharing the copy and
- * the link targets is what keeps that true — and __tests__/pages/landing-test.test.tsx
- * checks every page against this inventory.
+ * Everything the homepage says and links to, in one place.
+ * __tests__/pages/landing-test.test.tsx checks the page against this inventory.
  */
 
 export const DEMO_SELLER = '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d';
@@ -24,7 +19,7 @@ export const CONTACT_EMAIL = 'info@stabledrop.me';
  */
 export const MAKE_PAYMENT_HREF = '/pay';
 
-/** The live checkout, exactly as landing7 opens it: a real $0.001 USDC payment to the demo seller. */
+/** The live checkout: a real $0.001 USDC payment to the demo seller. */
 export function demoCheckoutUrl(origin: string): string {
   const returnUrl = encodeURIComponent(`${origin}/checkout-example.html`);
   return (

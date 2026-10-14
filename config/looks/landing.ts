@@ -17,12 +17,12 @@ const WARM_NEUTRALS = {
 
 /**
  * The landing page's look ("Bento"): charcoal, one lime accent, Space Grotesk with JetBrains
- * Mono for code. Picked from landing-test-05; landing-test-06 onwards wear it too.
+ * Mono for code.
  */
 const landing: Look = {
   name: 'landing',
 
-  // What the landing page renders today. Moved here unchanged from components/landing-test/themes.ts.
+  // What the landing page renders today.
   landing: {
     bg: '#131313',
     fg: '#f5f5f2',

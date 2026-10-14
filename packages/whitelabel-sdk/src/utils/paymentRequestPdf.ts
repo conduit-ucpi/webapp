@@ -182,7 +182,7 @@ export async function downloadPaymentRequestPdf(doc: PaymentRequestDoc): Promise
       ? `${doc.siteName} handles stablecoin payments through a smart contract. This one is an ` +
           'instant payment: it goes to the seller as soon as you pay, with no holding period. ' +
           `It is paid in ${doc.tokenSymbol}, a stablecoin.`
-      : `${doc.siteName} is an escrow service for stablecoin payments. Rather than paying the seller ` +
+      : `${doc.siteName} is a protected payment service for stablecoins. Rather than paying the seller ` +
           'directly, your payment is held by a smart contract and only released to them on the agreed ' +
           'date above — so you are not sending money into thin air, and the seller is not waiting on a ' +
           `bank. It is paid in ${doc.tokenSymbol}, a stablecoin.`,

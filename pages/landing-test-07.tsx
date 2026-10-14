@@ -92,7 +92,7 @@ export default function LandingTest07() {
                 Radically different <span className={lt.accentText}>payments.</span>
               </h1>
               <p className={`mt-6 text-lg sm:text-xl max-w-2xl mx-auto ${lt.muted}`}>
-                Get paid in stablecoins into an escrow that protects your buyer and can never be charged back. No processor, no reserve, no approval. One percent.
+                Get paid in stablecoins into a payment contract that protects your buyer and can never be charged back. No processor, no reserve, no approval. One percent.
               </p>
 
               <form className={`mt-10 ${card} p-3 sm:p-4 text-left`} onSubmit={(e) => e.preventDefault()} aria-label="Quick estimate">
@@ -147,7 +147,7 @@ export default function LandingTest07() {
             <p className={eyebrow}>Payments, minus the processor</p>
             <h2 className={h2}>Stop losing money to fees.</h2>
             <p className={`mt-5 text-base leading-relaxed ${lt.muted}`}>
-              A card processor sits between you and your customer and charges rent for it. It does that in exchange for one thing — the buyer&apos;s confidence they can get their money back. Escrow gives the buyer that confidence directly, so there is nothing left to charge for.
+              A card processor sits between you and your customer and charges rent for it. It does that in exchange for one thing — the buyer&apos;s confidence they can get their money back. A protected payment gives the buyer that confidence directly, so there is nothing left to charge for.
             </p>
           </Fade>
           <Fade delay={0.1}>

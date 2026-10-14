@@ -114,7 +114,7 @@ export default function PaymentActionPanel({
     try {
       // The escrow has to exist before Coinbase can send to it.
       const escrowAddress = await resolveEscrowAddress();
-      if (!escrowAddress) throw new Error('Could not prepare the escrow contract');
+      if (!escrowAddress) throw new Error('Could not prepare the payment contract');
 
       await openCoinbaseOnramp({
         destinationAddress: escrowAddress,

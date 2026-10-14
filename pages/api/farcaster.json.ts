@@ -29,7 +29,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
 
   const config = {
     frame: {
-      name: "Instant Escrow",
+      name: "Stabledrop",
       version: "1",
       iconUrl: `${farcasterBaseUrl}/icon.png`,
       homeUrl: farcasterBaseUrl,

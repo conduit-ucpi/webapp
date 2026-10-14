@@ -96,7 +96,7 @@ export default function LandingTest03() {
           <div className="grid lg:grid-cols-12 gap-10 items-center">
             <motion.div className="lg:col-span-7" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
               <h1 className={`text-[3.4rem] sm:text-[5rem] lg:text-[6.2rem] uppercase leading-[0.92] tracking-tight ${lt.fg}`} style={display}>
-                The escrow
+                The protected payment
                 <br />
                 for home
                 <br />

@@ -39,11 +39,11 @@ export default function EscrowTimeline({ stage: controlled }: { stage?: number }
       data-testid="escrow-timeline"
     >
       <div className="flex items-center justify-between">
-        <span className={`text-xs uppercase tracking-[0.2em] ${lt.muted}`}>An escrow, live</span>
+        <span className={`text-xs uppercase tracking-[0.2em] ${lt.muted}`}>A protected payment, live</span>
         <span className={`text-xs ${lt.muted}`}>{paused ? 'paused' : 'playing'}</span>
       </div>
 
-      <div className="mt-5 flex items-center gap-2" role="tablist" aria-label="Escrow stages">
+      <div className="mt-5 flex items-center gap-2" role="tablist" aria-label="Protected payment stages">
         {STAGES.map((s, i) => (
           <button
             key={s.key}

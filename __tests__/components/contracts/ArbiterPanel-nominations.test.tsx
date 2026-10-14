@@ -289,7 +289,7 @@ describe('refusing a party before anybody signs', () => {
 
     await userEvent.type(field(), 'charlie@stabledrop.me');
 
-    expect(await screen.findByText("That's the seller on this escrow; a party can't be the tiebreaker.")).toBeInTheDocument();
+    expect(await screen.findByText("That's the seller on this payment; a party can't be the tiebreaker.")).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Nominate' })).toBeDisabled();
   });
 
@@ -298,7 +298,7 @@ describe('refusing a party before anybody signs', () => {
 
     await userEvent.type(field(), BUYER);
 
-    expect(screen.getByText("That's the buyer on this escrow; a party can't be the tiebreaker.")).toBeInTheDocument();
+    expect(screen.getByText("That's the buyer on this payment; a party can't be the tiebreaker.")).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Nominate' })).toBeDisabled();
   });
 
@@ -308,7 +308,7 @@ describe('refusing a party before anybody signs', () => {
 
     await userEvent.type(field(), seated);
 
-    expect(screen.getByText(/already seated on this escrow/)).toBeInTheDocument();
+    expect(screen.getByText(/already seated on this payment/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Nominate' })).toBeDisabled();
   });
 
@@ -345,7 +345,7 @@ describe('a refusal from the escrow, in words', () => {
   it('explains a refused candidate', async () => {
     await nominate(refusal('InvalidArbiterCandidate', [SELLER]));
 
-    expect(await screen.findByText(new RegExp(`The escrow refused ${SELLER}`))).toBeInTheDocument();
+    expect(await screen.findByText(new RegExp(`The payment contract refused ${SELLER}`))).toBeInTheDocument();
   });
 
   it('explains an escrow that is no longer open', async () => {

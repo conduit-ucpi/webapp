@@ -256,7 +256,7 @@ describe('/pay', () => {
     fill();
     fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
 
-    await screen.findByText('Paid into escrow', { selector: 'h2' });
+    await screen.findByText('Payment protected', { selector: 'h2' });
     const [, prepareArgs] = mockCall.mock.calls[0];
     const [tool, settleArgs] = mockCall.mock.calls[1];
     expect(tool).toBe('settle_escrow_payment');
@@ -336,7 +336,7 @@ describe('/pay', () => {
     mockBalances.escrow = '10';
     fireEvent.click(paid);
 
-    await screen.findByText('Paid into escrow', { selector: 'h2' });
+    await screen.findByText('Payment protected', { selector: 'h2' });
     const [, prepareArgs] = mockCall.mock.calls[0];
     const [tool, settleArgs] = mockCall.mock.calls[1];
     expect(tool).toBe('settle_escrow_payment');
@@ -364,7 +364,7 @@ describe('/pay', () => {
     });
     finishWalletSettle({ status: 'settled' });
 
-    await screen.findByText('Paid into escrow', { selector: 'h2' });
+    await screen.findByText('Payment protected', { selector: 'h2' });
     const settles = mockCall.mock.calls.filter(([tool]) => tool === 'settle_escrow_payment');
     expect(settles).toHaveLength(1);
     expect(settles[0][1]).toHaveProperty('signature');
@@ -388,7 +388,7 @@ describe('/pay', () => {
     });
     failWalletSettle({ error: 'service_unavailable', message: 'deploy failed' });
 
-    await screen.findByText('Paid into escrow', { selector: 'h2' });
+    await screen.findByText('Payment protected', { selector: 'h2' });
     const settles = mockCall.mock.calls.filter(([tool]) => tool === 'settle_escrow_payment');
     expect(settles).toHaveLength(2);
     expect(settles[1][1]).not.toHaveProperty('signature');
@@ -480,7 +480,7 @@ describe('/pay', () => {
     await waitFor(() =>
       expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ message: 'The minimum payment is 1 USD. …' }))
     );
-    expect(screen.queryByText('Paid into escrow', { selector: 'h2' })).toBeNull();
+    expect(screen.queryByText('Payment protected', { selector: 'h2' })).toBeNull();
   });
 
   it("shows prepare's refusal and stays on the form", async () => {
@@ -628,7 +628,7 @@ describe('/pay', () => {
       mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({ status: 'settled' });
       render(<PayPage />);
 
-      await screen.findByText('Paid into escrow', { selector: 'h2' });
+      await screen.findByText('Payment protected', { selector: 'h2' });
       expect(mockCall.mock.calls[1][1]).toMatchObject({ external_id: 'mcp-123' });
       expect(mockCall.mock.calls[1][1]).not.toHaveProperty('signature');
     });
@@ -921,7 +921,7 @@ describe('/pay for a payment request (/contract-pay)', () => {
     render(<PayPage request={request()} />);
     fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
 
-    await screen.findByText('Paid into escrow', { selector: 'h2' });
+    await screen.findByText('Payment protected', { selector: 'h2' });
     const [tool, args] = mockCall.mock.calls[0];
     expect(tool).toBe('settle_escrow_payment');
     expect(args).toMatchObject({
@@ -945,7 +945,7 @@ describe('/pay for a payment request (/contract-pay)', () => {
     render(<PayPage request={request({ arbiter: undefined })} />);
     fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
 
-    await screen.findByText('Paid into escrow', { selector: 'h2' });
+    await screen.findByText('Payment protected', { selector: 'h2' });
     expect(mockCall.mock.calls[0][1]).not.toHaveProperty('arbiter');
   });
 

@@ -4,7 +4,7 @@ import Head from 'next/head';
 
 export default function ShopifyIndex() {
   const pageTitle = "USDC Payments for Shopify | Cryptocurrency Checkout Integration";
-  const pageDescription = "Accept USDC cryptocurrency payments on your Shopify store with built-in smart contract escrow protection. Free to install, only 1% fee, 14-day buyer protection, no monthly fees.";
+  const pageDescription = "Accept USDC cryptocurrency payments on your Shopify store with built-in smart contract payment protection. Free to install, only 1% fee, 14-day buyer protection, no monthly fees.";
   const pageUrl = "https://conduit-ucpi.com/shopify";
   const imageUrl = "https://conduit-ucpi.com/og-shopify.png";
 
@@ -23,12 +23,12 @@ export default function ShopifyIndex() {
     },
     "featureList": [
       "USDC cryptocurrency payment processing for Shopify",
-      "Smart contract escrow with 14-day buyer protection",
+      "Protected payments with 14-day buyer protection",
       "2-minute installation",
       "1% transaction fee",
       "No monthly fees or gas fees",
       "Direct wallet payments",
-      "Automatic escrow protection",
+      "Automatic payment protection",
       "Works on any Shopify store"
     ],
     "description": pageDescription,
@@ -85,7 +85,7 @@ export default function ShopifyIndex() {
             <h1 className="text-secondary-900 mb-3 sm:mb-4 text-3xl sm:text-4xl lg:text-5xl font-bold">Enterprise USDC Payment Gateway for Shopify</h1>
             <p className="text-secondary-600 text-base sm:text-lg lg:text-xl leading-relaxed mb-6 sm:mb-8">
               Production-grade cryptocurrency payment processing with blockchain-enforced buyer protection.<br className="hidden sm:block" />
-              <strong>No monthly fees • 1% transaction rate • Smart contract escrow infrastructure</strong>
+              <strong>No monthly fees • 1% transaction rate • Smart contract payment protection</strong>
             </p>
           </header>
 
@@ -95,7 +95,7 @@ export default function ShopifyIndex() {
             <p className="text-secondary-600 mb-4 sm:mb-5 text-sm sm:text-base">Integrate USDC payment processing into your Shopify infrastructure</p>
             <ul className="text-left text-secondary-700 pl-5 mb-5 sm:mb-6 space-y-2 text-sm sm:text-base">
               <li>✓ Transparent 1% transaction fee, no recurring costs</li>
-              <li>✓ Automated blockchain escrow on all transactions</li>
+              <li>✓ Automatic payment protection on all transactions</li>
               <li>✓ Non-custodial settlement to your wallet</li>
               <li>✓ Compatible with all Shopify store configurations</li>
             </ul>
@@ -135,7 +135,7 @@ export default function ShopifyIndex() {
                 <li>Add single-line JavaScript integration to Shopify theme</li>
                 <li>USDC payment option appears on all product pages</li>
                 <li>Customer selection triggers secure blockchain checkout flow</li>
-                <li>Funds enter smart contract escrow with 14-day protection window</li>
+                <li>Funds enter a protected payment with a 14-day protection window</li>
                 <li>Automated settlement to merchant wallet after protection period</li>
               </ol>
             </div>
@@ -146,7 +146,7 @@ export default function ShopifyIndex() {
                 <li>Select USDC payment method at checkout</li>
                 <li>Authenticate via Web3 wallet or email-based custody</li>
                 <li>Execute USDC transfer with sponsored gas fees</li>
-                <li>Funds secured in time-locked escrow smart contract</li>
+                <li>Funds secured in a time-locked payment contract</li>
                 <li>Dispute resolution available throughout protection period</li>
               </ol>
             </div>
@@ -179,7 +179,7 @@ export default function ShopifyIndex() {
 
         <section className="bg-gradient-to-br from-primary-500 to-purple-600 text-white p-6 sm:p-8 lg:p-10 rounded-xl my-8 sm:my-10 text-center" aria-label="Integration call to action">
           <h3 className="mb-4 sm:mb-5 text-2xl sm:text-3xl font-bold">Deploy Cryptocurrency Payment Infrastructure</h3>
-          <p className="mb-6 sm:mb-8 opacity-90 text-sm sm:text-base lg:text-lg">Begin accepting USDC payments with blockchain-enforced escrow protection</p>
+          <p className="mb-6 sm:mb-8 opacity-90 text-sm sm:text-base lg:text-lg">Begin accepting USDC payments with blockchain-enforced payment protection</p>
           <Link
             href="/shopify/install-button"
             className="bg-white text-primary-500 py-3 px-6 sm:py-4 sm:px-8 rounded-lg no-underline inline-block font-bold text-base sm:text-lg hover:bg-gray-100 transition-colors"

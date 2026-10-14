@@ -82,7 +82,7 @@ export async function verifyQuotedEscrowAddress(
     return {
       ok: false,
       detail:
-        'No known-good escrow factory is baked into this build (NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS), ' +
+        'No known-good payment contract factory is baked into this build (NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS), ' +
         'so the payment address cannot be checked. Refusing to proceed.',
     };
   }
@@ -94,7 +94,7 @@ export async function verifyQuotedEscrowAddress(
         'cannot be checked. Refusing to proceed.',
     };
   }
-  if (!isAddress(quoted)) return { ok: false, detail: 'No valid escrow address was quoted.' };
+  if (!isAddress(quoted)) return { ok: false, detail: 'No valid payment address was quoted.' };
 
   const amount = terms.amount === undefined ? null : toBigInt(terms.amount);
   const expiry = terms.expiryTimestamp;
@@ -111,7 +111,7 @@ export async function verifyQuotedEscrowAddress(
   ) {
     return {
       ok: false,
-      detail: 'Not every term of this escrow is known, so its address cannot be checked. Refusing to proceed.',
+      detail: 'Not every term of this payment is known, so its address cannot be checked. Refusing to proceed.',
     };
   }
 
@@ -130,7 +130,7 @@ export async function verifyQuotedEscrowAddress(
     return {
       ok: false,
       detail:
-        `Could not ask the escrow factory where this escrow lives: ${error?.message || error}. ` +
+        `Could not ask the payment contract factory where this payment lives: ${error?.message || error}. ` +
         'Refusing to proceed without checking.',
     };
   }
@@ -139,7 +139,7 @@ export async function verifyQuotedEscrowAddress(
     return {
       ok: false,
       detail:
-        `The payment address we were given (${quoted}) is not where the escrow factory puts an escrow ` +
+        `The payment address we were given (${quoted}) is not where the payment contract factory puts a payment ` +
         `with these terms (${isAddress(answer) ? answer : 'no answer'}). Do not send funds to it.`,
     };
   }

@@ -8,8 +8,9 @@ import type { Catalogue } from './en';
  *
  * Register conventions, chosen to match how partners in the region address
  * customers: second person informal ("tú"), "billetera" rather than "cartera",
- * and "depósito en garantía" for escrow, which is more widely understood than
- * leaving the English term in place.
+ * and "pago protegido" for what the code calls an escrow. "Escrow" is a licensed
+ * term in some jurisdictions, and "depósito en garantía" (or "en custodia") is
+ * its translation, so the copy claims neither.
  *
  * ⚠️ Written without a native reviewer. Financial wording carries real
  *    consequences and regional vocabulary varies — have a native speaker from
@@ -18,13 +19,13 @@ import type { Catalogue } from './en';
 export const es: Catalogue = {
   'create.title': 'Solicitud de pago con liberación programada',
   'create.subtitle':
-    'Crea un depósito en garantía con liberación diferida y resolución de disputas automática',
+    'Crea un pago protegido con liberación diferida y resolución de disputas automática',
   'create.getStarted': 'Empieza con {brand}',
   'create.walletBlurb': 'Usamos una billetera para enviar y recibir tus pagos de forma segura.',
   'create.howThisWorks': 'Cómo funciona',
   'create.step.amount': 'Defines el monto, la stablecoin y las condiciones de liberación',
   'create.step.escrow':
-    'El comprador paga al depósito en garantía: los fondos quedan retenidos y aún no se te envían',
+    'El comprador hace un pago protegido: los fondos quedan retenidos y aún no se te envían',
   'create.step.release':
     'Los fondos se liberan automáticamente a tu billetera según las condiciones que definiste',
   'steps.connect.title': 'Conectar',
@@ -37,10 +38,10 @@ export const es: Catalogue = {
   'steps.addFunds.detail': 'Agrega USDC a tu billetera',
   'steps.confirmSend.title': 'Confirmar y enviar',
   'steps.confirmSend.detail':
-    'Confirma el pago; quedará retenido de forma segura en depósito en garantía',
+    'Confirma el pago; quedará retenido de forma segura en el contrato de pago',
   'steps.completePayment.title': 'Completar el pago',
   'steps.completePayment.detail':
-    'Los fondos en garantía se liberan al vendedor una vez confirmado tu pago',
+    'Los fondos retenidos se liberan al vendedor una vez confirmado tu pago',
   'wallet.signInTitle': 'Inicia sesión para configurar tu billetera',
   'wallet.signInBlurb':
     'Crearemos una billetera segura que solo tú controlas, o reconectaremos la que ya tienes. No hay nada que instalar.',
@@ -75,7 +76,7 @@ export const es: Catalogue = {
   'release.instant': 'Al instante',
   'release.instantSummary': 'Se libera en cuanto el comprador paga',
   'release.instantNote':
-    'Los fondos van directo a tu billetera en la misma transacción. No queda nada en depósito en garantía, así que ninguna de las partes puede abrir una disputa.',
+    'Los fondos van directo a tu billetera en la misma transacción. No queda nada retenido, así que ninguna de las partes puede abrir una disputa.',
   'terms.description': 'Descripción',
   'terms.descriptionPlaceholder': '¿Para qué es este pago?',
   'wizard.title': 'Solicitar un pago',
@@ -119,15 +120,15 @@ export const es: Catalogue = {
   'common.goToDashboard': 'Ir al panel',
   'common.unknownNetwork': 'Red desconocida',
   'status.verifying': 'Comprobando tu billetera',
-  'status.transferring': 'Transfiriendo los fondos al depósito en garantía',
+  'status.transferring': 'Transfiriendo los fondos a la dirección de pago',
   'status.confirming': 'Esperando la confirmación de tu transferencia',
   'status.activating': 'Activando el contrato',
-  'status.complete': 'Fondos asegurados en depósito en garantía',
-  'status.securing': 'Asegurando los fondos en depósito en garantía',
-  'status.securingNow': 'Creando el depósito en garantía alrededor de tus fondos',
+  'status.complete': 'Fondos asegurados en el contrato de pago',
+  'status.securing': 'Asegurando los fondos en el contrato de pago',
+  'status.securingNow': 'Creando el contrato de pago alrededor de tus fondos',
   'pay.elsewhereHeading': 'O paga desde otra billetera',
-  'pay.elsewhereLead': 'Escanea el código o copia la dirección de abajo y envía el importe exacto. Después vuelve y pulsa «He pagado»: tus fondos solo quedan asegurados en depósito en garantía cuando lo hagas.',
-  'status.derivingAddress': 'Calculando la dirección del depósito',
+  'pay.elsewhereLead': 'Escanea el código o copia la dirección de abajo y envía el importe exacto. Después vuelve y pulsa «He pagado»: tu pago solo queda protegido cuando lo hagas.',
+  'status.derivingAddress': 'Calculando la dirección de pago',
   'pay.preparing': 'Preparando tu pago…',
   'pay.loading': 'Cargando la solicitud de pago...',
   'pay.invalidLink': 'Enlace de pago inválido',
@@ -145,7 +146,7 @@ export const es: Catalogue = {
   'pay.ownWalletDetail':
     'Envía USDC directamente desde tu billetera usando un enlace de pago o un código QR.',
   'pay.alreadyComplete': 'Este pago ya está completo',
-  'pay.alreadyCompleteDetail': 'Los fondos ya están retenidos en garantía para esta solicitud.',
+  'pay.alreadyCompleteDetail': 'Los fondos ya están retenidos en el contrato de pago para esta solicitud.',
   'pay.unableToProcess': 'No se pudo procesar el pago',
   'pay.notFound': 'Solicitud de pago no encontrada',
   'pay.notFoundDetail': 'No se encontró la solicitud de pago.',
@@ -154,8 +155,8 @@ export const es: Catalogue = {
   'pay.requestHeading': 'Solicitud de pago',
   'pay.changeMethod': 'Cambiar el método de pago',
   'checkout.initializing': 'Iniciando el sistema de pago seguro...',
-  'checkout.secureEscrow': 'Pago con depósito en garantía',
-  'checkout.protected': 'Tu pago está protegido por depósito en garantía',
+  'checkout.secureEscrow': 'Pago protegido',
+  'checkout.protected': 'Tu pago está protegido',
   'checkout.canDispute': 'Puedes abrir una disputa si hay algún problema',
   'checkout.noGas': 'Sin comisiones de red: cubrimos los costos de la blockchain',
   'checkout.howPay': '¿Cómo quieres pagar?',
@@ -175,10 +176,10 @@ export const es: Catalogue = {
   'checkout.releaseNote':
     'Los fondos se liberarán al vendedor después de esta fecha si no hay disputa',
   'checkout.docTitle': 'Crear contrato - {brand}',
-  'checkout.escrowProtected': 'Pago en stablecoin protegido por depósito en garantía, sin comisiones de red',
-  'status.preparing': 'Preparando el contrato de garantía...',
+  'checkout.escrowProtected': 'Pago protegido en stablecoin, sin comisiones de red',
+  'status.preparing': 'Preparando el contrato de pago...',
   'status.confirmInWallet': 'Confirma la transferencia en tu billetera...',
-  'status.creatingEscrow': 'Creando el contrato de garantía...',
+  'status.creatingEscrow': 'Creando el contrato de pago seguro...',
   'status.completedRedirect': '¡Pago completado! Redirigiendo...',
   'err.paymentFailed': 'El pago falló',
   'err.prepareFailed': 'No se pudo preparar el contrato',
@@ -214,7 +215,7 @@ export const es: Catalogue = {
   'terms.arbiterHelp':
     'Opcional. Quien tiene el tercer voto si hay una disputa: una dirección de billetera o un correo electrónico (si nunca ha iniciado sesión, se le creará una billetera y se le invitará). Déjalo en blanco para usar el predeterminado.',
   'review.nextBody':
-    'Recibirás un código QR y un enlace para compartir. Cuando el comprador pague, los fondos quedan en depósito en garantía y se liberan a tu billetera automáticamente, sin que tengas que hacer nada más.',
+    'Recibirás un código QR y un enlace para compartir. Cuando el comprador pague, los fondos quedan retenidos en el contrato de pago y se liberan a tu billetera automáticamente, sin que tengas que hacer nada más.',
   'send.title': 'Ahora envíaselo a tu comprador',
   'send.notNotified': 'Todavía no le avisamos a tu comprador',
   'send.notNotifiedBody':
@@ -243,7 +244,7 @@ export const es: Catalogue = {
   'send.preparing': 'Preparando…',
   'send.downloadPdf': 'Descargar PDF',
   'send.pdfHint':
-    'Una solicitud de una página con el monto, el enlace y el QR, más una explicación del depósito en garantía para compradores que no hayan usado {brand} antes. No es una factura fiscal.',
+    'Una solicitud de una página con el monto, el enlace y el QR, más una explicación de los pagos protegidos para compradores que no hayan usado {brand} antes. No es una factura fiscal.',
   'send.done': 'Ya lo envié',
   'send.doneHint': '¿Todavía no lo enviaste? Copia el enlace antes de salir de esta pantalla.',
   'msg.subjectWithDesc': 'Solicitud de pago: {description}',
@@ -255,7 +256,7 @@ export const es: Catalogue = {
   'msg.instantNote':
     'Es un pago instantáneo: me llega en cuanto pagas y no se puede disputar ni revertir.',
   'msg.escrowNote':
-    'Tu pago queda retenido en depósito en garantía hasta la fecha acordada. Si algo sale mal, puedes abrir una disputa antes de esa fecha para congelar los fondos.',
+    'Tu pago queda retenido en el contrato de pago hasta la fecha acordada. Si algo sale mal, puedes abrir una disputa antes de esa fecha para congelar los fondos.',
 
   'emptyState.noMatchesFound': 'No se encontraron coincidencias',
   'emptyState.connectionTrouble': 'Problemas de conexión',
@@ -286,7 +287,7 @@ export const es: Catalogue = {
   'paymentQRModal.customerConnectsTheirWallet':
     'El cliente conecta su billetera y confirma el pago',
   'paymentQRModal.paymentIsSecuredIn':
-    'El pago queda protegido en depósito en garantía hasta la fecha de liberación',
+    'El pago queda protegido hasta la fecha de liberación',
   'paymentQRModal.youLlReceiveAn': 'Recibirás un correo cuando el pago se complete',
   'paymentQRModal.done': 'Listo',
   'paymentQRModal.inPersonPaymentQr': 'Código QR para pago en persona',
@@ -352,15 +353,15 @@ export const es: Catalogue = {
     '{email} aún no ha iniciado sesión en StableDrop. Al nominarlo se crea una billetera para esa persona, que ocupa el puesto al iniciar sesión con este correo.',
   'arbiterPanel.sameAsTheirs': 'Es la persona que sugirió la otra parte. Nominarla ahora la sienta en el puesto.',
   'arbiterPanel.notTheirs': 'No es la persona que sugirió la otra parte.',
-  'arbiterPanel.candidateIsBuyer': 'Es el comprador de este depósito en garantía; una parte no puede ser el árbitro de desempate.',
-  'arbiterPanel.candidateIsSeller': 'Es el vendedor de este depósito en garantía; una parte no puede ser el árbitro de desempate.',
-  'arbiterPanel.candidateIsSeated': 'Es el árbitro de desempate que ya ocupa el puesto en este depósito; nomine a otra persona.',
+  'arbiterPanel.candidateIsBuyer': 'Es el comprador de este pago; una parte no puede ser el árbitro de desempate.',
+  'arbiterPanel.candidateIsSeller': 'Es el vendedor de este pago; una parte no puede ser el árbitro de desempate.',
+  'arbiterPanel.candidateIsSeated': 'Es el árbitro de desempate que ya ocupa el puesto en este pago; nomine a otra persona.',
   'arbiterPanel.refusedCandidate':
-    'El depósito rechazó {address}: no se puede nominar a una parte del depósito ni al árbitro que ya ocupa el puesto. No se envió nada.',
+    'El contrato de pago rechazó {address}: no se puede nominar a una parte del pago ni al árbitro que ya ocupa el puesto. No se envió nada.',
   'arbiterPanel.refusedNotParty':
-    'El depósito lo rechazó porque se habría enviado desde la billetera {address}, que no es ni el comprador ni el vendedor de este depósito. Solo ellos pueden nominar. Inicie sesión con la billetera que es parte de este depósito e inténtelo de nuevo. No se envió nada.',
+    'El contrato de pago lo rechazó porque se habría enviado desde la billetera {address}, que no es ni el comprador ni el vendedor de este pago. Solo ellos pueden nominar. Inicie sesión con la billetera que es parte de este pago e inténtelo de nuevo. No se envió nada.',
   'arbiterPanel.refusedNotOpen':
-    'Este depósito ya no admite nominaciones: se ha liquidado o pagado, o nunca se financió. No se envió nada.',
+    'Este pago ya no admite nominaciones: se ha liquidado o pagado, o nunca se financió. No se envió nada.',
   'arbiterPanel.lookupFailed': 'No se pudo buscar ese correo ahora. Inténtelo de nuevo o use una dirección de billetera.',
   'arbiterPanel.emailNomineeHint':
     'Puede indicarlo por dirección de billetera o por correo electrónico. Si nunca ha usado StableDrop, se crea una billetera para ese correo y ocupa el puesto al iniciar sesión con él. Si ambos escriben el mismo correo, han nombrado a la misma persona.',
@@ -446,7 +447,7 @@ export const es: Catalogue = {
   'createContract.youCanSearchFor':
     'Puedes buscar usuarios de Farcaster o ingresar una dirección de correo',
   'createContract.briefDescriptionOfThe':
-    'Breve descripción del acuerdo de depósito en garantía...',
+    'Breve descripción del acuerdo...',
 
   'customArbiterNotice.customDisputeResolver': 'Resolutor de disputas personalizado',
   'customArbiterNotice.thisContractUsesA':
@@ -503,7 +504,7 @@ export const es: Catalogue = {
   'paymentRequestIntro.step1':
     'Agrega stablecoins a tu billetera, o conecta una que ya tengas',
   'paymentRequestIntro.step2':
-    'Confirma el pago: queda retenido de forma segura en depósito en garantía, no se envía directamente',
+    'Confirma el pago: queda retenido de forma segura en el contrato de pago, no se envía directamente',
   'paymentRequestIntro.step3':
     'Los fondos se liberan al vendedor automáticamente; no necesitas hacer nada más',
   'paymentRequestIntro.seeDetails': 'Ver detalles y pagar',
@@ -528,7 +529,7 @@ export const es: Catalogue = {
     'Dos cifras coincidieron y los fondos se movieron en esa misma transacción. No hace falta nada más y aquí ya no se puede cambiar nada.',
   'standingFiguresPanel.figuresStandingOnChain': 'Cifras vigentes en la cadena',
   'standingFiguresPanel.anyTwoOfThese':
-    'Si dos de estas cifras coinciden, la disputa se resuelve de inmediato. Enviar una cifra igual a alguna de las de abajo paga el depósito en esa misma transacción.',
+    'Si dos de estas cifras coinciden, la disputa se resuelve de inmediato. Enviar una cifra igual a alguna de las de abajo libera los fondos en esa misma transacción.',
   'standingFiguresPanel.nobodyHasSubmittedA': 'Todavía nadie ha enviado una cifra.',
   'standingFiguresPanel.noFigureSubmitted': 'Sin cifra enviada',
   'standingFiguresPanel.noArbiterIsSeated':
@@ -583,10 +584,10 @@ export const es: Catalogue = {
 
   'transactionWalkthrough.letSCreateA': 'Vamos a crear una solicitud de pago de ejemplo',
   'transactionWalkthrough.weLlCreateA':
-    'Crearemos una solicitud de pago de práctica para mostrarte cómo funciona la protección del depósito en garantía. Es solo para aprender: no se enviará ningún correo real.',
+    'Crearemos una solicitud de pago de práctica para mostrarte cómo funciona la protección de pagos. Es solo para aprender: no se enviará ningún correo real.',
   'transactionWalkthrough.tip': 'Consejo:',
   'transactionWalkthrough.anEscrowPaymentProtects':
-    'Un pago en depósito en garantía protege al comprador y al vendedor porque retiene los fondos de forma segura hasta que se confirma la entrega.',
+    'Un pago protegido cuida al comprador y al vendedor porque retiene los fondos de forma segura hasta que se confirma la entrega.',
   'transactionWalkthrough.buyerSEmailAddress': 'Correo electrónico del comprador',
   'transactionWalkthrough.theBuyerWillReceive':
     'El comprador recibirá un correo con las instrucciones de pago',
@@ -614,7 +615,7 @@ export const es: Catalogue = {
     'Pasado este plazo, puedes reclamar el pago aunque el comprador lo dispute',
   'transactionWalkthrough.timelineExample': '⏰ Ejemplo de cronología:',
   'transactionWalkthrough.buyerPays': '1. El comprador paga:',
-  'transactionWalkthrough.fundsLockedInEscrow': 'Fondos bloqueados en el depósito en garantía',
+  'transactionWalkthrough.fundsLockedInEscrow': 'Fondos bloqueados en el contrato de pago',
   'transactionWalkthrough.youDeliver': '2. Tú entregas:',
   'transactionWalkthrough.timeExpires': '3. Vence el plazo:',
   'transactionWalkthrough.youCanClaimPayment': 'Puedes reclamar el pago',
@@ -626,13 +627,13 @@ export const es: Catalogue = {
   'transactionWalkthrough.nextStep': 'Siguiente paso:',
   'transactionWalkthrough.greatJobYouRe': '¡Bien hecho! Ya puedes recibir pagos reales',
   'transactionWalkthrough.youVeLearnedHow':
-    'Ya sabes cómo funciona la protección del depósito en garantía. Ahora puedes crear solicitudes de pago reales con confianza.',
+    'Ya sabes cómo funciona la protección de pagos. Ahora puedes crear solicitudes de pago reales con confianza.',
   'transactionWalkthrough.whatYouLearned': 'Lo que aprendiste:',
   'transactionWalkthrough.howToCreateSecure': '✅ Cómo crear solicitudes de pago seguras',
   'transactionWalkthrough.settingAppropriateDeliveryTimelines':
     '✅ Cómo fijar plazos de entrega adecuados',
   'transactionWalkthrough.howEscrowProtectionWorks':
-    '✅ Cómo protege el depósito en garantía a ambas partes',
+    '✅ Cómo funciona la protección de pagos para ambas partes',
   'transactionWalkthrough.thePaymentAndDelivery': '✅ El proceso de pago y entrega',
   'transactionWalkthrough.createRealPaymentRequest': 'Crear una solicitud de pago real',
   'transactionWalkthrough.goToDashboard': 'Ir al panel',
@@ -645,7 +646,7 @@ export const es: Catalogue = {
   'dashboardPage.youNeedToConnect': 'Necesitas conectar tu billetera para ver tus contratos.',
   'dashboardPage.yourContracts': 'Tus contratos.',
   'dashboardPage.manageEscrowContractsAnd':
-    'Administra los contratos de depósito en garantía y consulta el historial de transacciones.',
+    'Administra tus pagos protegidos y consulta el historial de transacciones.',
   'dashboardPage.requestPayment': 'Solicitar un pago',
   'dashboardPage.manageWallet': 'Administrar la billetera',
   'dashboardPage.buyUsdc': 'Comprar USDC',
@@ -662,7 +663,7 @@ export const es: Catalogue = {
   'paymentActionPanel.coinbaseNote':
     'Terminarás en Coinbase. ¿Es tu primera vez en Coinbase? Verificarán tu identidad una sola vez.',
   'arbiterPanel.seated': 'Designado:',
-  'arbiterPanel.youHoldTheSeat': 'Ocupas el puesto de tercero de desempate en este depósito en garantía.',
+  'arbiterPanel.youHoldTheSeat': 'Ocupas el puesto de tercero de desempate en este pago.',
   'arbiterPanel.resignExplainer':
     'Renunciar deja el puesto vacío. Cualquier cifra que hayas enviado deja de contar de inmediato, y las partes pueden acordar un reemplazo o, 72 horas después de abrirse la disputa, designar al tercero de desempate predeterminado. No mueve fondos.',
   'arbiterPanel.resign': 'Renunciar como tercero de desempate',
@@ -670,13 +671,13 @@ export const es: Catalogue = {
   'arbiterPanel.resigned': 'Has dejado el puesto.',
   'disputeManagementModal.castYourVote': 'Emite tu voto de desempate',
   'disputeManagementModal.arbiterVoteNote':
-    'Eres el tercero de desempate. Tu cifra es una de tres; si coincide con la del comprador o la del vendedor, el depósito en garantía se paga con esa cifra de inmediato. Explica tus motivos: ambas partes los leerán.',
+    'Eres el tercero de desempate. Tu cifra es una de tres; si coincide con la del comprador o la del vendedor, los fondos se pagan con esa cifra de inmediato. Explica tus motivos: ambas partes los leerán.',
   'arbiterDisputes.title': 'Disputas',
-  'arbiterDisputes.subtitle': 'Depósitos en garantía en los que ocupas el puesto de tercero de desempate. Tu voto es uno de tres; dos votos coincidentes liberan el dinero.',
+  'arbiterDisputes.subtitle': 'Pagos protegidos en los que ocupas el puesto de tercero de desempate. Tu voto es uno de tres; dos votos coincidentes liberan el dinero.',
   'arbiterDisputes.signIn': 'Inicia sesión para ver las disputas que te han pedido decidir.',
   'arbiterDisputes.goToDashboard': 'Ir al panel para iniciar sesión',
   'arbiterDisputes.needsDecision': 'Requieren tu decisión',
-  'arbiterDisputes.otherSeats': 'Otros depósitos en garantía que te nombran tercero de desempate',
+  'arbiterDisputes.otherSeats': 'Otros pagos protegidos que te nombran tercero de desempate',
   'arbiterDisputes.none': 'Nadie te ha nombrado tercero de desempate todavía.',
   'arbiterDisputes.review': 'Revisar la disputa',
   'arbiterDisputes.view': 'Ver',
@@ -686,7 +687,7 @@ export const es: Catalogue = {
   'arbiterPanel.seatedReplaceable':
     'Si tú y la otra parte nombráis la misma dirección nueva, esta reemplaza de inmediato al tercero de desempate designado. Ninguno de los dos puede cambiarlo por su cuenta.',
   'arbiterPanel.seatEmpty':
-    'El puesto está vacío. El flujo de fondos de este depósito en garantía se vendió, lo que deja al tercero de desempate sin su puesto automáticamente. El comprador y el destinatario pueden acordar un reemplazo, o esperar al tercero de desempate predeterminado.',
+    'El puesto está vacío. El flujo de fondos de este pago se vendió, lo que deja al tercero de desempate sin su puesto automáticamente. El comprador y el destinatario pueden acordar un reemplazo, o esperar al tercero de desempate predeterminado.',
   'arbiterPanel.nominationWarningBody':
     'Ocurre en esta transacción y no se puede deshacer. No existe un registro de terceros de desempate aprobados ni comprobación de a quién pertenece esta dirección; solo se verifica que no sea el comprador ni el destinatario.',
   'arbiterPanel.decliningIsSafe':
@@ -704,7 +705,7 @@ export const es: Catalogue = {
   'pay.escrowInstant':
     'Tus {amount} se liberarán al vendedor inmediatamente después de confirmarse el pago.',
   'pay.escrowHeld':
-    'Tus {amount} quedarán retenidos de forma segura en depósito en garantía y se liberarán al vendedor en la fecha de pago, salvo que abras una disputa.',
+    'Tus {amount} quedarán retenidos de forma segura en el contrato de pago y se liberarán al vendedor en la fecha de pago, salvo que abras una disputa.',
   'addFunds.title': 'Agregar {amount} {token} a esta billetera',
   'arbiterPanel.actionFailed': '{action} falló. Vuelve a leer el estado e inténtalo de nuevo.',
   'contractAcceptance.cannotAccept': 'No se puede aceptar el contrato. Estado: {state}',
@@ -726,13 +727,13 @@ export const es: Catalogue = {
   'transaction.overGasCostCap':
     'Esto cuesta más en comisiones de red ({cost} ETH) de lo que se te cubre actualmente ({cap} ETH). No se envió nada ni se cobró nada. Vuelve a intentarlo más tarde, cuando las comisiones puedan ser más bajas, o contacta con soporte.',
   'transaction.refusedNotVoter':
-    'El depósito en garantía rechazó este voto porque se habría enviado desde la billetera {address}, que no es la del comprador, la del vendedor ni la del árbitro de desempate de este depósito. Cierra sesión, vuelve a iniciarla con la cuenta que es parte de este depósito e inténtalo de nuevo. No se envió nada.',
+    'El contrato de pago rechazó este voto porque se habría enviado desde la billetera {address}, que no es la del comprador, la del vendedor ni la del árbitro de desempate de este pago. Cierra sesión, vuelve a iniciarla con la cuenta que es parte de este pago e inténtalo de nuevo. No se envió nada.',
   'transaction.unknownWallet':
     'una billetera desconocida',
   'transaction.refusedNotInDispute':
-    'Este depósito en garantía ya no está en disputa: ya se resolvió o se pagó, así que no queda nada que votar. No se envió nada.',
+    'Este pago ya no está en disputa: ya se resolvió o se pagó, así que no queda nada que votar. No se envió nada.',
   'transaction.refusedInvalidPercentage':
-    'El depósito en garantía solo acepta una cifra de 0 a 100. No se envió nada.',
+    'El contrato de pago solo acepta una cifra de 0 a 100. No se envió nada.',
   'disputeManagementModal.settledAt':
     'Se resolvió con {percent} % para el comprador; los fondos ya se movieron.',
   'disputeManagementModal.figureStanding':
@@ -749,12 +750,12 @@ export const es: Catalogue = {
   'contractActions.settledInCash': 'Pagué en efectivo',
   'contractActions.settledInCashTitle': '¿Liquidaste este pago en efectivo?',
   'contractActions.settledInCashBody':
-    'Esto abre una disputa y registra en la cadena tu solicitud de reembolso del 100 %, con el motivo "I settled in cash". El depósito en garantía permanece bloqueado hasta que el vendedor lo confirme igualando el 100 %, o hasta que decida un tercero de desempate. Nada se reembolsa solo con tu palabra.',
+    'Esto abre una disputa y registra en la cadena tu solicitud de reembolso del 100 %, con el motivo "I settled in cash". El pago permanece bloqueado hasta que el vendedor lo confirme igualando el 100 %, o hasta que decida un tercero de desempate. Nada se reembolsa solo con tu palabra.',
   'contractActions.settledInCashConfirm': 'Sí, abrir la disputa',
   'contractActions.settledInCashCancel': 'Cancelar',
   'disputeManagementModal.cashClaimTitle': 'El comprador dice que pagó en efectivo',
   'disputeManagementModal.cashClaimBody':
-    'Ha registrado en la cadena un 100 % para el comprador con el motivo "I settled in cash". Si es correcto, confirmar iguala su cifra y le reembolsa el depósito en garantía de inmediato. Si no lo es, envía tu propia cifra más abajo.',
+    'Ha registrado en la cadena un 100 % para el comprador con el motivo "I settled in cash". Si es correcto, confirmar iguala su cifra y le reembolsa el pago de inmediato. Si no lo es, envía tu propia cifra más abajo.',
   'disputeManagementModal.confirmCashSettlement': 'Confirmar el pago en efectivo',
   'status.raisingDispute': 'Abriendo la disputa...',
   'status.claimingFunds': 'Reclamando los fondos...',
@@ -769,13 +770,13 @@ export const es: Catalogue = {
   'enhancedContractCard.sendPaymentLink': 'Enviar el enlace de pago',
   // /pay — a buyer pushing a payment, through ap2service's MCP tools.
   'push.title': 'Hacer un pago',
-  'push.subtitle': 'Paga a alguien por correo o billetera. El dinero queda en custodia y puedes disputarlo hasta la fecha de liberación.',
+  'push.subtitle': 'Paga a alguien por correo o billetera. El dinero queda retenido en el contrato de pago y puedes disputarlo hasta la fecha de liberación.',
   'push.signInBlurb': 'Inicia sesión para pagar desde tu billetera. Podrás abrir una disputa desde la misma cuenta.',
   'push.step.details.title': 'Datos del pago',
   'push.step.details.detail': 'A quién, cuánto y cuándo',
   'push.step.confirm.title': 'Confirmar y firmar',
   'push.step.confirm.detail': 'Revisa los términos y aprueba en tu billetera',
-  'push.step.done.title': 'Pagado en custodia',
+  'push.step.done.title': 'Pago protegido',
   'push.step.done.detail': 'Retenido hasta la fecha de liberación',
   'push.seller': '¿A quién le pagas?',
   'push.sellerPlaceholder': 'Correo o billetera (0x…)',
@@ -791,11 +792,11 @@ export const es: Catalogue = {
   'push.fee': 'Comisión de la plataforma',
   'push.cannotSign': 'Este pago no se puede firmar ahora mismo. Inténtalo de nuevo en un minuto.',
   'push.signing': 'Aprueba en tu billetera…',
-  'push.settling': 'Pagando en custodia…',
+  'push.settling': 'Protegiendo tu pago…',
   'push.failed': 'No se realizó el pago',
-  'push.addressUnverified': 'No pudimos confirmar este pago con el contrato de depósito, así que nos hemos detenido. No envíes dinero a la dirección mostrada.',
-  'push.doneTitle': 'Pagado en custodia',
-  'push.doneBody': '{amount} {token} quedan en custodia para {seller}. Se liberan en {date} salvo que lo disputes antes.',
+  'push.addressUnverified': 'No pudimos confirmar este pago con el contrato de pago, así que nos hemos detenido. No envíes dinero a la dirección mostrada.',
+  'push.doneTitle': 'Pago protegido',
+  'push.doneBody': '{amount} {token} quedan retenidos en el contrato de pago para {seller}. Se liberan en {date} salvo que lo disputes antes.',
   'push.viewPayment': 'Ver este pago',
   'push.another': 'Hacer otro pago',
   'push.disputer': 'Quién puede disputar',

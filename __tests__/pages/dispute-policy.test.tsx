@@ -11,7 +11,7 @@ describe('dispute policy page', () => {
     render(<DisputePolicy dateModified="2026-10-03" />);
     const parts = Array.from(document.querySelectorAll('section[id^="part-"] h2')).map(h => h.textContent);
     expect(parts).toEqual([
-      'Part 1. How a dispute works in the escrow contract',
+      'Part 1. How a dispute works in the payment contract',
       'Part 2. How the tiebreaker is appointed and changed',
       "Part 3. How COBRO's default tiebreaker votes",
     ]);

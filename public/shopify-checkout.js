@@ -1,4 +1,4 @@
-// InstantEscrow USDC Checkout Button
+// Stabledrop USDC Checkout Button
 // Universal script for ANY Shopify store
 
 (function() {
@@ -7,7 +7,7 @@
   // Configuration - Automatically detect the webapp domain from where script was loaded
   const scriptSrc = document.currentScript ? document.currentScript.src : '';
   if (!scriptSrc) {
-    console.error('InstantEscrow: Unable to detect script source. Script must be loaded with a proper src attribute.');
+    console.error('Stabledrop: Unable to detect script source. Script must be loaded with a proper src attribute.');
     return; // Exit early if we can't determine the base URL
   }
   const baseUrl = new URL(scriptSrc).origin;
@@ -78,17 +78,17 @@
 
     const badge = document.createElement('div');
     badge.className = 'instant-usdc-badge';
-    badge.innerHTML = '🔒 Protected by 14-day escrow • No gas fees';
+    badge.innerHTML = '🔒 Protected for 14 days • No gas fees';
 
     return { button, badge };
   }
 
   // Get product data from the page
   function getProductData() {
-    console.log('InstantEscrow: Starting product data extraction...');
+    console.log('Stabledrop: Starting product data extraction...');
 
     // Debug: Check what global objects are available
-    console.log('InstantEscrow: Available globals:', {
+    console.log('Stabledrop: Available globals:', {
       hasShopifyAnalytics: !!window.ShopifyAnalytics,
       hasShopifyMeta: !!(window.ShopifyAnalytics && window.ShopifyAnalytics.meta),
       hasShopifyProduct: !!(window.ShopifyAnalytics && window.ShopifyAnalytics.meta && window.ShopifyAnalytics.meta.product),
@@ -99,7 +99,7 @@
     // Try to get Shopify's product data from various sources
     if (window.ShopifyAnalytics && window.ShopifyAnalytics.meta && window.ShopifyAnalytics.meta.product) {
       const product = window.ShopifyAnalytics.meta.product;
-      console.log('InstantEscrow: Found ShopifyAnalytics product:', product);
+      console.log('Stabledrop: Found ShopifyAnalytics product:', product);
       return {
         id: product.id,
         title: product.title || product.name,
@@ -113,7 +113,7 @@
     // Try window.meta if available (some themes)
     if (window.meta && window.meta.product) {
       const product = window.meta.product;
-      console.log('InstantEscrow: Found window.meta product:', product);
+      console.log('Stabledrop: Found window.meta product:', product);
       return {
         id: product.id,
         title: product.title,
@@ -130,7 +130,7 @@
       try {
         const data = JSON.parse(script.textContent);
         if (data['@type'] === 'Product') {
-          console.log('InstantEscrow: Found JSON-LD product data:', data);
+          console.log('Stabledrop: Found JSON-LD product data:', data);
           return {
             id: data.productID || data.sku || '',
             title: data.name || '',
@@ -145,7 +145,7 @@
       }
     }
 
-    console.log('InstantEscrow: No structured data found, trying DOM extraction...');
+    console.log('Stabledrop: No structured data found, trying DOM extraction...');
 
     // Try to get from meta tags
     const productId = document.querySelector('meta[property="product:id"]')?.content ||
@@ -162,7 +162,7 @@
     const productImage = document.querySelector('meta[property="og:image"]')?.content ||
                         document.querySelector('meta[property="og:image:secure_url"]')?.content;
 
-    console.log('InstantEscrow: Meta tag extraction results:', {
+    console.log('Stabledrop: Meta tag extraction results:', {
       productId,
       productTitle,
       productPrice,
@@ -197,7 +197,7 @@
             .replace(/\s+/g, ' ') // Replace multiple whitespace with single space
             .replace(/(.+?)\1+/g, '$1') // Remove duplicates like "Title Title"
             .trim();
-          console.log(`InstantEscrow: Found title using selector "${selector}":`, finalTitle);
+          console.log(`Stabledrop: Found title using selector "${selector}":`, finalTitle);
           break;
         }
       }
@@ -205,7 +205,7 @@
       // Fallback to document title
       if (!finalTitle) {
         finalTitle = document.title.split(' – ')[0].split(' | ')[0].split(' - ')[0].trim();
-        console.log('InstantEscrow: Using document title as fallback:', finalTitle);
+        console.log('Stabledrop: Using document title as fallback:', finalTitle);
       }
     }
 
@@ -236,7 +236,7 @@
           const match = priceText?.match(/[\d,]+\.?\d*/);
           if (match) {
             finalPrice = match[0].replace(/,/g, '');
-            console.log(`InstantEscrow: Found price using selector "${selector}":`, finalPrice);
+            console.log(`Stabledrop: Found price using selector "${selector}":`, finalPrice);
             break;
           }
         }
@@ -252,14 +252,14 @@
       variants: []
     };
 
-    console.log('InstantEscrow: Final extracted product data:', result);
+    console.log('Stabledrop: Final extracted product data:', result);
     return result;
   }
 
   // Handle button click
   function handleCheckout() {
     const product = getProductData();
-    console.log('InstantEscrow: Product data detected:', product);
+    console.log('Stabledrop: Product data detected:', product);
     const shop = window.Shopify ? window.Shopify.shop : window.location.hostname;
 
     // Get selected variant
@@ -320,7 +320,7 @@
       return_url: window.location.href
     });
 
-    console.log('InstantEscrow: Final checkout params:', {
+    console.log('Stabledrop: Final checkout params:', {
       title: finalTitle,
       price: finalPrice,
       variant_id: variantId
@@ -433,9 +433,11 @@
     init();
   }
 
-  // Expose API for merchants
-  window.InstantEscrow = {
+  // Expose API for merchants. InstantEscrow is the old name, kept so installs that
+  // already call InstantEscrow.checkout() keep working; new installs use Stabledrop.
+  window.Stabledrop = {
     checkout: handleCheckout,
     refresh: init
   };
+  window.InstantEscrow = window.Stabledrop;
 })();

@@ -350,7 +350,7 @@ export function CheckoutMock() {
         <span className={`text-xs px-2 py-1 rounded-full ${lt.accentSoft} ${lt.accentText}`}>USDC</span>
       </div>
       <p className={`mt-6 text-4xl font-medium tracking-tight ${lt.fg}`}>$0.001</p>
-      <p className={`mt-1 text-xs ${lt.muted}`}>Held in escrow until the payout date. Dispute before then to freeze it.</p>
+      <p className={`mt-1 text-xs ${lt.muted}`}>Held until the payout date. Dispute before then to freeze it.</p>
       <div className={`${lt.btnPrimary} w-full mt-6 pointer-events-none`} aria-hidden="true">Pay</div>
       <p className={`mt-3 text-[11px] text-center ${lt.muted}`}>Sign in with Google or email · gas covered</p>
     </div>

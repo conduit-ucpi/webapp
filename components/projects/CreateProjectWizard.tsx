@@ -293,7 +293,7 @@ export default function CreateProjectWizard({ prefill, subcontract, intent = 'cr
             </dl>
             <div className="rounded-md bg-secondary-50 dark:bg-secondary-800/50 border border-secondary-200 dark:border-secondary-700 p-3 text-sm text-secondary-700 dark:text-secondary-300">
               Saving records this project off-chain only — no gas, no deposit, nothing on-chain
-              yet. From the project page you can then deploy the escrow and fund it.
+              yet. From the project page you can then deploy the payment contract and fund it.
             </div>
             <div className="rounded-md bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-3 text-sm text-amber-800 dark:text-amber-200">
               Once funded, money is released only when the verifier confirms completion — never

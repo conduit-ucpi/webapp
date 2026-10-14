@@ -62,7 +62,7 @@ export default function LandingTest15() {
           brand={siteName}
           eyebrowText="Payments with buyer protection"
           headline={<>Get paid. <span className={lt.accentText}>Every question you&apos;d ask, answered as you scroll.</span></>}
-          sub="Start with the one that matters: the money waits in escrow until the payout date, the buyer is protected, and you cannot be charged back. The rest is below, one line at a time."
+          sub="Start with the one that matters: the money waits in the payment contract until the payout date, the buyer is protected, and you cannot be charged back. The rest is below, one line at a time."
           primary={{ href: '/create', label: 'Request payment' }}
           secondary={{ href: '#demo', label: 'See the checkout' }}
           right={<EscrowTimeline />}

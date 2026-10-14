@@ -87,7 +87,7 @@ export default function LandingTest09() {
         <section className={`${section} pt-16 pb-16 lg:pt-24`} aria-label="Hero">
           <div className="grid lg:grid-cols-12 gap-12 items-center">
             <motion.div className="lg:col-span-6" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-              <p className={eyebrow}>Escrow as infrastructure</p>
+              <p className={eyebrow}>Protected payments as infrastructure</p>
               <h1 className={`mt-5 text-4xl sm:text-5xl lg:text-[3.9rem] font-medium tracking-tight leading-[1.02] ${lt.fg}`}>
                 Money that waits for a date <span className={lt.accentText}>and can only go to one of two people.</span>
               </h1>
@@ -146,7 +146,7 @@ export default function LandingTest09() {
                   <span className={`text-xs px-2 py-1 rounded-full ${lt.accentSoft} ${lt.accentText}`}>USDC</span>
                 </div>
                 <p className={`mt-6 text-4xl font-medium tracking-tight ${lt.fg}`}>$0.001</p>
-                <p className={`mt-1 text-xs ${lt.muted}`}>Held in escrow until the payout date. Dispute before then to freeze it.</p>
+                <p className={`mt-1 text-xs ${lt.muted}`}>Held until the payout date. Dispute before then to freeze it.</p>
                 <div className={`${lt.btnPrimary} w-full mt-6 pointer-events-none`} aria-hidden="true">Pay with USDC</div>
                 <p className={`mt-3 text-[11px] text-center ${lt.muted}`}>Sign in with Google or email · gas covered</p>
               </div>

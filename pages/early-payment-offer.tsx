@@ -508,11 +508,11 @@ A proposal on our ${money(invoice)} invoice, due ${due}.
 
 Paying at the end of the terms makes sense for you today: holding the cash for ${terms} days earns you roughly ${money(m.buyerEarn)} at ${pct(buyerYield, 2)}.
 
-We'd like to beat that. Fund the invoice into escrow today and we'll take ${money(m.discount)} off — you pay ${money(m.face)} instead of ${money(invoice)}. That's equivalent to earning ${pct(buyerApr, 2)} APR on the cash over the same period, better than holding it.
+We'd like to beat that. Fund the invoice as a protected payment today and we'll take ${money(m.discount)} off — you pay ${money(m.face)} instead of ${money(invoice)}. That's equivalent to earning ${pct(buyerApr, 2)} APR on the cash over the same period, better than holding it.
 
-The money doesn't come to us. It sits locked in a Stabledrop escrow until ${due} — the day you'd have paid anyway — and is released to us then only if we've delivered. If we haven't, you get it back. Buyer protection and dispute management are built in.
+The money doesn't come to us. It sits locked in a Stabledrop protected payment until ${due} — the day you'd have paid anyway — and is released to us then only if we've delivered. If we haven't, you get it back. Buyer protection and dispute management are built in.
 
-Paying this way genuinely helps us: it guarantees payment on time, and lets us sell the escrow to access the capital early and keep working on your next orders.
+Paying this way genuinely helps us: it guarantees payment on time, and lets us sell the protected payment to access the capital early and keep working on your next orders.
 
 Happy to walk through the numbers.
 
@@ -554,9 +554,9 @@ ${signOff || "[your name]"}`;
       ["Borrowing avoided", { f: "B4*B9/100*B5/365" }],
       ["Bad debt avoided", { f: "B4*B6/100" }],
       ["Discount off their bill", m.discount],
-      ["Locked in escrow", { f: "B4-B19" }],
+      ["Locked in the protected payment", { f: "B4-B19" }],
       ["Stabledrop fee", { f: "B20*B13/100" }],
-      ["Escrow, yours to sell", { f: "B20-B21" }],
+      ["Protected payment, yours to sell", { f: "B20-B21" }],
       ["Funder's senior claim", { f: "B22*B7/100" }],
       ["Funder's cut", { f: "B23*B8/100*B5/365" }],
       ["Cash today (advance)", { f: "B23-B24" }],
@@ -595,7 +595,7 @@ ${signOff || "[your name]"}`;
     <>
       <SEO
         title="Triple Your Revenue by Changing Payment Terms — Stabledrop"
-        description="Get paid on day one instead of waiting 60 days, and the same working capital turns three times as often. Your customer pays into escrow up front, you sell a senior claim on it for cash today — no borrowing, no personal guarantee. Model the discount, the funder's cap and rate, and the revenue impact."
+        description="Get paid on day one instead of waiting 60 days, and the same working capital turns three times as often. Your customer pays up front into a protected payment, you sell a senior claim on it for cash today — no borrowing, no personal guarantee. Model the discount, the funder's cap and rate, and the revenue impact."
       />
       <div
         style={{
@@ -626,7 +626,7 @@ ${signOff || "[your name]"}`;
 
         <div className="sd-wrap">
           <div style={{ fontSize: 11, color: C.dim, letterSpacing: "0.1em", marginBottom: 26 }}>
-            Instant Escrow · Conduit UCPI
+            Stabledrop · Conduit UCPI
           </div>
 
           {/* hero */}
@@ -636,7 +636,7 @@ ${signOff || "[your name]"}`;
             <span style={{ color: C.green }}>on the same money</span>
           </h1>
           <p style={{ color: C.dim, fontSize: 13.5, lineHeight: 1.7, maxWidth: 620, margin: 0 }}>
-            Your customer pays into escrow on day one. You sell most of the escrow
+            Your customer makes a protected payment on day one. You sell most of it
             and get the cash the same day, keeping the tail. A small discount makes
             it worth their while. Nothing borrowed, no personal guarantee, nobody
             waiting.
@@ -705,13 +705,13 @@ ${signOff || "[your name]"}`;
           {/* STEP 1 */}
           <Section
             eyebrow="Step 1 — the guarantee"
-            title={`Your customer locks ${money(m.face)} into escrow before you start`}
+            title={`Your customer locks ${money(m.face)} into a protected payment before you start`}
           >
             <p style={{ color: C.dim, fontSize: 13, lineHeight: 1.7, marginTop: 0 }}>
               It's out of their account and locked. On <strong style={{ color: C.text }}>{due}</strong> it's
               released to you — automatically, no chasing. If you don't deliver,
               they get it back. Stabledrop's fee is a flat {pct(FEE_RATE, 0)} of the
-              escrow, taken when it's funded. That's the whole cost, whatever you do
+              payment, taken when it's funded. That's the whole cost, whatever you do
               next.
             </p>
             <Panel>
@@ -726,7 +726,7 @@ ${signOff || "[your name]"}`;
                 bands={BAD_DEBT_BANDS}
                 help="What you write off or chase, out of everything you invoice"
               />
-              <Row label="Locked in escrow today" value={money(m.face)} />
+              <Row label="Locked in today" value={money(m.face)} />
               <Row label={`Stabledrop's fee — flat ${pct(FEE_RATE, 0)}`} value={`− ${money(m.fee)}`} tone="cost" />
               <Row label={`Yours on ${due} — guaranteed`} value={money(m.escrow)} strong />
               <Row label="Bad debt you stop carrying" value={`≈ ${money(m.badDebtAvoided)}/invoice`} tone="good" />
@@ -736,12 +736,12 @@ ${signOff || "[your name]"}`;
           {/* STEP 2 */}
           <Section
             eyebrow="Step 2 — cash on day one"
-            title={`Don't wait ${terms} days — sell the escrow for ${money(m.advance)} today`}
+            title={`Don't wait ${terms} days — sell the payment for ${money(m.advance)} today`}
           >
             <p style={{ color: C.dim, fontSize: 13, lineHeight: 1.7, marginTop: 0 }}>
-              A funder buys a senior claim on your escrow — repaid first, up to a
+              A funder buys a senior claim on your protected payment — repaid first, up to a
               cap. What's left is your <strong style={{ color: C.text }}>residual</strong>, paid
-              when the escrow releases. The money's already locked in, so they take
+              when the payment releases. The money's already locked in, so they take
               no risk on your customer, and charge like it:{" "}
               <strong style={{ color: C.green }}>{pct(discRate, 2)}</strong> against
               the <strong style={{ color: C.red }}>{pct(borrowRate, 1)}</strong> you'd
@@ -793,7 +793,7 @@ ${signOff || "[your name]"}`;
 
             <Panel>
               <Slider
-                label="Senior cap (% of escrow)"
+                label="Senior cap (% of payment)"
                 value={cap}
                 onChange={setCap}
                 min={80}
@@ -845,7 +845,7 @@ ${signOff || "[your name]"}`;
                 </div>
               ) : null}
 
-              <Row label="Your escrow, after the fee" value={money(m.escrow)} />
+              <Row label="Your payment, after the fee" value={money(m.escrow)} />
               <Row label={`Funder's senior claim — cap ${pct(cap, 1)}`} value={money(m.senior)} />
               <Row label={`Funder's cut — ${pct(discRate, 2)}/yr over ${terms}d`} value={`− ${money(m.funderCut)}`} tone="cost" />
               <Row label="In your account today" value={money(m.advance)} tone="good" strong />
@@ -926,7 +926,7 @@ ${signOff || "[your name]"}`;
           {/* STEP 3 */}
           <Section
             eyebrow="Step 3 — why your customer says yes"
-            title={`Pay them ${money(m.discount)} to fund the escrow up front`}
+            title={`Pay them ${money(m.discount)} to fund the payment up front`}
           >
             <p style={{ color: C.dim, fontSize: 13, lineHeight: 1.7, marginTop: 0 }}>
               Holding {money(invoice)} for {terms} days earns them{" "}
@@ -1166,9 +1166,9 @@ ${signOff || "[your name]"}`;
 
           <p style={{ fontSize: 10, lineHeight: 1.8, color: C.dimmer, marginTop: 28 }}>
             The discount is {pct((m.discount / invoice) * 100, 2)} of your invoice — a
-            trade discount, not interest. Nothing is invested; the escrow can always
+            trade discount, not interest. Nothing is invested; the payment can always
             pay out in full. Stabledrop's fee is a flat {pct(FEE_RATE, 0)} of the
-            escrowed amount. The funder sets the senior cap and the discount rate,
+            protected amount. The funder sets the senior cap and the discount rate,
             not Stabledrop; the residual is whatever the cap leaves and is paid after
             the funder. Slider bands are indicative of comparable short-dated
             collateralised trade paper, not quotes. Risk-free floor {RISK_FREE}%

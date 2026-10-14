@@ -115,12 +115,12 @@
 <body>
 <div class="wrap">
   <h1>StableDrop Liquid — Get your locked payout funded early</h1>
-  <p class="tagline">Got money locked in escrow that pays out later? StableDrop Liquid lets a funder advance you most of that cash today, at a small discount, so you don't have to wait for the payout date — without ever risking the money if the deal falls through.</p>
+  <p class="tagline">Got money locked in a protected payment that pays out later? StableDrop Liquid lets a funder advance you most of that cash today, at a small discount, so you don't have to wait for the payout date — without ever risking the money if the deal falls through.</p>
 
   <div class="explainer">
-    <b>The idea in one line:</b> a seller is owed, say, $10,000 in 30 days (locked in escrow). They'd rather have ~$9,800 today. A funder advances them the cash now and, in return, becomes the person the escrow pays out to at maturity. The whole exchange happens atomically on the blockchain — money and payout rights change hands in the same instant, or not at all. Everything a funder needs to assess a cashflow is already public on the blockchain; our app just makes that data easy to browse.
+    <b>The idea in one line:</b> a seller is owed, say, $10,000 in 30 days (locked in a protected payment). They'd rather have ~$9,800 today. A funder advances them the cash now and, in return, becomes the person the protected payment pays out to at maturity. The whole exchange happens atomically on the blockchain — money and payout rights change hands in the same instant, or not at all. Everything a funder needs to assess a cashflow is already public on the blockchain; our app just makes that data easy to browse.
     <div class="who-is">
-      <span class="role"><b>Seller</b> — owns a future escrow payout, wants cash now</span>
+      <span class="role"><b>Seller</b> — owns a future protected payment payout, wants cash now</span>
       <span class="role"><b>Funder</b> — has stablecoins, advances the cash to acquire the payout at a discount</span>
       <span class="role"><b>StableDrop</b> — provides the funding platform, takes a small fee, holds nothing</span>
     </div>
@@ -148,7 +148,7 @@
     <div class="card is-off">
       <h3>The cashflow is available for funding</h3>
       <p class="who">Automatic · seller can opt out</p>
-      <p>Any active escrow that pays out in the future can be found by funders by default. They see the amount, the payout date, and risk signals like dispute history. <b>None of this is information StableDrop creates or owns</b> — every escrow already lives on the public blockchain, where anyone can read it. Our app is just a convenient window onto that public data. Sellers who'd rather stay private can hide their escrow from our view at any time.</p>
+      <p>Any active protected payment that pays out in the future can be found by funders by default. They see the amount, the payout date, and risk signals like dispute history. <b>None of this is information StableDrop creates or owns</b> — every protected payment already lives on the public blockchain, where anyone can read it. Our app is just a convenient window onto that public data. Sellers who'd rather stay private can hide their protected payment from our view at any time.</p>
       <div class="tags">
         <span class="tag offchain">Off-chain (just a view)</span>
         <span class="tag onchain">Data lives on-chain</span>
@@ -191,7 +191,7 @@
     <div class="card is-on">
       <h3>A one-time "swap vault" is created for this sale</h3>
       <p class="who">On-chain · we cover the blockchain fee</p>
-      <p>A dedicated escrow-swap contract is created on the blockchain just for this deal. It's hard-wired with the exact terms — who the seller is, who the funder is, the agreed amount, the fee, and a payment deadline that's guaranteed to fall safely before the payout date. <b>No money is in it yet.</b></p>
+      <p>A dedicated payment-swap contract is created on the blockchain just for this deal. It's hard-wired with the exact terms — who the seller is, who the funder is, the agreed amount, the fee, and a payment deadline that's guaranteed to fall safely before the payout date. <b>No money is in it yet.</b></p>
       <div class="tags">
         <span class="tag onchain">On-chain</span>
         <span class="tag noncust">Trustless — terms locked in code</span>
@@ -205,7 +205,7 @@
     <div class="card is-on">
       <h3>The seller hands over the payout rights to the vault</h3>
       <p class="who">Seller · signs with their own wallet</p>
-      <p>The seller points the escrow's payout at the swap vault. This is the only thing they hand over — and crucially, the vault can only ever do one of two things with it: give it to the funder (if they pay) or give it straight back to the seller (if they don't). The seller's money is never exposed to loss.</p>
+      <p>The seller points the protected payment's payout at the swap vault. This is the only thing they hand over — and crucially, the vault can only ever do one of two things with it: give it to the funder (if they pay) or give it straight back to the seller (if they don't). The seller's money is never exposed to loss.</p>
       <div class="tags">
         <span class="tag onchain">On-chain</span>
         <span class="tag front">Signed in browser</span>
@@ -232,9 +232,9 @@
   <div class="step">
     <div class="num">7</div>
     <div class="card is-on">
-      <h3>At maturity, the original escrow pays the funder</h3>
+      <h3>At maturity, the original protected payment pays the funder</h3>
       <p class="who">Funder · paid directly on-chain</p>
-      <p>The underlying escrow is untouched and works exactly as before — but now its payout goes to the funder, the new owner of the cashflow. The seller already got their cash in step 6. Everyone's done.</p>
+      <p>The underlying protected payment is untouched and works exactly as before — but now its payout goes to the funder, the new owner of the cashflow. The seller already got their cash in step 6. Everyone's done.</p>
       <div class="tags">
         <span class="tag onchain">On-chain</span>
         <span class="tag noncust">Non-custodial payout</span>
@@ -256,7 +256,7 @@
     <div class="card is-recover">
       <h3>The payment deadline passes with no payment</h3>
       <p class="who">Built-in safety timer</p>
-      <p>Every deal has a hard deadline for the funder to pay, and it's always set to expire <b>safely before</b> the escrow's real payout date. So the cashflow can never mature while a deal is in progress — there's always time for the seller to step in.</p>
+      <p>Every deal has a hard deadline for the funder to pay, and it's always set to expire <b>safely before</b> the protected payment's real payout date. So the cashflow can never mature while a deal is in progress — there's always time for the seller to step in.</p>
       <div class="tags">
         <span class="tag onchain">On-chain</span>
         <span class="tag recover">Deadline expired</span>

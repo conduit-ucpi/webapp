@@ -81,7 +81,7 @@ export default function LandingTest05() {
           <div className="grid lg:grid-cols-12 gap-4">
             <motion.div className={`${tile} lg:col-span-7 flex flex-col justify-between`} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
               <div>
-                <p className={eyebrow}>Stablecoin escrow</p>
+                <p className={eyebrow}>Protected payments</p>
                 <h1 className={`mt-5 text-4xl sm:text-5xl lg:text-[3.8rem] font-medium tracking-tight leading-[1.02] ${lt.fg}`}>
                   Get paid in stablecoins.
                   <br />

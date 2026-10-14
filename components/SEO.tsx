@@ -12,8 +12,8 @@ interface SEOProps {
 }
 
 export default function SEO({
-  title = 'Conduit Escrow - Secure Crypto Payments with Built-in Buyer Protection',
-  description = 'Escrow protection made simple. Hold payments in trust until delivery is confirmed. No lawyers, no banks, just security. 1% fee, 60 second setup.',
+  title = 'Stabledrop - Protected Payments with Built-in Buyer Protection',
+  description = 'Payment protection made simple. Payments are held until delivery is confirmed. No lawyers, no banks, just security. 1% fee, 60 second setup.',
   keywords = 'escrow, crypto escrow, blockchain escrow, USDC payments, secure payments, buyer protection, smart contract escrow, cryptocurrency escrow, Base network, time-delayed escrow, trustless payments',
   ogImage = '/preview.png',
   ogType = 'website',
@@ -45,7 +45,7 @@ export default function SEO({
       <meta property="og:title" content={title} />
       <meta property="og:description" content={description} />
       <meta property="og:image" content={`${baseUrl}${ogImage}`} />
-      <meta property="og:site_name" content="Conduit Escrow" />
+      <meta property="og:site_name" content="Stabledrop" />
 
       {/* Twitter */}
       <meta property="twitter:card" content="summary_large_image" />

@@ -404,7 +404,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                       <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 mb-4 text-sm text-amber-800 dark:text-amber-200">
                         <strong>{t('disputeManagementModal.whateverYouSubmitIs')}</strong> It
                         goes on-chain immediately. If it matches a figure another party is already
-                        holding, the escrow pays out at that number in the same transaction, and it
+                        holding, the payment contract pays out at that number in the same transaction, and it
                         cannot be undone.
                         <div className="mt-2">{t('disputeManagementModal.youCanReviseYour')}</div>
                       </div>
@@ -493,7 +493,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                             {wouldSettleWith ? (
                               <>
                                 <strong>{t('disputeManagementModal.thisSettlesTheDispute')}</strong> {wouldSettleWith.role} is
-                                already holding {figure}%, so the escrow pays out{' '}
+                                already holding {figure}%, so the payment contract pays out{' '}
                                 {displayCurrency((contract.amount * figure) / 100, 'microUSDC')} {tokenSymbol} to
                                 the buyer and the remainder to the seller, in this transaction.
                               </>

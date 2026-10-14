@@ -50,7 +50,7 @@ export function NetProceedsBreakdown({ offerAmount, fee, holdback, netAmount, to
       {hasHoldback && (
         <p className="text-xs text-gray-500 dark:text-secondary-400 pt-1">
           The held-back {displayCurrency(holdback!, 'microUSDC')} {tokenSymbol} comes back to you
-          when the escrow settles in full. It is a residual against the payment being disputed, not
+          when the payment settles in full. It is a residual against the payment being disputed, not
           a charge.
         </p>
       )}
@@ -104,12 +104,12 @@ export function ExistingHoldbackNotice({
   return (
     <div className="rounded-md border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 p-3 text-sm text-blue-800 dark:text-blue-200">
       <div className="font-medium">
-        This escrow carries an existing residual of {displayCurrency(holdback, 'microUSDC')} {tokenSymbol}
+        This protected payment carries an existing residual of {displayCurrency(holdback, 'microUSDC')} {tokenSymbol}
       </div>
       <p className="mt-1">
         It was funded by {funder ? <span className="font-mono text-xs">{funder}</span> : 'a previous buyer'} and
         travels with the position — if you buy this cashflow, you become its beneficiary and it
-        comes to you when the escrow settles in full.
+        comes to you when the payment settles in full.
       </p>
     </div>
   );

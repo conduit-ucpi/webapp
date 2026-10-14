@@ -107,7 +107,7 @@ function FlowDiagram() {
 
   const nodes = [
     { label: 'Create', sub: 'Set amount & delivery date', icon: '1' },
-    { label: 'Fund',   sub: 'Buyer sends to escrow',     icon: '2' },
+    { label: 'Fund',   sub: 'Buyer pays, funds protected',     icon: '2' },
     { label: 'Release',sub: 'Auto-payout on schedule',   icon: '3' },
   ];
 
@@ -185,9 +185,8 @@ export default function Landing3() {
     {
       "@context": "https://schema.org",
       "@type": "FinancialService",
-      "name": "Conduit Escrow",
-      "alternateName": "InstantEscrow",
-      "description": "100% open source cryptocurrency escrow service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed escrow with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
+      "name": "Stabledrop",
+      "description": "100% open source protected payment service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed payments with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
       "url": "https://conduit-ucpi.com",
       "logo": "https://conduit-ucpi.com/icon.png",
       "image": "https://conduit-ucpi.com/preview.png",
@@ -198,14 +197,14 @@ export default function Landing3() {
       "availableChannel": { "@type": "ServiceChannel", "serviceType": "Online Banking", "availableLanguage": "English" },
       "hasOfferCatalog": {
         "@type": "OfferCatalog",
-        "name": "Escrow Services",
+        "name": "Protected Payment Services",
         "itemListElement": [
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Time-Delayed Escrow Contracts", "description": "Secure smart contract payment holding with automatic release after delivery confirmation." } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Time-Delayed Payment Contracts", "description": "Secure smart contract payment holding with automatic release after delivery confirmation." } },
           { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "E-commerce Integration", "description": "WordPress and Shopify plugins, JavaScript SDK for custom websites." } }
         ]
       },
       "offers": { "@type": "Offer", "priceCurrency": "USD", "price": "1", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "0.01", "priceCurrency": "USD", "referenceQuantity": { "@type": "QuantitativeValue", "value": "1", "unitText": "TRANSACTION" } } },
-      "serviceType": "Cryptocurrency Escrow Service",
+      "serviceType": "Protected Cryptocurrency Payment Service",
       "provider": { "@type": "Organization", "name": "Conduit UCPI", "url": "https://conduit-ucpi.com" },
       "termsOfService": "https://conduit-ucpi.com/terms-of-service",
       "slogan": "Stablecoin payments made safe and easy"
@@ -224,8 +223,8 @@ export default function Landing3() {
   return (
     <>
       <SEO
-        title="Conduit Escrow - Open Source Crypto Payments with Built-in Buyer Protection | 1% Fee"
-        description="Get paid safely with blockchain escrow. Hold USDC payments in trust until delivery is confirmed. 60 second setup, 1% fee, free testing."
+        title="Stabledrop - Open Source Crypto Payments with Built-in Buyer Protection | 1% Fee"
+        description="Get paid safely with blockchain payment protection. Hold USDC payments in trust until delivery is confirmed. 60 second setup, 1% fee, free testing."
         keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow"
         canonical="/"
         structuredData={structuredData}
@@ -440,7 +439,7 @@ export default function Landing3() {
                 { title: 'Buyer protection', desc: 'Funds are locked until delivery is confirmed. Dispute before payout — no chargeback fees, no 180-day risk window.', icon: '🛡' },
                 { title: 'Seller protection', desc: 'Both sides negotiate disputes equally. No automatic refunds, no surprise freezes, no account shutdowns.', icon: '⚖️' },
                 { title: 'Gas-free for users', desc: 'We pay all blockchain transaction fees in the background. Your customers never see gas or need ETH.', icon: '⛽' },
-                { title: 'WordPress & Shopify', desc: 'Install a plugin, paste your wallet address, and you\'re accepting escrow payments. 10-minute setup.', icon: '🔌' },
+                { title: 'WordPress & Shopify', desc: 'Install a plugin, paste your wallet address, and you\'re accepting protected payments. 10-minute setup.', icon: '🔌' },
                 { title: 'Open source code', desc: 'Every line is public on GitHub. Audited and approved by WordPress and Blockaid. MIT licensed.', icon: '👁' },
                 { title: 'Non-custodial', desc: 'We never hold funds. The smart contract guarantees money can only go to buyer or seller.', icon: '🔐' },
               ].map((f, i) => (
@@ -476,7 +475,7 @@ export default function Landing3() {
                   Your checkout, with<br />built-in trust
                 </h2>
                 <p className="text-base leading-relaxed mb-6" style={{ color: C.textMuted }}>
-                  Drop a plugin into WordPress or Shopify. Or add one line of JavaScript. Your customers see an escrow-protected checkout — you see payments arrive on schedule.
+                  Drop a plugin into WordPress or Shopify. Or add one line of JavaScript. Your customers see a protected checkout — you see payments arrive on schedule.
                 </p>
                 <div className="space-y-3 mb-8">
                   {[
@@ -528,14 +527,14 @@ export default function Landing3() {
                   <div className="text-center py-2">
                     <div className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold l3-heading" style={{ background: C.accent, color: '#fff' }}>
                       <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" /></svg>
-                      Pay with Escrow Protection
+                      Pay with Buyer Protection
                     </div>
                     <p className="text-xs mt-2" style={{ color: C.textMuted }}>Powered by {siteName}</p>
                   </div>
                   <div className="rounded-lg p-3" style={{ background: 'rgba(224,163,64,0.08)' }}>
                     <p className="text-xs flex items-center gap-2" style={{ color: C.accentLt }}>
                       <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
-                      Payment held in escrow until delivery confirmed
+                      Payment held until delivery confirmed
                     </p>
                   </div>
                 </div>
@@ -597,7 +596,7 @@ export default function Landing3() {
                 Ready in 60 seconds
               </h2>
               <p className="text-lg mb-8" style={{ color: C.textMuted }}>
-                Sign in, create a test escrow, see it work. No real money required.
+                Sign in, create a test payment, see it work. No real money required.
               </p>
             </Reveal>
 

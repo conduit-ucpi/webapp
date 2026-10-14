@@ -6,8 +6,8 @@ import Fade from '@/components/ui/Fade';
 import { btnOutline } from '@/utils/landingStyles';
 
 export default function Demos() {
-  const pageTitle = "Demo Videos | Conduit UCPI Escrow Integrations";
-  const pageDescription = "Watch demo videos showing how to integrate smart contract escrow into WordPress WooCommerce and Shopify stores.";
+  const pageTitle = "Demo Videos | Conduit UCPI Protected Payment Integrations";
+  const pageDescription = "Watch demo videos showing how to integrate protected payments into WordPress WooCommerce and Shopify stores.";
 
   useScrollTracking();
   useTimeTracking();
@@ -43,7 +43,7 @@ export default function Demos() {
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Watch how escrow checkout works in WordPress and Shopify.
+                Watch how protected checkout works in WordPress and Shopify.
               </p>
             </Fade>
           </div>
@@ -63,7 +63,7 @@ export default function Demos() {
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-8"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Escrow checkout for WooCommerce
+                Protected checkout for WooCommerce
               </h2>
 
               <div className="mb-8" ref={wordpressVideoRef}>
@@ -107,7 +107,7 @@ export default function Demos() {
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-8"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Escrow checkout for Shopify
+                Protected checkout for Shopify
               </h2>
 
               <div className="mb-8" ref={shopifyVideoRef}>

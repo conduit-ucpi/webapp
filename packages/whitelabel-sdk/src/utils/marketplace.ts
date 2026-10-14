@@ -97,7 +97,7 @@ export function escrowTitle(
   // SellableEscrow in the explorer and a UnifiedContract on /offers, and both must be titled
   // by the same rule. Anything carrying a description qualifies.
   escrow: { description?: string | null },
-  fallback = 'Escrow payment'
+  fallback = 'Protected payment'
 ): string {
   return escrow.description?.trim() || fallback;
 }

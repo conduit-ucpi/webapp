@@ -18,7 +18,7 @@
 export const pagesEn = {
   // /create-cobro — the white-labelled create page. Generic wording: the brand
   // name is interpolated, so this same copy serves any pinned partner route.
-  'wl.badge': 'Escrow-backed · settled in USDC on Base',
+  'wl.badge': 'Protected payment · settled in USDC on Base',
   'wl.dashboard': 'Dashboard',
 
   'wl.loadingTitle': 'Create a payment request',
@@ -30,11 +30,11 @@ export const pagesEn = {
 
   'wl.createTitle': 'Time-locked payment request',
   'wl.createSubtitle':
-    'Set an amount and a release date. The buyer pays into escrow, disputes stay open until that date, and the funds then move to you automatically.',
+    'Set an amount and a release date. The buyer pays into a protected payment, disputes stay open until that date, and the funds then move to you automatically.',
 
   'wl.howTitle': 'How this works',
   'wl.howStep1': 'You set the amount, stablecoin, and release terms',
-  'wl.howStep2': 'The buyer pays into escrow – funds are held but not sent to you yet',
+  'wl.howStep2': 'The buyer pays into a protected payment – funds are held but not sent to you yet',
   'wl.howStep3':
     'Funds release to your wallet automatically on the release terms you set',
 
@@ -49,7 +49,7 @@ export const pagesEn = {
 
   'wl.seoTitle': '{brand} — create a payment request',
   'wl.seoDescription':
-    'Set an amount and a payout date. The buyer pays into escrow, and the funds release automatically on the date you both agreed.',
+    'Set an amount and a payout date. The buyer pays into a protected payment, and the funds release automatically on the date you both agreed.',
 
   // /integrate — the developer integration guide. Code samples, field names and
   // identifiers stay in the page and are never translated; `{name}` placeholders
@@ -58,7 +58,7 @@ export const pagesEn = {
   'integrate.seo.title':
     'Integration Guide — Add Stablecoin Checkout to Your Website | {siteName}',
   'integrate.seo.description':
-    'Add secure stablecoin escrow payments to your website in minutes. No backend required. 1% fee, escrow protection, webhook support.',
+    'Add protected stablecoin payments to your website in minutes. No backend required. 1% fee, payment protection, webhook support.',
   'integrate.seo.keywords':
     'integrate crypto payments, USDC checkout widget, stablecoin payment integration, escrow checkout, accept crypto payments website',
 
@@ -118,7 +118,7 @@ export const pagesEn = {
   'integrate.examples.basic.body': 'Simple checkout for a single product with order tracking.',
   'integrate.examples.extended.title': 'Extended buyer protection',
   'integrate.examples.extended.body':
-    'Set a longer escrow period for services or high-value items.',
+    'Set a longer protection period for services or high-value items.',
   'integrate.examples.custom.title': 'Custom amount (donations, tips)',
   'integrate.examples.custom.body': 'Let the user enter their own amount before checkout.',
   'integrate.examples.usdt.title': 'Accept USDT instead of USDC',
@@ -153,7 +153,7 @@ export const pagesEn = {
   'integrate.server.eyebrow': 'Server-side',
   'integrate.server.title': 'No script: prepare, fund, settle.',
   'integrate.server.intro':
-    'With a backend you can skip the checkout script. Call {prepare} with the terms; it answers with where the money goes, how to fund it, a link that opens the payment for your customer, and the exact request that creates the escrow once paid. No sign-in or API key is needed.',
+    'With a backend you can skip the checkout script. Call {prepare} with the terms; it answers with where the money goes, how to fund it, a link that opens the payment for your customer, and the exact request that creates the protected payment once paid. No sign-in or API key is needed.',
   'integrate.server.step1.title': 'Prepare the payment',
   'integrate.server.step1.body':
     "Amounts are in the token's base units (1 USDC = 1000000). The seller and buyer may be wallets or email addresses; the buyer is who can dispute.",
@@ -162,7 +162,7 @@ export const pagesEn = {
     'Send your customer {payLink} (or a QR of it): it opens this exact payment, and they pay by wallet, card or transfer. Or fund {escrowAddress} yourself using {fundByTransfer}.',
   'integrate.server.step3.title': 'Settle',
   'integrate.server.step3.body':
-    "Once the money has arrived, send the request in the answer's {settle} block, unchanged: {settleRequest}. It creates the escrow and returns a signed receipt. Sent too early, it says what the address holds and spends nothing; if you never send it, a funded escrow is still activated within about 30 minutes.",
+    "Once the money has arrived, send the request in the answer's {settle} block, unchanged: {settleRequest}. It creates the protected payment and returns a signed receipt. Sent too early, it says what the address holds and spends nothing; if you never send it, a funded payment is still activated within about 30 minutes.",
   'integrate.server.step3.reference': 'Every field is described in the {link}.',
 
   'integrate.webhook.ariaLabel': 'Webhook integration',
@@ -186,7 +186,7 @@ export const pagesEn = {
 
   'integrate.results.queryTitle': 'Query fields',
   'integrate.results.query.contractid': 'Exact match on the contract id the checkout returns',
-  'integrate.results.query.chainAddress': 'Exact match on the escrow address',
+  'integrate.results.query.chainAddress': 'Exact match on the payment address',
   'integrate.results.query.chainAddresses':
     'The batch form. OR within the list, so one round trip fills in a whole page of contracts instead of one call each. Case-insensitive, because addresses read from event logs are lower case while records may be checksummed',
   'integrate.results.query.sellerWalletId':
@@ -196,7 +196,7 @@ export const pagesEn = {
   'integrate.results.responseTitle': 'Response fields',
   'integrate.results.response.contractid': 'The contract id',
   'integrate.results.response.chainAddress':
-    'The escrow address. Assigned when the buyer opens the payment page, so its presence says nothing about whether they paid — read state for that',
+    'The payment address. Assigned when the buyer opens the payment page, so its presence says nothing about whether they paid — read state for that',
   'integrate.results.response.sellerWalletId': 'Who gets paid. Compare against your own wallet',
   'integrate.results.response.amount':
     'In the units of currency below, so divide by 1,000,000 for a micro currency',
@@ -210,13 +210,13 @@ export const pagesEn = {
   'integrate.results.response.maturity':
     'Unix seconds when the cashflow unlocks. Distinct from createdate',
   'integrate.results.note':
-    "{countZero} means no such payment — treat it as unpaid, never as an error. You can also query by {chainAddress}, or by {sellerWalletId} to list everything paid to your wallet. Amounts in a {micro}-prefixed currency are in millionths, so divide by 1,000,000. {state} is the escrow's lifecycle, not a pass/fail — a completed payment reads {claimed}, so check for the failure states rather than for one success value.",
+    "{countZero} means no such payment — treat it as unpaid, never as an error. You can also query by {chainAddress}, or by {sellerWalletId} to list everything paid to your wallet. Amounts in a {micro}-prefixed currency are in millionths, so divide by 1,000,000. {state} is the payment's lifecycle, not a pass/fail — a completed payment reads {claimed}, so check for the failure states rather than for one success value.",
 
   'integrate.verified.ariaLabel': 'Verified data',
   'integrate.verified.eyebrow': 'Verification',
   'integrate.verified.title': 'What verified data means.',
   'integrate.verified.verified': 'Backend confirmed payment exists in blockchain',
-  'integrate.verified.state': 'Funds are locked in escrow contract',
+  'integrate.verified.state': 'Funds are locked in the payment contract',
   'integrate.verified.seller': 'Matches your wallet (verified by SDK)',
   'integrate.verified.amount': 'Matches expected amount (verified by SDK)',
   'integrate.verified.chainAddress': 'Blockchain contract address (permanent record)',
@@ -227,7 +227,7 @@ export const pagesEn = {
   'integrate.platform.eyebrow': 'Platform',
   'integrate.platform.title': 'Built-in protection for every transaction.',
   'integrate.platform.buyer.label': 'Buyer protection',
-  'integrate.platform.buyer.1': 'Funds held in escrow smart contract',
+  'integrate.platform.buyer.1': 'Funds held in a payment smart contract',
   'integrate.platform.buyer.2': 'Time-delayed release (default 7 days)',
   'integrate.platform.buyer.3': 'Dispute mechanism',
   'integrate.platform.buyer.4': 'Independent tiebreaker',
@@ -281,7 +281,7 @@ export const pagesEn = {
     'Yes. Payments are secured by immutable smart contracts on the Base blockchain. Users sign transactions with their own wallets. All transactions are auditable on-chain. HTTPS is required for all integrations.',
   'integrate.faq.chargebacks.q': 'What about chargebacks?',
   'integrate.faq.chargebacks.a':
-    'Cryptocurrency transactions are irreversible — there are no chargebacks like with credit cards. The escrow system provides buyer protection through the dispute mechanism during the protection period.',
+    'Cryptocurrency transactions are irreversible — there are no chargebacks like with credit cards. Protected payments give buyers protection through the dispute mechanism during the protection period.',
 
   'integrate.cta.ariaLabel': 'Get started',
   'integrate.cta.title': 'Ready to integrate?',

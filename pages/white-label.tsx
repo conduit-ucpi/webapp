@@ -144,7 +144,7 @@ export default function WhiteLabelGuide() {
     <>
       <SEO
         title="White-label Integration Guide"
-        description="How a white-label partner runs payment requests and escrow checkout under their own brand: who does what, the pages to host, and how merchants take payments."
+        description="How a white-label partner runs payment requests and protected checkout under their own brand: who does what, the pages to host, and how merchants take payments."
         canonical="/white-label"
       />
       <div className="bg-white dark:bg-secondary-900 transition-colors">
@@ -334,8 +334,8 @@ WHITELABEL_URL=${API} WHITELABEL_ADMIN_KEY=… node scripts/brands/push.mjs ${br
 
             <H3>C. From the merchant&apos;s server, with no script</H3>
             <p>
-              No sign-in or API key. The answer contains the escrow address, how to fund it, a <C>pay_link</C> to send the
-              customer, and the exact request that creates the escrow once paid. We do not email the customer for a server
+              No sign-in or API key. The answer contains the payment address, how to fund it, a <C>pay_link</C> to send the
+              customer, and the exact request that creates the protected payment once paid. We do not email the customer for a server
               call; the merchant sends the <C>pay_link</C>.
             </p>
             <Snippet label="shell">{`curl -X POST ${API}/api/ap2/prepare \\

@@ -272,7 +272,7 @@ export class ReownWalletConnectProvider {
         // AppKit renders it as its own field anyway.
         metadata: {
           name: getSiteNameFromDomain(),
-          description: 'Escrow for stablecoin payments',
+          description: 'Protected stablecoin payments',
           url: origin,
           icons: [`${origin}/icon-512.png`]
         },

@@ -13,7 +13,7 @@ import { getSiteNameFromDomain } from '@/utils/siteName';
 import { useBarFit } from './useBarFit';
 import { accountLinks, siteNavGroups, SITE_NAV_PRICING, SiteNavLink } from './siteNavLinks';
 
-const SSR_DEFAULT_SITE_NAME = 'Instant Escrow';
+const SSR_DEFAULT_SITE_NAME = 'Stabledrop.me';
 
 interface Props {
   /** Extra classes on the bar (sticky, translucent…): the page's call. */

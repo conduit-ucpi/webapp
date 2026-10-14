@@ -60,7 +60,7 @@ export default function LandingTest12() {
           brand={siteName}
           eyebrowText="Payments with buyer protection"
           headline={<>Get paid <span className={lt.accentText}>on a date you both agreed.</span></>}
-          sub="The buyer pays into escrow. On the payout date it lands with you, automatically. Before that date the buyer can freeze it; after it, nobody can touch it. That is the whole product."
+          sub="The buyer pays into a protected payment. On the payout date it lands with you, automatically. Before that date the buyer can freeze it; after it, nobody can touch it. That is the whole product."
           primary={{ href: '/create', label: 'Request payment' }}
           secondary={{ href: '#demo', label: 'See the checkout' }}
           right={<EscrowEstimator />}

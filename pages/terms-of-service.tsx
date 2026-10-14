@@ -62,11 +62,11 @@ export default function TermsOfService({ lastUpdated, version }: { lastUpdated: 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">2. Description of Service</h2>
             <p className="text-secondary-700 dark:text-secondary-200 mb-4">
-              Stabledrop is a decentralized escrow platform that enables users to create time-delayed escrow 
+              Stabledrop is a decentralized protected payment platform that enables users to create time-delayed payment
               contracts on EVM-compatible blockchains. The Service facilitates:
             </p>
             <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
-              <li>Creation and management of escrow contracts</li>
+              <li>Creation and management of payment contracts</li>
               <li>USDC token transactions and transfers</li>
               <li>Integration with Web3 wallets and payment processors</li>
               <li>Dispute resolution mechanisms</li>

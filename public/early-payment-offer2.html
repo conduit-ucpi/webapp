@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Get paid on day one — Stabledrop</title>
-<meta name="description" content="Your customer pays into escrow up front. You sell most of it for cash the same day and keep the tail. No borrowing, no personal guarantee. Model the numbers on your own invoice.">
+<meta name="description" content="Your customer pays into a protected payment up front. You sell most of it for cash the same day and keep the tail. No borrowing, no personal guarantee. Model the numbers on your own invoice.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -297,7 +297,7 @@ dl.gloss dd{margin:5px 0 0;color:var(--soft);line-height:1.7}
 
 <div class="hero">
   <h1>Get paid on day one<span class="alt">not day <span class="num" id="h-terms">60</span>.</span></h1>
-  <p class="lede">Your customer pays into escrow when they place the order. You sell most of that escrow for cash the same day and keep the tail. <b>Nothing borrowed. No personal guarantee. Nobody chasing.</b></p>
+  <p class="lede">Your customer pays into a protected payment when they place the order. You sell most of that payment for cash the same day and keep the tail. <b>Nothing borrowed. No personal guarantee. Nobody chasing.</b></p>
 </div>
 
 <div class="readmode">
@@ -392,7 +392,7 @@ dl.gloss dd{margin:5px 0 0;color:var(--soft);line-height:1.7}
             <input type="range" id="rate" min="3.65" max="35" step="0.25" value="15">
           </div>
         </div>
-        <p class="hint">Stabledrop's fee is fixed at 1% of the escrow. Everything else here is yours to argue about.</p>
+        <p class="hint">Stabledrop's fee is fixed at 1% of the payment. Everything else here is yours to argue about.</p>
         <div class="resetrow">
           <button type="button" class="linkish" id="resetdefaults" hidden>Put the example figures back</button>
         </div>
@@ -413,10 +413,10 @@ dl.gloss dd{margin:5px 0 0;color:var(--soft);line-height:1.7}
 <!-- ============ STEP 1 ============ -->
 <section class="card">
   <span class="stepno">Step one — the money is locked before you start</span>
-  <h2>Your customer pays <span class="num" id="s1-escrow">—</span> into escrow up front</h2>
+  <h2>Your customer pays <span class="num" id="s1-escrow">—</span> into a protected payment up front</h2>
   <p>It leaves their account and sits locked. On <b id="s1-date">—</b> — the day they'd have paid you anyway — it releases automatically. No invoice, no chasing, no ageing debtor.</p>
   <div class="ledger">
-    <div><span>Locked in escrow today</span><span id="s1-a">—</span></div>
+    <div><span>Locked in the payment contract today</span><span id="s1-a">—</span></div>
     <div class="out"><span>Stabledrop's fee <span class="sub">flat 1%, taken once</span></span><span id="s1-fee">—</span></div>
     <div class="total"><span>Yours on release, guaranteed</span><span id="s1-net">—</span></div>
     <div><span>Bad debt you stop carrying <span class="sub">assumes <button type="button" class="assump" data-field="bad"><span id="s1-badrate">—</span></button> of what you invoice goes bad today</span></span><span id="s1-bad">—</span></div>
@@ -425,7 +425,7 @@ dl.gloss dd{margin:5px 0 0;color:var(--soft);line-height:1.7}
   <details class="inline">
     <summary>What if I don't deliver?</summary>
     <div class="body">
-      <p>Then they get their money back. The escrow only releases against delivery, which is exactly why they are willing to fund it before you start — they are not taking your word for anything.</p>
+      <p>Then they get their money back. The protected payment only releases against delivery, which is exactly why they are willing to fund it before you start — they are not taking your word for anything.</p>
       <p>If the two of you disagree about whether you delivered, the refund percentage is set by a registered tiebreaker rather than by either side.</p>
     </div>
   </details>
@@ -434,10 +434,10 @@ dl.gloss dd{margin:5px 0 0;color:var(--soft);line-height:1.7}
 <!-- ============ STEP 2 ============ -->
 <section class="card">
   <span class="stepno">Step two — you don't wait for it</span>
-  <h2>Sell the escrow for <span class="num" id="s2-cash">—</span> today</h2>
-  <p>A funder buys the right to be repaid first out of your escrow, up to a cap. What's left over is yours when the escrow releases. Because the money is already locked in, the funder isn't betting on whether your customer pays — and prices accordingly: <b><span class="num" id="s2-rate">—</span></b> against the <button type="button" class="assump" data-field="borrow"><span id="s2-borrow">—</span></button> you'd pay to borrow.</p>
+  <h2>Sell the protected payment for <span class="num" id="s2-cash">—</span> today</h2>
+  <p>A funder buys the right to be repaid first out of your protected payment, up to a cap. What's left over is yours when the payment releases. Because the money is already locked in, the funder isn't betting on whether your customer pays — and prices accordingly: <b><span class="num" id="s2-rate">—</span></b> against the <button type="button" class="assump" data-field="borrow"><span id="s2-borrow">—</span></button> you'd pay to borrow.</p>
   <div class="ledger">
-    <div><span>Your escrow, after the fee</span><span id="s2-net">—</span></div>
+    <div><span>Your protected payment, after the fee</span><span id="s2-net">—</span></div>
     <div><span>Funder repaid first, up to <span class="num" id="s2-cap">—</span></span><span id="s2-senior">—</span></div>
     <div class="out"><span>Funder's charge <span class="sub">over <span class="num" id="s2-days">—</span> days</span></span><span id="s2-cut">—</span></div>
     <div class="total in"><span>In your account today</span><span id="s2-today">—</span></div>
@@ -448,12 +448,12 @@ dl.gloss dd{margin:5px 0 0;color:var(--soft);line-height:1.7}
     <summary>What these words actually mean</summary>
     <div class="body">
       <dl class="gloss">
-        <dt>Escrow</dt>
+        <dt>Protected payment</dt>
         <dd>Money held by neither side. Your customer can't spend it and you can't touch it until you've delivered.</dd>
         <dt>Repaid first</dt>
-        <dd>When the escrow releases, the funder is paid before you are, up to its cap. That priority is the thing it is actually buying.</dd>
+        <dd>When the payment releases, the funder is paid before you are, up to its cap. That priority is the thing it is actually buying.</dd>
         <dt>Your tail</dt>
-        <dd>Whatever the escrow releases above the funder's cap. It's yours, but you're paid last.</dd>
+        <dd>Whatever the payment releases above the funder's cap. It's yours, but you're paid last.</dd>
         <dt>First loss</dt>
         <dd>If there's a refund, it comes out of your tail before it touches the funder. That's the risk you keep — and the reason the rate is lower than borrowing.</dd>
       </dl>
@@ -463,7 +463,7 @@ dl.gloss dd{margin:5px 0 0;color:var(--soft);line-height:1.7}
   <details class="inline">
     <summary>Is this a loan?</summary>
     <div class="body">
-      <p>No. Nobody lends you anything and you don't owe anyone a repayment. You are selling a claim on money that is already sitting in escrow.</p>
+      <p>No. Nobody lends you anything and you don't owe anyone a repayment. You are selling a claim on money that is already locked in the payment contract.</p>
       <p>So there is nothing to secure against your house, no personal guarantee to sign, and nothing to claw back if the deal later sours.</p>
     </div>
   </details>
@@ -558,7 +558,7 @@ dl.gloss dd{margin:5px 0 0;color:var(--soft);line-height:1.7}
   <details class="inline">
     <summary>Small print and sources</summary>
     <div class="body">
-  <p>The discount is a trade discount, not interest. Nothing is invested — the escrow can always pay out in full. Stabledrop's fee is a flat 1% of the escrowed amount. The funder, not Stabledrop, sets the repayment cap and the rate; your tail is whatever the cap leaves and is paid after the funder. Rate bands are indicative of comparable short-dated collateralised trade paper, not quotes. Nothing prices below the risk-free floor of 3.65% (SOFR, 28 Jul 2026; use SONIA for sterling). Borrowing comparison based on iwoca published rates — from 1.5% a month, representative 40% APR. Simple interest, actual/365. Estimates, not financial advice.</p>
+  <p>The discount is a trade discount, not interest. Nothing is invested — the payment can always pay out in full. Stabledrop's fee is a flat 1% of the protected amount. The funder, not Stabledrop, sets the repayment cap and the rate; your tail is whatever the cap leaves and is paid after the funder. Rate bands are indicative of comparable short-dated collateralised trade paper, not quotes. Nothing prices below the risk-free floor of 3.65% (SOFR, 28 Jul 2026; use SONIA for sterling). Borrowing comparison based on iwoca published rates — from 1.5% a month, representative 40% APR. Simple interest, actual/365. Estimates, not financial advice.</p>
     </div>
   </details>
   <p>© 2026 Conduit UCPI. Protected payments on blockchain. Company No. SC880319.<br>
@@ -686,10 +686,10 @@ dl.gloss dd{margin:5px 0 0;color:var(--soft);line-height:1.7}
       "A proposal on our " + money(v.F) + " invoice, due " + when + ".\n\n" +
       "As things stand, paying at the end of the terms is the sensible move for you: holding the cash for " + v.t +
       " days earns you roughly " + money(m.buyerEarns) + ".\n\n" +
-      "We'd like to beat that. Fund the invoice into escrow today and we'll take " + money(m.discount) +
+      "We'd like to beat that. Pay the invoice into a protected payment today and we'll take " + money(m.discount) +
       " off — you pay " + money(m.escrow) + " instead of " + money(v.F) + ". Over the same period that's worth about " +
       pct(m.buyerApr*100) + " a year on the cash, so you're better off than holding it.\n\n" +
-      "The money doesn't come to us. It sits locked in a Stabledrop escrow until " + when +
+      "The money doesn't come to us. It sits locked in a Stabledrop payment contract until " + when +
       " — the day you'd have paid anyway — and only releases to us then if we've delivered. If we haven't, you get it back. Buyer protection and dispute handling are built in.\n\n" +
       "Paying this way genuinely helps us: it guarantees payment on time and lets us put the capital to work on your next order rather than waiting on this one.\n\n" +
       "Happy to walk through the numbers.\n\n" + sign;

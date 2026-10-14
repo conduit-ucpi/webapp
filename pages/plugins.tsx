@@ -98,15 +98,15 @@ function Collapsible({
 const MCP_URL = 'https://api.stabledrop.me/api/ap2/mcp';
 
 export default function Plugins() {
-  const pageTitle = "Escrow Payments for WordPress, Shopify & AI Agents (MCP) | Non-Custodial Developer Tools";
-  const pageDescription = "Non-custodial blockchain escrow infrastructure for e-commerce and AI agents. Open-source developer tools for WordPress and Shopify, plus an MCP server so Claude, ChatGPT or any agent can pay with buyer protection. Smart contract-based buyer protection without custody of funds.";
+  const pageTitle = "Protected Payments for WordPress, Shopify & AI Agents (MCP) | Non-Custodial Developer Tools";
+  const pageDescription = "Non-custodial protected-payment infrastructure for e-commerce and AI agents. Open-source developer tools for WordPress and Shopify, plus an MCP server so Claude, ChatGPT or any agent can pay with buyer protection. Smart contract-based buyer protection without custody of funds.";
   const pageUrl = "https://conduit-ucpi.com/plugins";
   const imageUrl = "https://conduit-ucpi.com/og-plugins.png";
 
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "Conduit UCPI - Smart Contract Escrow SDK",
+    "name": "Conduit UCPI - Protected Payments SDK",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Web",
     "offers": {
@@ -122,13 +122,13 @@ export default function Plugins() {
     },
     "featureList": [
       "Non-custodial smart contract infrastructure",
-      "Open-source blockchain escrow SDK",
+      "Open-source protected-payment SDK",
       "WordPress and Shopify developer integration tools",
       "MCP server for AI agents (Claude, ChatGPT, Cursor)",
       "Audited smart contracts on Base network",
       "Direct wallet-to-wallet settlement (no custody)",
       "Automated dispute resolution logic",
-      "Educational resources for blockchain escrow",
+      "Educational resources for protected payments",
       "3-minute integration time"
     ],
     "description": pageDescription,
@@ -217,7 +217,7 @@ export default function Plugins() {
               <h1
                 className="text-4xl sm:text-5xl lg:text-6xl font-semibold text-secondary-900 dark:text-white leading-[1.1] tracking-tight max-w-3xl"
               >
-                Add escrow checkout to your store.
+                Add protected checkout to your store.
               </h1>
               <p
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
@@ -258,7 +258,7 @@ export default function Plugins() {
                 <div className="py-6 first:pt-0">
                   <Collapsible eyebrow="WordPress / WooCommerce">
                     <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
-                      Open-source plugin for integrating smart contract escrow into WooCommerce stores. Non-custodial infrastructure with blockchain-enforced settlement.
+                      Open-source plugin for adding protected payments to WooCommerce stores. Non-custodial infrastructure with blockchain-enforced settlement.
                     </p>
 
                     <div className="flex items-center gap-6 flex-wrap">
@@ -286,7 +286,7 @@ export default function Plugins() {
                 <div className="py-6">
                   <Collapsible eyebrow="Shopify">
                     <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
-                      Smart contract integration for Shopify stores. Open-source escrow with non-custodial dispute resolution.
+                      Smart contract integration for Shopify stores. Open-source protected payments with non-custodial dispute resolution.
                     </p>
 
                     <div className="flex items-center gap-6 flex-wrap">
@@ -351,7 +351,7 @@ export default function Plugins() {
                 <div className="py-6 last:pb-0">
                   <Collapsible eyebrow="AI agents (MCP)" id="mcp" defaultOpen={hash === '#mcp'}>
                     <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-6 max-w-md">
-                      Stabledrop is an MCP server. Connect it to Claude, ChatGPT, Cursor or any MCP client and the agent gets tools to prepare an escrow payment, settle it, check what happened and verify the receipt. No API key, no sign-up: the server holds no key and can only act on a signature the payer provides.
+                      Stabledrop is an MCP server. Connect it to Claude, ChatGPT, Cursor or any MCP client and the agent gets tools to prepare a protected payment, settle it, check what happened and verify the receipt. No API key, no sign-up: the server holds no key and can only act on a signature the payer provides.
                     </p>
 
                     <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-2">
@@ -397,7 +397,7 @@ export default function Plugins() {
                         { name: 'settle_escrow_payment', text: 'Relay the payer\'s signed authorisation, or confirm a direct transfer.' },
                         { name: 'check_escrow_payment', text: 'What happened to a payment in flight.' },
                         { name: 'verify_escrow_receipt', text: 'Check a signed AP2 receipt from anywhere.' },
-                        { name: 'payment_qr', text: 'A QR code a human can scan to fund the escrow.' },
+                        { name: 'payment_qr', text: 'A QR code a human can scan to fund the payment.' },
                         { name: 'read_published_page', text: 'The FAQ, dispute policy and terms, for the agent to read.' },
                       ].map((tool) => (
                         <div key={tool.name}>
@@ -461,7 +461,7 @@ export default function Plugins() {
                     Commerce represents 0.003% of crypto transaction volume — over 100x less than traditional finance. The reason? No buyer protection. Without purchase guarantees, rational consumers won&apos;t use crypto to buy things.
                   </p>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-                    Smart contract escrow solves both sides: buyers get time-locked purchase protection, and merchants eliminate chargeback fraud through blockchain-enforced settlements.
+                    Protected payments solve both sides: buyers get time-locked purchase protection, and merchants eliminate chargeback fraud through blockchain-enforced settlements.
                   </p>
                 </div>
               </Collapsible>
@@ -478,7 +478,7 @@ export default function Plugins() {
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-10 lg:py-12">
             <Fade>
-              <Collapsible eyebrow="What you get" heading="Non-custodial escrow infrastructure.">
+              <Collapsible eyebrow="What you get" heading="Non-custodial protected-payment infrastructure.">
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-10">
                   {[
                     {
@@ -491,11 +491,11 @@ export default function Plugins() {
                     },
                     {
                       label: 'Audited smart contracts',
-                      text: 'Automated dispute resolution via blockchain-enforced escrow logic. All operations executed by audited contracts on Base network.',
+                      text: 'Automated dispute resolution via blockchain-enforced payment logic. All operations executed by audited contracts on Base network.',
                     },
                     {
                       label: 'Non-custodial',
-                      text: 'Direct wallet-to-wallet settlement. We never hold, control, or have access to user funds. All escrow logic is on-chain.',
+                      text: 'Direct wallet-to-wallet settlement. We never hold, control, or have access to user funds. All payment logic is on-chain.',
                     },
                     {
                       label: 'Technical infrastructure only',
@@ -530,18 +530,18 @@ export default function Plugins() {
         >
           <div className="max-w-5xl mx-auto px-6 sm:px-8 py-10 lg:py-12">
             <Fade>
-              <Collapsible eyebrow="How it works" heading="Escrow, dispute, settle.">
+              <Collapsible eyebrow="How it works" heading="Protect, dispute, settle.">
                 <div className="grid md:grid-cols-3 gap-x-12 gap-y-16">
                   {[
                     {
                       num: '01',
-                      title: 'Escrow',
+                      title: 'Protect',
                       desc: 'Funds are secured in audited smart contracts on Base network. Settlement is automated and cryptographically guaranteed — no intermediary custody.',
                     },
                     {
                       num: '02',
                       title: 'Dispute',
-                      desc: 'Buyers can trigger dispute resolution through the smart contract. Time-locked escrow prevents premature fund release during dispute windows.',
+                      desc: 'Buyers can trigger dispute resolution through the smart contract. The time lock prevents premature fund release during dispute windows.',
                     },
                     {
                       num: '03',
@@ -588,7 +588,7 @@ export default function Plugins() {
               <Collapsible eyebrow="Non-custodial developer infrastructure" heading="Technical infrastructure, not financial services.">
                 <div className="space-y-4 text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed max-w-2xl">
                   <p>
-                    <strong className="text-secondary-900 dark:text-white">What this is:</strong> Open-source smart contract infrastructure for implementing escrow functionality in e-commerce applications. Similar to how Stripe provides payment infrastructure, we provide blockchain-based escrow infrastructure.
+                    <strong className="text-secondary-900 dark:text-white">What this is:</strong> Open-source smart contract infrastructure for adding protected payments to e-commerce applications. Similar to how Stripe provides payment infrastructure, we provide blockchain-based protected-payment infrastructure.
                   </p>
                   <div>
                     <strong className="text-secondary-900 dark:text-white">What this is not:</strong>
@@ -600,10 +600,10 @@ export default function Plugins() {
                     </ul>
                   </div>
                   <p>
-                    All funds remain under user control through non-custodial wallet connections. Escrow logic is executed by audited smart contracts on the Base network. We provide the integration layer and user interface — settlement occurs directly between buyer and seller wallets.
+                    All funds remain under user control through non-custodial wallet connections. Payment logic is executed by audited smart contracts on the Base network. We provide the integration layer and user interface — settlement occurs directly between buyer and seller wallets.
                   </p>
                   <p className="text-xs text-secondary-400 dark:text-secondary-500 italic">
-                    This is developer tooling for blockchain-based escrow implementation, not a regulated financial product or cryptocurrency service.
+                    This is developer tooling for blockchain-based protected payments, not a regulated financial product or cryptocurrency service.
                   </p>
                 </div>
               </Collapsible>

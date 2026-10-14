@@ -15,11 +15,11 @@ const DEFAULT_COPY = {
   productName: '',
   createTitle: 'Create a payment request',
   createSubtitle:
-    'Set an amount and a release date. The buyer pays into escrow, and the funds move to you automatically on that date.',
+    'Set an amount and a release date. The buyer pays into a protected payment, and the funds move to you automatically on that date.',
   dashboardTitle: 'Your payments',
-  dashboardSubtitle: 'Everything you have sent, received, or have waiting in escrow.',
+  dashboardSubtitle: 'Everything you have sent, received, or have waiting in protected payments.',
   payTitle: 'Complete your payment',
-  paySubtitle: 'Your money is held in escrow until the release date you can see below.',
+  paySubtitle: 'Your money is held in the payment contract until the release date you can see below.',
   operatorNote: '',
 } as const;
 

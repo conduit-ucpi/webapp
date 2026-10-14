@@ -65,13 +65,13 @@ describe('SendRequestScreen — the message to the buyer', () => {
     return onCopy.mock.calls[0][0] as string;
   };
 
-  it('tells the buyer an escrow payment is held and can be disputed', () => {
-    expect(copied({})).toMatch(/held in escrow/);
+  it('tells the buyer a protected payment is held and can be disputed', () => {
+    expect(copied({})).toMatch(/held in the payment contract/);
   });
 
   it('tells the buyer an instant payment is not', () => {
     const message = copied({ instant: true });
     expect(message).toMatch(/instant payment/);
-    expect(message).not.toMatch(/held in escrow|dispute before/);
+    expect(message).not.toMatch(/held in the payment contract|dispute before/);
   });
 });

@@ -65,7 +65,7 @@ export default function LandingTest13() {
           headline={<>Get paid <span className={lt.accentText}>without anyone in the middle.</span></>}
           sub={
             <>
-              The buyer pays into <Term word="escrow" />. On the <Term word="payout date" /> it lands with you. Before then they can raise a <Term word="dispute" />; there is no such thing as a <Term word="chargeback" />. Hover the underlined words.
+              The buyer pays into a <Term word="protected payment" />. On the <Term word="payout date" /> it lands with you. Before then they can raise a <Term word="dispute" />; there is no such thing as a <Term word="chargeback" />. Hover the underlined words.
             </>
           }
           primary={{ href: '/create', label: 'Request payment' }}

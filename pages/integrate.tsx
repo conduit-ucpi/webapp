@@ -733,7 +733,7 @@ app.post('/api/conduit-webhook', async (req, res) => {
     // heard of must not be read as payment. Waiting on one that turns out to be
     // fine costs another poll; clearing one that is not costs you the goods.
     //
-    // ⚠️ chainAddress is NOT that signal. An escrow's address is worked out from
+    // ⚠️ chainAddress is NOT that signal. A payment's address is worked out from
     // its terms and recorded when the buyer opens the payment page, before they
     // send anything — so it is present on unpaid orders too.
     const FUNDED_STATES = ['ACTIVE', 'DISPUTED', 'RESOLVED', 'CLAIMED', 'COMPLETED'];

@@ -95,14 +95,14 @@ export default function LandingTest04() {
         <section className={`${section} pt-20 pb-24 lg:pt-28 lg:pb-32`} aria-label="Hero">
           <div className="grid lg:grid-cols-12 gap-14 items-center">
             <motion.div className="lg:col-span-7" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-              <p className={eyebrow}>Escrow for stablecoins</p>
+              <p className={eyebrow}>Protected payments</p>
               <h1 className={`mt-5 text-5xl sm:text-6xl lg:text-[4.6rem] font-light leading-[1.02] tracking-tight ${lt.fg}`} style={display}>
                 Accept stablecoin payments.
                 <br />
                 <em className={`not-italic ${lt.accentText}`}>Protect both sides.</em>
               </h1>
               <p className={`mt-7 text-lg leading-relaxed max-w-xl ${lt.muted}`} style={display}>
-                Create a payment request in a few clicks. Funds sit in escrow until the payout date — your buyer is protected, and you can&apos;t be charged back. No vetting, no gas fees.
+                Create a payment request in a few clicks. Funds are held until the payout date — your buyer is protected, and you can&apos;t be charged back. No vetting, no gas fees.
               </p>
               <div className="mt-9 flex flex-wrap gap-3">
                 <Link href="/create" className={lt.btnPrimary}>Request payment</Link>
@@ -137,7 +137,7 @@ export default function LandingTest04() {
                 A card processor stands between you and your customer and charges rent for the privilege: a percentage, a fixed fee per sale, a reserve it holds back, a penalty for every chargeback, and a three-day wait for what&apos;s left. It does that in exchange for one thing — the buyer&apos;s confidence that they can get their money back.
               </p>
               <p className={`mt-5 text-lg leading-relaxed ${lt.fg}`} style={display}>
-                An escrow contract gives the buyer that same confidence directly. The money is locked where neither side can reach it until a date you both agreed. There is nothing left for a processor to do, so there is nothing left for one to charge.
+                A protected payment gives the buyer that same confidence directly. The money is locked where neither side can reach it until a date you both agreed. There is nothing left for a processor to do, so there is nothing left for one to charge.
               </p>
               <div className={`mt-8 border-t ${lt.border}`}>
                 {FEE_COMPARISON.map((r) => (

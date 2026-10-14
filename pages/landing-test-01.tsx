@@ -105,14 +105,14 @@ export default function LandingTest01() {
             <div className="grid lg:grid-cols-12 gap-12 items-center">
               <motion.div className="lg:col-span-7" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                 <p className={`text-sm ${lt.muted}`}>
-                  <span className="font-medium">Escrow fee:</span> 1%. Nothing else.
+                  <span className="font-medium">Fee:</span> 1%. Nothing else.
                 </p>
                 <h1 className={`mt-4 text-4xl sm:text-5xl lg:text-[3.6rem] font-semibold tracking-tight leading-[1.08] ${lt.fg}`}>
                   Stablecoin payments{' '}
                   <span className={lt.accentText}>with buyer protection built in.</span>
                 </h1>
                 <p className={`mt-6 text-lg leading-relaxed max-w-xl ${lt.muted}`}>
-                  Request a payment in a few clicks. Funds sit in escrow until the payout date — your buyer is protected, and you can&apos;t be charged back. No vetting, no gas fees, from your first transaction to your millionth.
+                  Request a payment in a few clicks. Funds are held until the payout date — your buyer is protected, and you can&apos;t be charged back. No vetting, no gas fees, from your first transaction to your millionth.
                 </p>
                 <div className="mt-8 flex flex-wrap gap-3">
                   <Link href="/create" className={lt.btnPrimary}>
@@ -157,7 +157,7 @@ export default function LandingTest01() {
           <Fade>
             <p className={eyebrow}>Solutions</p>
             <h2 className={h2}>
-              Flexible escrow for every business model.{' '}
+              Flexible protected payments for every business model.{' '}
               <span className={lt.muted}>Grow the ways you get paid.</span>
             </h2>
           </Fade>
@@ -221,7 +221,7 @@ export default function LandingTest01() {
                   <span className={`text-xs px-2 py-1 rounded-full ${lt.accentSoft} ${lt.fg}`}>USDC</span>
                 </div>
                 <p className={`mt-6 text-4xl font-semibold tracking-tight ${lt.fg}`}>$0.001</p>
-                <p className={`mt-1 text-xs ${lt.muted}`}>Held in escrow until the payout date. Dispute before then to freeze it.</p>
+                <p className={`mt-1 text-xs ${lt.muted}`}>Held until the payout date. Dispute before then to freeze it.</p>
                 <div className={`mt-6 h-11 ${lt.btnRadius} ${lt.accentBg} text-[color:var(--lt-accent-fg)] flex items-center justify-center text-sm font-medium`}>Pay with USDC</div>
                 <p className={`mt-3 text-[11px] text-center ${lt.muted}`}>Sign in with Google or email · gas covered</p>
               </div>

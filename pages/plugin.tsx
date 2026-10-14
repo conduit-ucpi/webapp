@@ -193,11 +193,11 @@ function TermsSection({ lastUpdated }: { lastUpdated: string }) {
         <section className="mb-8">
           <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">2. Description of Service</h3>
           <p className="text-secondary-700 dark:text-secondary-200 mb-4">
-            Conduit UCPI is a decentralized escrow platform that enables users to create time-delayed escrow
+            Conduit UCPI is a decentralized protected-payment platform that enables users to create time-delayed payment
             contracts on EVM-compatible blockchains. The Service facilitates:
           </p>
           <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
-            <li>Creation and management of escrow contracts</li>
+            <li>Creation and management of payment contracts</li>
             <li>USDC token transactions and transfers</li>
             <li>Integration with Web3 wallets and payment processors</li>
             <li>Dispute resolution mechanisms</li>
@@ -275,7 +275,7 @@ function PrivacySection({ lastUpdated }: { lastUpdated: string }) {
           <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
             <li>Wallet addresses and public blockchain data</li>
             <li>Email addresses for account identification</li>
-            <li>Transaction data related to escrow contracts</li>
+            <li>Transaction data related to payment contracts</li>
             <li>Usage analytics and performance metrics</li>
           </ul>
         </section>
@@ -284,7 +284,7 @@ function PrivacySection({ lastUpdated }: { lastUpdated: string }) {
           <h3 className="text-xl font-semibold text-secondary-900 dark:text-white mb-4">2. How We Use Your Information</h3>
           <p className="text-secondary-700 dark:text-secondary-200 mb-4">We use the information we collect to:</p>
           <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
-            <li>Provide and maintain our escrow services</li>
+            <li>Provide and maintain our protected-payment services</li>
             <li>Process transactions and manage contracts</li>
             <li>Communicate with you about your account and transactions</li>
             <li>Improve our services and user experience</li>

@@ -95,7 +95,7 @@ export default function LandingTest10() {
         <section className={`${section} pt-14 pb-12 lg:pt-20`} aria-label="Hero">
           <div className="grid lg:grid-cols-12 gap-8 items-start">
             <motion.div className="lg:col-span-7" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-              <p className={eyebrow}>Stablecoin escrow · 1% · no chargebacks</p>
+              <p className={eyebrow}>Protected payments · 1% · no chargebacks</p>
               <h1 className={`mt-5 text-4xl sm:text-5xl lg:text-[3.8rem] font-medium tracking-tight leading-[1.02] ${lt.fg}`}>
                 Get paid in stablecoins. <span className={lt.accentText}>Your buyer is protected. You can&apos;t be charged back.</span>
               </h1>

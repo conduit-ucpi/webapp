@@ -108,7 +108,7 @@ export default function LandingTest06() {
             <Fade className="lg:col-span-5">
               <p className={eyebrow}>For merchants</p>
               <h2 className={h2}>Everything traditional processors take from you, we don&apos;t.</h2>
-              <p className={`mt-5 ${lt.muted}`}>A card processor charges a percentage, a fixed fee, a reserve, a chargeback penalty and a three-day wait. It does that to give the buyer confidence. Escrow gives them the same confidence directly.</p>
+              <p className={`mt-5 ${lt.muted}`}>A card processor charges a percentage, a fixed fee, a reserve, a chargeback penalty and a three-day wait. It does that to give the buyer confidence. A protected payment gives them the same confidence directly.</p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link href="/plugins" className={lt.btnPrimary}>View integrations</Link>
                 <Link href="/merchant-savings-calculator" className={lt.btnSecondary}>Calculate savings</Link>
@@ -186,7 +186,7 @@ export default function LandingTest06() {
                   <span className={`text-xs px-2 py-1 rounded-full ${lt.accentSoft} ${lt.accentText}`}>USDC</span>
                 </div>
                 <p className={`mt-6 text-4xl font-medium tracking-tight ${lt.fg}`}>$0.001</p>
-                <p className={`mt-1 text-xs ${lt.muted}`}>Held in escrow until the payout date. Dispute before then to freeze it.</p>
+                <p className={`mt-1 text-xs ${lt.muted}`}>Held until the payout date. Dispute before then to freeze it.</p>
                 <div className={`${lt.btnPrimary} w-full mt-6 pointer-events-none`} aria-hidden="true">Pay with USDC</div>
                 <p className={`mt-3 text-[11px] text-center ${lt.muted}`}>Sign in with Google or email · gas covered</p>
               </div>
@@ -199,7 +199,7 @@ export default function LandingTest06() {
           <div className={`${section} py-24`}>
             <Fade>
               <p className={eyebrow}>Solutions</p>
-              <h2 className={h2}>Flexible escrow for every business model.</h2>
+              <h2 className={h2}>Flexible protected payments for every business model.</h2>
             </Fade>
             <Fade delay={0.1}>
               <AudienceTabs className="mt-10" columns={4} />

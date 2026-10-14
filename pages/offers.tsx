@@ -163,7 +163,7 @@ export default function OffersPage() {
                       <div className="text-xs text-gray-500 dark:text-secondary-400">
                         {payoutFor(contract).isNet
                           ? 'you receive at maturity'
-                          : 'locked in escrow, before the platform fee'}
+                          : 'locked in the payment contract, before the platform fee'}
                       </div>
                     </div>
                   </div>

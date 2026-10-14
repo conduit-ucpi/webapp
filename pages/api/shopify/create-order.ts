@@ -51,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             price: price,
             title: title,
             properties: [
-              { name: 'Payment Method', value: 'USDC via InstantEscrow' },
+              { name: 'Payment Method', value: 'USDC via Stabledrop' },
               { name: 'Contract ID', value: contractId },
               { name: 'Transaction Hash', value: transactionHash || '' }
             ]
@@ -66,12 +66,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             kind: 'sale',
             status: 'success',
             amount: price,
-            gateway: 'InstantEscrow USDC'
+            gateway: 'Stabledrop USDC'
           }
         ],
-        note: `Paid with USDC via InstantEscrow. Contract ID: ${contractId}`,
-        tags: 'instant-escrow, usdc-payment',
-        source_name: 'instant_escrow'
+        note: `Paid with USDC via Stabledrop. Contract ID: ${contractId}`,
+        tags: 'stabledrop, usdc-payment',
+        source_name: 'stabledrop'
       }
     };
 

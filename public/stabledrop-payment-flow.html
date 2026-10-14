@@ -183,9 +183,9 @@
   <div class="step">
     <div class="num">4</div>
     <div class="card is-on">
-      <h3>Buyer accepts → a secure escrow "vault" is created on the blockchain</h3>
+      <h3>Buyer accepts → a secure payment "vault" is created on the blockchain</h3>
       <p class="who">Buyer accepts · vault created on-chain (we cover the blockchain fee)</p>
-      <p>When the buyer accepts, a brand-new escrow contract — think of it as a digital safe — is created on the public blockchain. Setting up the empty safe costs nothing and moves no money, so we handle and pay for that step. It's programmed to only ever release money to the buyer or the seller. <b>No money moves into it yet — and no money ever can, until the buyer sends it in themselves in step 5.</b></p>
+      <p>When the buyer accepts, a brand-new payment contract — think of it as a digital safe — is created on the public blockchain. Setting up the empty safe costs nothing and moves no money, so we handle and pay for that step. It's programmed to only ever release money to the buyer or the seller. <b>No money moves into it yet — and no money ever can, until the buyer sends it in themselves in step 5.</b></p>
       <div class="tags">
         <span class="tag onchain">On-chain</span>
         <span class="tag noncust">Non-custodial vault</span>
@@ -200,7 +200,7 @@
     <div class="card is-on">
       <h3>Buyer deposits the funds</h3>
       <p class="who">Buyer · only the buyer can authorise it</p>
-      <p>The funds move <b>directly into the escrow vault</b>. The buyer either signs the payment in their own connected wallet, or sends it to the vault's address from wherever they keep their money. Either way <b>only the buyer can authorise it</b> — StableDrop can't pull the funds, and they never touch a StableDrop wallet.</p>
+      <p>The funds move <b>directly into the payment vault</b>. The buyer either signs the payment in their own connected wallet, or sends it to the vault's address from wherever they keep their money. Either way <b>only the buyer can authorise it</b> — StableDrop can't pull the funds, and they never touch a StableDrop wallet.</p>
       <div class="tags">
         <span class="tag onchain">On-chain</span>
         <span class="tag sign">Only the buyer can authorise it</span>
@@ -267,7 +267,7 @@
     <div class="card is-dispute">
       <h3>The money freezes in the vault</h3>
       <p class="who">Funds stay locked on-chain</p>
-      <p>The moment a dispute is opened, the funds are <b>frozen inside the escrow vault</b>. The seller can no longer claim, and the money still doesn't move to anyone — it just waits until the dispute is settled. As always, it never goes to a StableDrop wallet, and StableDrop has no power to move it.</p>
+      <p>The moment a dispute is opened, the funds are <b>frozen inside the payment vault</b>. The seller can no longer claim, and the money still doesn't move to anyone — it just waits until the dispute is settled. As always, it never goes to a StableDrop wallet, and StableDrop has no power to move it.</p>
       <div class="tags">
         <span class="tag onchain">On-chain</span>
         <span class="tag noncust">Non-custodial — still locked in the vault</span>
@@ -297,7 +297,7 @@
     <div class="card is-dispute">
       <h3>Funds are released — only ever to buyer and seller</h3>
       <p class="who">Buyer and/or Seller · paid directly on-chain</p>
-      <p>Once two matching signed votes are in, the agreed split is paid out straight from the vault to the buyer and/or the seller. The blockchain <b>physically prevents</b> the money from going anywhere else — not to the tiebreaker, not to StableDrop. The two shares always add up to 100% of the escrow.</p>
+      <p>Once two matching signed votes are in, the agreed split is paid out straight from the vault to the buyer and/or the seller. The blockchain <b>physically prevents</b> the money from going anywhere else — not to the tiebreaker, not to StableDrop. The two shares always add up to 100% of the payment.</p>
       <div class="tags">
         <span class="tag onchain">On-chain</span>
         <span class="tag sign">Released by the parties' signatures</span>

@@ -24,7 +24,7 @@ export default function ShopifySetupRequired() {
           <h3 style={{ color: '#333' }}>Merchant Not Configured</h3>
           <p>This store hasn&apos;t completed their USDC payment setup yet. Please ask the store owner to:</p>
           <ol>
-            <li>Visit the InstantEscrow setup page</li>
+            <li>Visit the Stabledrop setup page</li>
             <li>Connect their Shopify store</li>
             <li>Configure their wallet address</li>
           </ol>

@@ -88,7 +88,7 @@ export default function QrPaymentPanel({
       {!qr.qrContractAddress && (
         <div className="text-center">
           <p className="text-sm text-secondary-600 dark:text-secondary-300 mb-4">
-            First, we need to create a secure escrow contract on the blockchain. Then you will get a payment link to send your payment.
+            First, we need to create a secure payment contract on the blockchain. Then you will get a payment link to send your payment.
           </p>
           <Button
             onClick={qr.createContract}

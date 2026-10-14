@@ -49,19 +49,19 @@ export function verifyFactory(
       ok: false,
       reason: 'no-expected-factory',
       detail:
-        'No known-good escrow factory is baked into this build ' +
+        'No known-good payment contract factory is baked into this build ' +
         '(NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS). Refusing to verify.',
     };
   }
   if (!actual || !isAddress(actual)) {
-    return { ok: false, reason: 'unreadable', detail: 'Could not read which factory created this escrow.' };
+    return { ok: false, reason: 'unreadable', detail: 'Could not read which factory created this payment contract.' };
   }
   if (actual.toLowerCase() !== expectedFactory.toLowerCase()) {
     return {
       ok: false,
       reason: 'wrong-factory',
       detail:
-        `This escrow was created by ${actual.toLowerCase()}, not by our factory ` +
+        `This payment contract was created by ${actual.toLowerCase()}, not by our factory ` +
         `${expectedFactory.toLowerCase()}. It runs our code but its terms, fee and partner ` +
         'were set by someone else. Refusing to proceed.',
     };

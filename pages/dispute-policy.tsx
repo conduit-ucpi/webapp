@@ -73,7 +73,7 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
     "@context": "https://schema.org",
     "@type": "Article",
     "headline": "Dispute Policy",
-    "description": `How disputes work in a ${brand} escrow payment: the contract's three-party voting, how the tiebreaker is appointed and changed, and how ${brand}'s default tiebreaker decides its vote.`,
+    "description": `How disputes work in a ${brand} protected payment: the contract's three-party voting, how the tiebreaker is appointed and changed, and how ${brand}'s default tiebreaker decides its vote.`,
     "publisher": { "@type": "Organization", "name": brand },
     "dateModified": dateModified
   };
@@ -82,7 +82,7 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
     <>
       <SEO
         title={`Dispute Policy | ${brand}`}
-        description={`How disputes work in a ${brand} escrow payment: three-party voting in the contract, how the tiebreaker is appointed and changed, and how ${brand}'s default tiebreaker decides its vote.`}
+        description={`How disputes work in a ${brand} protected payment: three-party voting in the contract, how the tiebreaker is appointed and changed, and how ${brand}'s default tiebreaker decides its vote.`}
         keywords="escrow dispute, dispute policy, tiebreaker, USDC escrow, smart contract dispute"
         canonical="/dispute-policy"
         structuredData={structuredData}
@@ -93,10 +93,10 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
             <h1 className="text-4xl font-bold text-secondary-900 dark:text-white mb-2">Dispute Management System</h1>
             <p id="three-votes-intro" className="text-lg text-secondary-700 dark:text-secondary-200 mb-2">{threeVotes(brand)}</p>
             <p className="text-lg text-secondary-600 dark:text-secondary-300 mb-8">
-              This page covers {brand} escrow payments.
+              This page covers {brand} protected payments.
             </p>
 
-            <Part number={1} title="How a dispute works in the escrow contract">
+            <Part number={1} title="How a dispute works in the payment contract">
               <Points items={part1(brand)} />
             </Part>
 

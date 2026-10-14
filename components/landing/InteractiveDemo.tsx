@@ -71,8 +71,8 @@ export default function InteractiveDemo() {
     {
       id: 2,
       title: "John puts money in secure trust",
-      description: "John wants the laptop. He deposits $800 into the secure escrow - money doesn't go to Sarah yet.",
-      action: "Fund Escrow",
+      description: "John wants the laptop. He deposits $800 into a protected payment - money doesn't go to Sarah yet.",
+      action: "Fund Payment",
       visual: (
         <div className="space-y-3">
           <div className="flex items-center space-x-4">
@@ -95,7 +95,7 @@ export default function InteractiveDemo() {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <div className="flex items-center space-x-2">
               <ShieldIcon className="w-5 h-5 text-blue-500" />
-              <span className="text-sm font-medium text-blue-700">Secure Escrow</span>
+              <span className="text-sm font-medium text-blue-700">Protected Payment</span>
               <span className="text-sm text-blue-600">$800</span>
             </div>
           </div>

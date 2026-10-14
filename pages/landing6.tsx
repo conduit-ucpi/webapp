@@ -51,9 +51,8 @@ export default function Landing6() {
     {
       "@context": "https://schema.org",
       "@type": "FinancialService",
-      "name": "Conduit Escrow",
-      "alternateName": "InstantEscrow",
-      "description": "100% open source cryptocurrency escrow service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed escrow with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
+      "name": "Stabledrop",
+      "description": "100% open source protected payment service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed payments with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
       "url": "https://conduit-ucpi.com",
       "logo": "https://conduit-ucpi.com/icon.png",
       "image": "https://conduit-ucpi.com/preview.png",
@@ -64,14 +63,14 @@ export default function Landing6() {
       "availableChannel": { "@type": "ServiceChannel", "serviceType": "Online Banking", "availableLanguage": "English" },
       "hasOfferCatalog": {
         "@type": "OfferCatalog",
-        "name": "Escrow Services",
+        "name": "Protected Payment Services",
         "itemListElement": [
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Time-Delayed Escrow Contracts", "description": "Secure smart contract payment holding with automatic release on a pre-agreed payout date. Buyer can dispute before payout." } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Time-Delayed Payment Contracts", "description": "Secure smart contract payment holding with automatic release on a pre-agreed payout date. Buyer can dispute before payout." } },
           { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "E-commerce Integration", "description": "WordPress and Shopify plugins, JavaScript SDK for custom websites." } }
         ]
       },
       "offers": { "@type": "Offer", "priceCurrency": "USD", "price": "1", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "0.01", "priceCurrency": "USD", "referenceQuantity": { "@type": "QuantitativeValue", "value": "1", "unitText": "TRANSACTION" } } },
-      "serviceType": "Cryptocurrency Escrow Service",
+      "serviceType": "Protected Cryptocurrency Payment Service",
       "provider": { "@type": "Organization", "name": "Conduit UCPI", "url": "https://conduit-ucpi.com" },
       "termsOfService": "https://conduit-ucpi.com/terms-of-service",
       "slogan": "Stablecoin payments made safe and easy"
@@ -114,8 +113,8 @@ export default function Landing6() {
   return (
     <>
       <SEO
-        title="Conduit Escrow - Stablecoin Payments with Buyer Protection | 1% Fee"
-        description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee, 10-minute setup. Gas-free transactions. Open source escrow on Base."
+        title="Stabledrop - Stablecoin Payments with Buyer Protection | 1% Fee"
+        description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee, 10-minute setup. Gas-free transactions. Open source payment contracts on Base."
         keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow"
         canonical="/"
         structuredData={structuredData}
@@ -290,7 +289,7 @@ export default function Landing6() {
                       className="text-primary-500 text-sm mb-3"
                       style={mono}
                     >
-                      <span className="text-neutral-500">$</span> escrow.{item.cmd}()
+                      <span className="text-neutral-500">$</span> payment.{item.cmd}()
                     </p>
                     <p className="text-sm text-neutral-400 leading-relaxed">
                       {item.desc}

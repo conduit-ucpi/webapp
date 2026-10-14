@@ -19,7 +19,7 @@ const structuredData = {
   "@context": "https://schema.org",
   "@type": "HowTo",
   "name": "How to Install USDC Payment Button on Shopify",
-  "description": "Install the universal 'Buy with USDC' cryptocurrency payment button on your Shopify store in 2 minutes. Free to install, 1% transaction fee, automatic escrow protection, works on any Shopify theme.",
+  "description": "Install the universal 'Buy with USDC' cryptocurrency payment button on your Shopify store in 2 minutes. Free to install, 1% transaction fee, automatic payment protection, works on any Shopify theme.",
   "totalTime": "PT2M",
   "step": [
     { "@type": "HowToStep", "name": "Copy the JavaScript code", "text": "Copy the single line of JavaScript code provided for your Shopify store" },
@@ -86,7 +86,7 @@ export default function InstallButton() {
     <>
       <SEO
         title="Install USDC Checkout Button for Shopify | 2-Minute Setup"
-        description="Install the universal 'Buy with USDC' cryptocurrency payment button on your Shopify store in 2 minutes. Free to install, 1% transaction fee, automatic escrow protection."
+        description="Install the universal 'Buy with USDC' cryptocurrency payment button on your Shopify store in 2 minutes. Free to install, 1% transaction fee, automatic payment protection."
         keywords="install USDC button Shopify, Shopify cryptocurrency integration, add crypto payments Shopify, USDC checkout setup, stablecoin payments Shopify"
         canonical="/shopify/install-button"
         structuredData={structuredData}
@@ -112,13 +112,13 @@ export default function InstallButton() {
               <h1
                 className="text-4xl sm:text-5xl font-semibold text-secondary-900 dark:text-white leading-[1.1] tracking-tight max-w-3xl"
               >
-                Add escrow checkout to your Shopify store.
+                Add protected checkout to your Shopify store.
               </h1>
               <p
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                No monthly fees. 1% per transaction. Enterprise-grade escrow protection on every sale.
+                No monthly fees. 1% per transaction. Enterprise-grade payment protection on every sale.
               </p>
               <div className="mt-14 flex flex-wrap gap-x-8 gap-y-2 text-xs text-secondary-400 dark:text-secondary-500">
                 <span>2-minute setup</span>
@@ -192,7 +192,7 @@ export default function InstallButton() {
           <section className="border-t border-secondary-100 dark:border-secondary-800">
             <div className="max-w-5xl mx-auto px-6 sm:px-8 py-8">
               <p className="text-sm text-secondary-500 dark:text-secondary-400">
-                Platform status: <strong className="text-secondary-900 dark:text-white">Operational</strong> — Escrow protection: <strong className="text-secondary-900 dark:text-white">14 days</strong> — Settlement: <strong className="text-secondary-900 dark:text-white">Automated</strong>
+                Platform status: <strong className="text-secondary-900 dark:text-white">Operational</strong> — Payment protection: <strong className="text-secondary-900 dark:text-white">14 days</strong> — Settlement: <strong className="text-secondary-900 dark:text-white">Automated</strong>
               </p>
             </div>
           </section>
@@ -280,14 +280,14 @@ export default function InstallButton() {
 <script src="${origin}/shopify-checkout.js"></script>
 
 // Custom button anywhere
-<button onclick="InstantEscrow.checkout()">
+<button onclick="Stabledrop.checkout()">
   Pay with USDC
 </button>
 
 // Or programmatically
 <script>
   document.getElementById('my-button').addEventListener('click', function() {
-    InstantEscrow.checkout();
+    Stabledrop.checkout();
   });
 </script>`}
                   </CodeBlock>
@@ -345,7 +345,7 @@ export default function InstallButton() {
                   Buy with USDC - Instant Checkout
                 </button>
                 <p className="text-xs text-secondary-400 dark:text-secondary-500 mt-3">
-                  Protected by 14-day escrow &middot; No gas fees
+                  Protected for 14 days &middot; No gas fees
                 </p>
               </div>
             </Fade>
@@ -371,7 +371,7 @@ export default function InstallButton() {
                 { num: '01', title: 'Customer clicks button', desc: 'Opens secure checkout window.' },
                 { num: '02', title: 'Pays with USDC', desc: 'Via wallet or email sign-in.' },
                 { num: '03', title: 'Order created', desc: 'Automatically in your Shopify system.' },
-                { num: '04', title: 'Escrow protection', desc: '14 days for dispute resolution.' },
+                { num: '04', title: 'Payment protection', desc: '14 days for dispute resolution.' },
                 { num: '05', title: 'Automatic payout', desc: 'Direct to your merchant wallet.' },
               ].map((step, i) => (
                 <Fade key={step.num} delay={i * 0.08}>

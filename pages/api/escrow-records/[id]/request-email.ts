@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!methodGuard(req, res, 'POST')) return;
   const { id } = req.query;
   if (typeof id !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(id)) {
-    return res.status(400).json({ error: 'An escrow record id is required' });
+    return res.status(400).json({ error: 'A payment record id is required' });
   }
   await proxyToService(req, res, {
     service: 'contract',

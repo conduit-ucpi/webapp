@@ -29,9 +29,8 @@ export default function Landing1() {
     {
       "@context": "https://schema.org",
       "@type": "FinancialService",
-      "name": "Conduit Escrow",
-      "alternateName": "InstantEscrow",
-      "description": "100% open source cryptocurrency escrow service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed escrow with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
+      "name": "Stabledrop",
+      "description": "100% open source protected payment service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed payments with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
       "url": "https://conduit-ucpi.com",
       "logo": "https://conduit-ucpi.com/icon.png",
       "image": "https://conduit-ucpi.com/preview.png",
@@ -52,13 +51,13 @@ export default function Landing1() {
       },
       "hasOfferCatalog": {
         "@type": "OfferCatalog",
-        "name": "Escrow Services",
+        "name": "Protected Payment Services",
         "itemListElement": [
           {
             "@type": "Offer",
             "itemOffered": {
               "@type": "Service",
-              "name": "Time-Delayed Escrow Contracts",
+              "name": "Time-Delayed Payment Contracts",
               "description": "Secure smart contract payment holding with automatic release after delivery confirmation. Built-in buyer protection with instant dispute resolution. Gas-free transactions, no chargeback fees, final settlement once payout timer expires."
             }
           },
@@ -87,7 +86,7 @@ export default function Landing1() {
           }
         }
       },
-      "serviceType": "Cryptocurrency Escrow Service",
+      "serviceType": "Protected Cryptocurrency Payment Service",
       "provider": {
         "@type": "Organization",
         "name": "Conduit UCPI",
@@ -108,7 +107,7 @@ export default function Landing1() {
       },
       "publisher": {
         "@type": "Organization",
-        "name": "Conduit Escrow",
+        "name": "Stabledrop",
         "logo": {
           "@type": "ImageObject",
           "url": "https://conduit-ucpi.com/icon.png"
@@ -124,8 +123,8 @@ export default function Landing1() {
   return (
     <>
       <SEO
-        title="Conduit Escrow - Open Source Crypto Payments with Built-in Buyer Protection | 1% Fee"
-        description="Get paid safely with blockchain escrow. 100% open source - audit the code yourself. Hold USDC payments in trust until delivery is confirmed. No lawyers, no banks - just security. 60 second setup, 1% fee, free testing."
+        title="Stabledrop - Open Source Crypto Payments with Built-in Buyer Protection | 1% Fee"
+        description="Get paid safely with blockchain payment protection. 100% open source - audit the code yourself. Hold USDC payments in trust until delivery is confirmed. No lawyers, no banks - just security. 60 second setup, 1% fee, free testing."
         keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow, trustless payments, cryptocurrency escrow, time-delayed payments, blockchain payment protection, auditable escrow, transparent blockchain"
         canonical="/"
         structuredData={structuredData}
@@ -198,7 +197,7 @@ export default function Landing1() {
               {/* Merchants */}
               <div className="border border-green-200 dark:border-green-700 rounded-xl p-6 bg-white dark:bg-secondary-800 hover:border-green-400 dark:hover:border-green-500 transition-colors">
                 <h3 className="text-lg font-semibold text-secondary-900 dark:text-white mb-1">
-                  Add Escrow Checkout to Your Site
+                  Add Protected Checkout to Your Site
                 </h3>
                 <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-4">
                   Self-install in 10 minutes. WordPress, Shopify, or custom JS.
@@ -239,7 +238,7 @@ export default function Landing1() {
         </section>
 
         {/* Section 3: Simple 3-Step Process */}
-        <section className="mt-16 lg:mt-20" aria-label="Escrow Process Steps">
+        <section className="mt-16 lg:mt-20" aria-label="Protected Payment Steps">
           <h2 className="text-4xl lg:text-5xl font-bold text-secondary-900 dark:text-white text-center mb-12 tracking-tight">
             Simple 3-Step Process
           </h2>

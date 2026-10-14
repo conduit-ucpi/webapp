@@ -212,7 +212,7 @@ export default function OfferDetailsModal({
                     label="Residual, at maturity"
                     value={residual}
                     tokenSymbol={tokenSymbol}
-                    note="Your own money, held back until the escrow settles. It comes to you in full if nobody disputes the payment."
+                    note="Your own money, held back until the payment settles. It comes to you in full if nobody disputes the payment."
                   />
                 )}
                 {residual > 0 && (

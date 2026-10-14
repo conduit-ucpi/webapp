@@ -31,8 +31,8 @@ export default function Merchant() {
   return (
     <>
       <SEO
-        title="Conduit Escrow - Stablecoin Payments with Buyer Protection"
-        description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee. 10-minute setup. Gas-free transactions. Open source escrow on Base."
+        title="Stabledrop - Stablecoin Payments with Buyer Protection"
+        description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee. 10-minute setup. Gas-free transactions. Open source protected payments on Base."
         keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow"
         canonical="/merchant"
         structuredData={structuredData}
@@ -228,7 +228,7 @@ export default function Merchant() {
                 },
                 {
                   label: 'No floats',
-                  text: 'Your money is never held by a payment processor. Funds go straight from escrow to your wallet on the payout date.',
+                  text: 'Your money is never held by a payment processor. Funds go straight from the payment contract to your wallet on the payout date.',
                 },
                 {
                   label: 'No freezes',
@@ -297,7 +297,7 @@ export default function Merchant() {
               {[
                 {
                   label: 'Buyer protection on every payment',
-                  text: 'Funds are held in escrow until a pre-agreed date. If something goes wrong, raise a dispute before payout to freeze the funds. Works on P2P payments too.',
+                  text: 'Funds are held in the payment contract until a pre-agreed date. If something goes wrong, raise a dispute before payout to freeze the funds. Works on P2P payments too.',
                 },
                 {
                   label: 'Gas-free transactions',

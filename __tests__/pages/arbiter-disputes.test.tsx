@@ -48,7 +48,7 @@ describe('ArbiterDisputesPage', () => {
     expect(fetcher).toHaveBeenCalledWith('/api/combined-contracts?role=arbiter');
 
     expect(screen.getByText('Needs your decision')).toBeInTheDocument();
-    expect(screen.getByText('Other escrows naming you as tiebreaker')).toBeInTheDocument();
+    expect(screen.getByText('Other protected payments naming you as tiebreaker')).toBeInTheDocument();
     expect(screen.getByText('Escrow a1')).toBeInTheDocument();
     // Closed escrows have no seat worth showing.
     expect(screen.queryByText('Escrow c1')).toBeNull();

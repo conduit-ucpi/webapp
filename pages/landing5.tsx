@@ -50,9 +50,8 @@ export default function Landing5() {
     {
       "@context": "https://schema.org",
       "@type": "FinancialService",
-      "name": "Conduit Escrow",
-      "alternateName": "InstantEscrow",
-      "description": "100% open source cryptocurrency escrow service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed escrow with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
+      "name": "Stabledrop",
+      "description": "100% open source protected payment service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed payments with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
       "url": "https://conduit-ucpi.com",
       "logo": "https://conduit-ucpi.com/icon.png",
       "image": "https://conduit-ucpi.com/preview.png",
@@ -63,14 +62,14 @@ export default function Landing5() {
       "availableChannel": { "@type": "ServiceChannel", "serviceType": "Online Banking", "availableLanguage": "English" },
       "hasOfferCatalog": {
         "@type": "OfferCatalog",
-        "name": "Escrow Services",
+        "name": "Protected Payment Services",
         "itemListElement": [
-          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Time-Delayed Escrow Contracts", "description": "Secure smart contract payment holding with automatic release on a pre-agreed payout date. Buyer can dispute before payout." } },
+          { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Time-Delayed Payment Contracts", "description": "Secure smart contract payment holding with automatic release on a pre-agreed payout date. Buyer can dispute before payout." } },
           { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "E-commerce Integration", "description": "WordPress and Shopify plugins, JavaScript SDK for custom websites." } }
         ]
       },
       "offers": { "@type": "Offer", "priceCurrency": "USD", "price": "1", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "0.01", "priceCurrency": "USD", "referenceQuantity": { "@type": "QuantitativeValue", "value": "1", "unitText": "TRANSACTION" } } },
-      "serviceType": "Cryptocurrency Escrow Service",
+      "serviceType": "Protected Cryptocurrency Payment Service",
       "provider": { "@type": "Organization", "name": "Conduit UCPI", "url": "https://conduit-ucpi.com" },
       "termsOfService": "https://conduit-ucpi.com/terms-of-service",
       "slogan": "Stablecoin payments made safe and easy"
@@ -89,8 +88,8 @@ export default function Landing5() {
   return (
     <>
       <SEO
-        title="Conduit Escrow - Stablecoin Payments with Buyer Protection | 1% Fee"
-        description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee, 10-minute setup. Gas-free transactions. Open source escrow on Base."
+        title="Stabledrop - Stablecoin Payments with Buyer Protection | 1% Fee"
+        description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee, 10-minute setup. Gas-free transactions. Open source payment contracts on Base."
         keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow"
         canonical="/"
         structuredData={structuredData}
@@ -115,7 +114,7 @@ export default function Landing5() {
                 className="text-xs tracking-[0.15em] text-primary-500/70 mb-8"
                 style={{ fontFamily: "'JetBrains Mono', monospace" }}
               >
-                {'// escrow protocol on base'}
+                {'// protected payments on base'}
               </motion.p>
 
               <motion.h1
@@ -133,7 +132,7 @@ export default function Landing5() {
                 variants={heroChild}
                 className="mt-8 text-[15px] text-neutral-400 max-w-lg leading-relaxed"
               >
-                Smart contract escrow. Funds locked until delivery.
+                Smart contract payment protection. Funds locked until delivery.
                 No chargebacks, no freezes, no middlemen. 1% fee. Open source.
               </motion.p>
 
@@ -210,7 +209,7 @@ export default function Landing5() {
                 {
                   step: '01',
                   cmd: 'create',
-                  desc: 'Seller sets amount and payout date. System deploys an escrow contract.',
+                  desc: 'Seller sets amount and payout date. System deploys a payment contract.',
                 },
                 {
                   step: '02',
@@ -235,7 +234,7 @@ export default function Landing5() {
                       className="text-primary-500 text-sm mb-3"
                       style={{ fontFamily: "'JetBrains Mono', monospace" }}
                     >
-                      <span className="text-neutral-500">$</span> escrow.{item.cmd}()
+                      <span className="text-neutral-500">$</span> payment.{item.cmd}()
                     </p>
                     <p className="text-sm text-neutral-400 leading-relaxed">
                       {item.desc}
@@ -279,7 +278,7 @@ export default function Landing5() {
                 },
                 {
                   key: 'no_floats',
-                  text: 'Funds go straight from escrow to your wallet. No processor holding your money.',
+                  text: 'Funds go straight from the payment contract to your wallet. No processor holding your money.',
                 },
                 {
                   key: 'no_freezes',
@@ -407,10 +406,10 @@ export default function Landing5() {
                 className="text-2xl sm:text-3xl font-bold text-white mb-3"
                 style={{ fontFamily: "'JetBrains Mono', monospace" }}
               >
-                Deploy a test escrow<Cursor />
+                Deploy a test payment<Cursor />
               </h2>
               <p className="text-sm text-neutral-500 mb-10 max-w-md">
-                Create a $0.001 escrow. No real money needed. Takes 60 seconds.
+                Create a $0.001 protected payment. No real money needed. Takes 60 seconds.
               </p>
               {isConnected ? (
                 <div className="flex flex-wrap gap-3">

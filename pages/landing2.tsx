@@ -89,9 +89,8 @@ export default function Landing2() {
     {
       "@context": "https://schema.org",
       "@type": "FinancialService",
-      "name": "Conduit Escrow",
-      "alternateName": "InstantEscrow",
-      "description": "100% open source cryptocurrency escrow service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed escrow with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
+      "name": "Stabledrop",
+      "description": "100% open source protected payment service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed payments with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
       "url": "https://conduit-ucpi.com",
       "logo": "https://conduit-ucpi.com/icon.png",
       "image": "https://conduit-ucpi.com/preview.png",
@@ -109,13 +108,13 @@ export default function Landing2() {
       },
       "hasOfferCatalog": {
         "@type": "OfferCatalog",
-        "name": "Escrow Services",
+        "name": "Protected Payment Services",
         "itemListElement": [
           {
             "@type": "Offer",
             "itemOffered": {
               "@type": "Service",
-              "name": "Time-Delayed Escrow Contracts",
+              "name": "Time-Delayed Payment Contracts",
               "description": "Secure smart contract payment holding with automatic release after delivery confirmation. Built-in buyer protection with instant dispute resolution. Gas-free transactions, no chargeback fees, final settlement once payout timer expires."
             }
           },
@@ -144,7 +143,7 @@ export default function Landing2() {
           }
         }
       },
-      "serviceType": "Cryptocurrency Escrow Service",
+      "serviceType": "Protected Cryptocurrency Payment Service",
       "provider": { "@type": "Organization", "name": "Conduit UCPI", "url": "https://conduit-ucpi.com" },
       "termsOfService": "https://conduit-ucpi.com/terms-of-service",
       "slogan": "Stablecoin payments made safe and easy"
@@ -164,8 +163,8 @@ export default function Landing2() {
   return (
     <>
       <SEO
-        title="Conduit Escrow - Open Source Crypto Payments with Built-in Buyer Protection | 1% Fee"
-        description="Get paid safely with blockchain escrow. 100% open source - audit the code yourself. Hold USDC payments in trust until delivery is confirmed. No lawyers, no banks - just security. 60 second setup, 1% fee, free testing."
+        title="Stabledrop - Open Source Crypto Payments with Built-in Buyer Protection | 1% Fee"
+        description="Get paid safely with blockchain payment protection. 100% open source - audit the code yourself. Hold USDC payments in trust until delivery is confirmed. No lawyers, no banks - just security. 60 second setup, 1% fee, free testing."
         keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow, trustless payments, cryptocurrency escrow, time-delayed payments, blockchain payment protection, auditable escrow, transparent blockchain"
         canonical="/"
         structuredData={structuredData}
@@ -207,7 +206,7 @@ export default function Landing2() {
               variants={heroItem}
               className="text-xl lg:text-2xl text-secondary-500 max-w-2xl mx-auto mt-6"
             >
-              Smart contract escrow that protects buyers and sellers. No banks. No lawyers. No waiting.
+              Smart contract payments that protect buyers and sellers. No banks. No lawyers. No waiting.
             </motion.p>
 
             {/* CTAs */}
@@ -273,7 +272,7 @@ export default function Landing2() {
             <div className="grid md:grid-cols-3 gap-12 lg:gap-16">
               {[
                 { num: '1', title: 'Create', desc: 'Seller sets up a payment request with a delivery timeframe.' },
-                { num: '2', title: 'Fund', desc: 'Buyer puts funds into a secure smart contract escrow.' },
+                { num: '2', title: 'Fund', desc: 'Buyer puts funds into a protected payment on a smart contract.' },
                 { num: '3', title: 'Release', desc: 'Seller receives payment automatically after the agreed date.' },
               ].map((step, i) => (
                 <FadeInOnScroll key={step.num} delay={i * 0.15}>
@@ -319,7 +318,7 @@ export default function Landing2() {
                 target: 60,
                 suffix: 's',
                 label: 'to get started',
-                desc: 'Connect a wallet and create your first escrow.',
+                desc: 'Connect a wallet and create your first protected payment.',
               },
             ].map((stat, i) => (
               <FadeInOnScroll key={i} delay={i * 0.1}>

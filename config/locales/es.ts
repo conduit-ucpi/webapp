@@ -6,14 +6,15 @@ import type { pagesEn } from './en';
  *
  * Same register as the SDK catalogue, so the two do not read as different
  * voices on one screen: second person informal ("tú"), "billetera" rather than
- * "cartera", "depósito en garantía" for escrow.
+ * "cartera", "pago protegido" for escrow ("escrow", and its translation "depósito
+ * en garantía", is a licensed term in some jurisdictions).
  *
  * ⚠️ Written without a native reviewer. Have a native speaker from the target
  *    market read this before it goes in front of customers — COBRO's own site
  *    is the register to match.
  */
 export const pagesEs: PageCatalogue<typeof pagesEn> = {
-  'wl.badge': 'Respaldado por depósito en garantía · liquidado en USDC sobre Base',
+  'wl.badge': 'Pago protegido · liquidado en USDC sobre Base',
   'wl.dashboard': 'Panel',
 
   'wl.loadingTitle': 'Crear una solicitud de pago',
@@ -25,12 +26,12 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
 
   'wl.createTitle': 'Solicitud de pago con liberación programada',
   'wl.createSubtitle':
-    'Define un monto y una fecha de liberación. El comprador paga al depósito en garantía, las disputas siguen abiertas hasta esa fecha, y después los fondos pasan a ti automáticamente.',
+    'Define un monto y una fecha de liberación. El comprador hace un pago protegido, las disputas siguen abiertas hasta esa fecha, y después los fondos pasan a ti automáticamente.',
 
   'wl.howTitle': 'Cómo funciona',
   'wl.howStep1': 'Tú defines el monto, la stablecoin y las condiciones de liberación',
   'wl.howStep2':
-    'El comprador paga al depósito en garantía: los fondos quedan retenidos, todavía no se te envían',
+    'El comprador hace un pago protegido: los fondos quedan retenidos, todavía no se te envían',
   'wl.howStep3':
     'Los fondos se liberan a tu billetera automáticamente según las condiciones que fijaste',
 
@@ -45,14 +46,14 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
 
   'wl.seoTitle': '{brand} — crea una solicitud de pago',
   'wl.seoDescription':
-    'Define un monto y una fecha de pago. El comprador paga al depósito en garantía y los fondos se liberan automáticamente en la fecha que ambos acordaron.',
+    'Define un monto y una fecha de pago. El comprador hace un pago protegido y los fondos se liberan automáticamente en la fecha que ambos acordaron.',
 
   // /integrate — la guía de integración. El código, los nombres de campo y los
   // identificadores se quedan en la página sin traducir.
   'integrate.seo.title':
     'Guía de integración — Agrega un checkout con stablecoins a tu sitio web | {siteName}',
   'integrate.seo.description':
-    'Agrega pagos seguros con stablecoins y depósito en garantía a tu sitio web en minutos. Sin backend. Comisión del 1 %, protección con depósito en garantía y soporte para webhooks.',
+    'Agrega pagos protegidos con stablecoins a tu sitio web en minutos. Sin backend. Comisión del 1 %, protección de pagos y soporte para webhooks.',
   'integrate.seo.keywords':
     'integrar pagos cripto, widget de checkout USDC, integración de pagos con stablecoins, checkout con depósito en garantía, aceptar pagos cripto en tu sitio web',
 
@@ -113,7 +114,7 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
     'Checkout sencillo para un solo producto, con seguimiento del pedido.',
   'integrate.examples.extended.title': 'Protección extendida para el comprador',
   'integrate.examples.extended.body':
-    'Define un periodo de depósito en garantía más largo para servicios o artículos de alto valor.',
+    'Define un periodo de protección más largo para servicios o artículos de alto valor.',
   'integrate.examples.custom.title': 'Monto personalizado (donaciones, propinas)',
   'integrate.examples.custom.body': 'Deja que el usuario ingrese su propio monto antes del checkout.',
   'integrate.examples.usdt.title': 'Acepta USDT en lugar de USDC',
@@ -148,7 +149,7 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'integrate.server.eyebrow': 'Desde el servidor',
   'integrate.server.title': 'Sin script: prepara, fondea, liquida.',
   'integrate.server.intro':
-    'Si tienes un backend, puedes omitir el script de checkout. Llama a {prepare} con las condiciones; la respuesta te dice a dónde va el dinero, cómo fondearlo, un enlace que abre el pago para tu cliente y la solicitud exacta que crea el escrow una vez pagado. No hace falta iniciar sesión ni una API key.',
+    'Si tienes un backend, puedes omitir el script de checkout. Llama a {prepare} con las condiciones; la respuesta te dice a dónde va el dinero, cómo fondearlo, un enlace que abre el pago para tu cliente y la solicitud exacta que crea el pago protegido una vez recibido el dinero. No hace falta iniciar sesión ni una API key.',
   'integrate.server.step1.title': 'Prepara el pago',
   'integrate.server.step1.body':
     'Los montos están en las unidades base del token (1 USDC = 1000000). El vendedor y el comprador pueden ser billeteras o correos electrónicos; el comprador es quien puede abrir una disputa.',
@@ -157,7 +158,7 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
     'Envía a tu cliente {payLink} (o un código QR de ese enlace): abre exactamente este pago, y puede pagar con billetera, tarjeta o transferencia. O fondea tú mismo {escrowAddress} usando {fundByTransfer}.',
   'integrate.server.step3.title': 'Liquida',
   'integrate.server.step3.body':
-    'Cuando el dinero haya llegado, envía sin cambios la solicitud del bloque {settle} de la respuesta: {settleRequest}. Crea el escrow y devuelve un recibo firmado. Si la envías demasiado pronto, te dice cuánto tiene la dirección y no gasta nada; si nunca la envías, un escrow fondeado se activa de todos modos en unos 30 minutos.',
+    'Cuando el dinero haya llegado, envía sin cambios la solicitud del bloque {settle} de la respuesta: {settleRequest}. Crea el pago protegido y devuelve un recibo firmado. Si la envías demasiado pronto, te dice cuánto tiene la dirección y no gasta nada; si nunca la envías, un pago fondeado se activa de todos modos en unos 30 minutos.',
   'integrate.server.step3.reference': 'Cada campo está descrito en la {link}.',
 
   'integrate.webhook.ariaLabel': 'Integración con webhooks',
@@ -182,7 +183,7 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'integrate.results.queryTitle': 'Campos de consulta',
   'integrate.results.query.contractid':
     'Coincidencia exacta con el id de contrato que devuelve el checkout',
-  'integrate.results.query.chainAddress': 'Coincidencia exacta con la dirección del escrow',
+  'integrate.results.query.chainAddress': 'Coincidencia exacta con la dirección de pago',
   'integrate.results.query.chainAddresses':
     'La forma por lotes. Se combinan con OR dentro de la lista, así que una sola consulta completa una página entera de contratos en lugar de una llamada por cada uno. No distingue mayúsculas y minúsculas, porque las direcciones leídas de los logs de eventos están en minúsculas mientras que los registros pueden tener checksum',
   'integrate.results.query.sellerWalletId':
@@ -192,7 +193,7 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'integrate.results.responseTitle': 'Campos de la respuesta',
   'integrate.results.response.contractid': 'El id del contrato',
   'integrate.results.response.chainAddress':
-    'La dirección del escrow. Se asigna cuando el comprador abre la página de pago, así que su presencia no indica si pagó: para eso, lee state',
+    'La dirección de pago. Se asigna cuando el comprador abre la página de pago, así que su presencia no indica si pagó: para eso, lee state',
   'integrate.results.response.sellerWalletId':
     'Quién recibe el pago. Compáralo con tu propia billetera',
   'integrate.results.response.amount':
@@ -207,13 +208,13 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'integrate.results.response.maturity':
     'Segundos Unix en que se desbloquean los fondos. Distinto de createdate',
   'integrate.results.note':
-    '{countZero} significa que no existe ese pago: trátalo como no pagado, nunca como un error. También puedes consultar por {chainAddress}, o por {sellerWalletId} para listar todo lo que se pagó a tu billetera. Los montos en una moneda con prefijo {micro} están en millonésimas, así que divide entre 1,000,000. {state} es el ciclo de vida del escrow, no un aprobado/rechazado: un pago completado aparece como {claimed}, así que verifica los estados de error en lugar de buscar un único valor de éxito.',
+    '{countZero} significa que no existe ese pago: trátalo como no pagado, nunca como un error. También puedes consultar por {chainAddress}, o por {sellerWalletId} para listar todo lo que se pagó a tu billetera. Los montos en una moneda con prefijo {micro} están en millonésimas, así que divide entre 1,000,000. {state} es el ciclo de vida del pago, no un aprobado/rechazado: un pago completado aparece como {claimed}, así que verifica los estados de error en lugar de buscar un único valor de éxito.',
 
   'integrate.verified.ariaLabel': 'Datos verificados',
   'integrate.verified.eyebrow': 'Verificación',
   'integrate.verified.title': 'Qué significan los datos verificados.',
   'integrate.verified.verified': 'El backend confirmó que el pago existe en la blockchain',
-  'integrate.verified.state': 'Los fondos están bloqueados en el contrato de escrow',
+  'integrate.verified.state': 'Los fondos están bloqueados en el contrato de pago',
   'integrate.verified.seller': 'Coincide con tu billetera (verificado por el SDK)',
   'integrate.verified.amount': 'Coincide con el monto esperado (verificado por el SDK)',
   'integrate.verified.chainAddress':
@@ -225,7 +226,7 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'integrate.platform.eyebrow': 'Plataforma',
   'integrate.platform.title': 'Protección integrada en cada transacción.',
   'integrate.platform.buyer.label': 'Protección al comprador',
-  'integrate.platform.buyer.1': 'Fondos retenidos en un smart contract de depósito en garantía',
+  'integrate.platform.buyer.1': 'Fondos retenidos en un smart contract de pago',
   'integrate.platform.buyer.2': 'Liberación diferida (7 días por defecto)',
   'integrate.platform.buyer.3': 'Mecanismo de disputas',
   'integrate.platform.buyer.4': 'Árbitro independiente para desempatar',
@@ -279,7 +280,7 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
     'Sí. Los pagos están protegidos por smart contracts inmutables en la blockchain de Base. Los usuarios firman las transacciones con sus propias billeteras. Todas las transacciones son auditables on-chain. Se requiere HTTPS en todas las integraciones.',
   'integrate.faq.chargebacks.q': '¿Y los contracargos?',
   'integrate.faq.chargebacks.a':
-    'Las transacciones con criptomonedas son irreversibles: no hay contracargos como con las tarjetas de crédito. El sistema de depósito en garantía protege al comprador mediante el mecanismo de disputas durante el periodo de protección.',
+    'Las transacciones con criptomonedas son irreversibles: no hay contracargos como con las tarjetas de crédito. El sistema de pagos protegidos ampara al comprador mediante el mecanismo de disputas durante el periodo de protección.',
 
   'integrate.cta.ariaLabel': 'Comienza',
   'integrate.cta.title': '¿Listo para integrar?',

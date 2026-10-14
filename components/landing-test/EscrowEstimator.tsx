@@ -80,7 +80,7 @@ export default function EscrowEstimator({ className = '', ctaLabel = 'Request th
   return (
     <div
       className={`${lt.card} ${lt.radius} border ${lt.border} shadow-lg p-5 sm:p-6 w-full ${className}`}
-      aria-label="Escrow and liquidity estimator"
+      aria-label="Protected payment and liquidity estimator"
       data-testid="escrow-estimator"
     >
       <div className={`flex items-center justify-between mb-4`}>
@@ -189,7 +189,7 @@ export default function EscrowEstimator({ className = '', ctaLabel = 'Request th
         {ctaLabel}
       </Link>
       <p className={`mt-3 text-[11px] leading-relaxed ${lt.muted}`}>
-        Fee comes out of the amount funded; the buyer pays exactly what you ask. Our fee is quoted by the escrow contract itself. Early-sale figure is an estimate; the liquidity marketplace prices each offer.
+        Fee comes out of the amount funded; the buyer pays exactly what you ask. Our fee is quoted by the payment contract itself. Early-sale figure is an estimate; the liquidity marketplace prices each offer.
       </p>
     </div>
   );

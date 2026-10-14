@@ -51,12 +51,12 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: 'Products',
     items: [
-      { label: 'Request payment', href: '/create', description: 'Ask to be paid, into escrow until the payout date' },
+      { label: 'Request payment', href: '/create', description: 'Ask to be paid, protected until the payout date' },
       { label: 'Make payment', href: MAKE_PAYMENT_HREF, description: 'Pay someone, by email, with the right to dispute' },
       { label: 'Dashboard', href: '/dashboard', description: 'Every payment you have sent or requested' },
       { label: 'Liquidity marketplace', href: '/liquidity', description: 'Buy locked payments early, at a discount' },
-      { label: 'Early payment', href: '/early-payment-offer', description: 'Sell an escrowed invoice for cash today' },
-      { label: 'Projects', href: '/projects', description: 'Milestone escrow for multi-party work' },
+      { label: 'Early payment', href: '/early-payment-offer', description: 'Sell a protected invoice for cash today' },
+      { label: 'Projects', href: '/projects', description: 'Protected milestone payments for multi-party work' },
     ],
   },
   {
@@ -117,7 +117,7 @@ export const HOW_IT_WORKS = [
 /** Mercury's "stop losing money to fees": what a processor takes, side by side. */
 export const MERCHANT_POINTS = [
   { label: 'No chargebacks', text: 'Disputes are negotiated between buyer and seller. No chargeback fees, no limits, no penalties on your account.' },
-  { label: 'No floats', text: 'Your money is never held by a payment processor. Funds go straight from escrow to your wallet on the payout date.' },
+  { label: 'No floats', text: 'Your money is never held by a payment processor. Funds go straight from the payment contract to your wallet on the payout date.' },
   { label: 'No freezes', text: 'Transactions run on smart contracts. They execute even if our servers go down — nobody can freeze your funds.' },
   { label: 'No vetting', text: 'No KYC, no KYB, no applications, no approval process. Install and start accepting payments immediately.' },
   { label: 'Put a checkout on your site in 10 minutes', text: 'WordPress plugin, Shopify plugin, or one line of JavaScript. No admin approval needed. A one-off payment request takes a few clicks.' },
@@ -141,21 +141,21 @@ export const BOTH_SIDES_POINTS = [
 ];
 
 export const BUYER_POINTS = [
-  { label: 'Buyer protection on every payment', text: 'Funds are held in escrow until a pre-agreed date. If something goes wrong, raise a dispute before payout to freeze the funds. Works on P2P payments too.' },
+  { label: 'Buyer protection on every payment', text: 'Funds are held in the payment contract until a pre-agreed date. If something goes wrong, raise a dispute before payout to freeze the funds. Works on P2P payments too.' },
   { label: 'Gas-free transactions', text: "You don't need to hold ETH or any native coin. The system covers gas fees in the background." },
   { label: 'Automatic network and wallet', text: 'No choosing networks, no copying wallet addresses. Sign in with Google or email and pay. The system handles the rest.' },
   { label: 'Non-custodial', text: 'The smart contract holds funds — they can only go to buyer or seller. Nobody else can touch them, not even us.' },
 ];
 
 export const AGENT_INTRO =
-  'Stabledrop ships as an MCP server. Connect it to Claude, ChatGPT, Cursor or any MCP client and your agent can prepare, settle and verify escrow payments in plain conversation.';
+  'Stabledrop ships as an MCP server. Connect it to Claude, ChatGPT, Cursor or any MCP client and your agent can prepare, settle and verify protected payments in plain conversation.';
 
 export const AGENT_POINTS = [
   { label: 'Pay an email address', text: 'Name the seller, or whoever may dispute, by email. The agent never needs to know a wallet address.' },
   { label: 'The server holds no key', text: 'It is handed a signed authorisation or the funds land at the address directly. An agent can no more move your money than a stranger can.' },
   { label: 'A person keeps the veto', text: 'Only the named buyer can dispute. Not the agent that paid, not whoever holds the receipt.' },
   { label: 'Signed receipt', text: 'Every settlement returns an AP2 receipt that anyone can verify, naming the payout and the fee.' },
-  { label: 'No credential required', text: 'Streamable HTTP, no API key, no sign-up. The escrow address is a pure function of its terms, so there is nothing to authenticate.' },
+  { label: 'No credential required', text: 'Streamable HTTP, no API key, no sign-up. The payment address is a pure function of its terms, so there is nothing to authenticate.' },
   { label: 'Discoverable', text: 'Listed in the official MCP registry and published at /.well-known/mcp.json, so agents can find it on their own.' },
 ];
 
@@ -195,7 +195,7 @@ export const AUDIENCES: Array<{ key: AudienceKey; label: string; headline: strin
     cases: [
       { title: 'Buying from someone you have never met', text: 'Marketplace purchases, second-hand goods, tickets. Funds only release once you have had time to check.', href: '/p2p', cta: 'Person to person' },
       { title: 'Friends and family across borders', text: 'Send stablecoins anywhere for one percent, no correspondent bank, no three-day wait.', href: '/create', cta: 'Send a payment' },
-      { title: 'Freelancers getting paid', text: 'Request payment up front into escrow. Your client is protected until the payout date; you know the money is there.', href: '/create', cta: 'Request payment' },
+      { title: 'Freelancers getting paid', text: 'Request a protected payment up front. Your client is protected until the payout date; you know the money is there.', href: '/create', cta: 'Request payment' },
       { title: 'A currency that holds its value', text: 'Where the local currency is unstable, a dollar-pegged stablecoin is a place to hold savings and a way to get paid.', href: '/how-it-works', cta: 'How it works' },
     ],
   },
@@ -206,14 +206,14 @@ export const AUDIENCES: Array<{ key: AudienceKey; label: string; headline: strin
     cases: [
       { title: 'Online stores', text: 'A WordPress or Shopify plugin, or one script tag on any site. Checkout with buyer protection, no chargebacks.', href: '/merchant', cta: 'For merchants' },
       { title: 'Startups paying contractors', text: 'Pay by email address, with a payout date the contractor can see. No bank onboarding for either side.', href: '/create', cta: 'Request payment' },
-      { title: 'B2B invoices, paid on day one', text: 'Your customer funds the invoice into escrow up front; you sell the claim for cash today and keep the tail.', href: '/early-payment-offer', cta: 'Early payment' },
-      { title: 'Enterprise and high-value work', text: 'Milestone escrow for complex projects, with a dispute policy and a dispute window on every stage.', href: '/projects', cta: 'Projects' },
+      { title: 'B2B invoices, paid on day one', text: 'Your customer pays the invoice up front into a protected payment; you sell the claim for cash today and keep the tail.', href: '/early-payment-offer', cta: 'Early payment' },
+      { title: 'Enterprise and high-value work', text: 'Protected milestone payments for complex projects, with a dispute policy and a dispute window on every stage.', href: '/projects', cta: 'Projects' },
     ],
   },
   {
     key: 'platform',
     label: 'Platform',
-    headline: 'Embed escrow in your product, your marketplace, or your agent.',
+    headline: 'Embed protected payments in your product, your marketplace, or your agent.',
     cases: [
       { title: 'Embed in your platform', text: 'The JavaScript SDK opens the checkout from any button; results come back to your webhook. No backend required.', href: '/integrate', cta: 'JavaScript SDK' },
       { title: 'AI agents', text: 'One MCP URL. The agent prepares, settles and verifies; a named person keeps the veto.', href: '/plugins#mcp', cta: 'Connect your agent' },
@@ -277,7 +277,7 @@ Save. Done.`,
   {
     key: 'shopify',
     label: 'Shopify',
-    intro: 'One click installs the app on your store. Orders paid in stablecoin sit in escrow until the payout date you choose.',
+    intro: 'One click installs the app on your store. Orders paid in stablecoin are held in the payment contract until the payout date you choose.',
     language: 'text',
     code: `Install the Stabledrop app
   → Connect your wallet
@@ -291,7 +291,7 @@ and none of them can be charged back.`,
   {
     key: 'mcp',
     label: 'AI agents (MCP)',
-    intro: 'One URL, no API key. Your agent gets tools to prepare an escrow payment, settle it, and verify the receipt.',
+    intro: 'One URL, no API key. Your agent gets tools to prepare a protected payment, settle it, and verify the receipt.',
     language: 'bash',
     code: `# Claude Code
 claude mcp add --transport http stabledrop ${MCP_URL}
@@ -317,9 +317,9 @@ export const FOOTER_LINKS: NavLink[] = [
   { label: CONTACT_EMAIL, href: `mailto:${CONTACT_EMAIL}` },
 ];
 
-export const SEO_TITLE = 'Conduit Escrow - Stablecoin Payments with Buyer Protection';
+export const SEO_TITLE = 'Stabledrop - Stablecoin Payments with Buyer Protection';
 export const SEO_DESCRIPTION =
-  'Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee. Put a checkout on your site in 10 minutes. Gas-free transactions. Open source escrow on Base.';
+  'Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee. Put a checkout on your site in 10 minutes. Gas-free transactions. Open source payment contracts on Base.';
 export const SEO_KEYWORDS =
   'open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow, MCP server, AI agent payments, agentic payments';
 
@@ -353,11 +353,11 @@ export const FAQ_SHORT = [
  */
 export const SEO_TITLE_GETPAID = 'Get paid with buyer protection. No chargebacks. 1%.';
 export const SEO_DESCRIPTION_GETPAID =
-  'Request a payment in a few clicks or put a checkout on your site in 10 minutes. Funds sit in escrow until the payout date: the buyer is protected, you cannot be charged back. 1% flat, no vetting, open source.';
+  'Request a payment in a few clicks or put a checkout on your site in 10 minutes. Funds are held until the payout date: the buyer is protected, you cannot be charged back. 1% flat, no vetting, open source.';
 
 /** Hover definitions for the words that do the work. */
 export const GLOSSARY: Record<string, string> = {
-  escrow: 'A smart contract that holds the money and can only pay the buyer or the seller. Nobody else, including us.',
+  'protected payment': 'A smart contract that holds the money and can only pay the buyer or the seller. Nobody else, including us.',
   'payout date': 'The date both sides agreed. On that day the seller is paid automatically, unless a dispute froze the funds first.',
   dispute: 'The buyer can raise one any time before the payout date. It freezes the funds; it never moves them.',
   gas: 'The network fee for a transaction on Base. We cover it, so the buyer never needs ETH.',

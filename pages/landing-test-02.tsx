@@ -208,7 +208,7 @@ export default function LandingTest02() {
               <p className={`text-sm font-medium ${lt.accentText}`}>Payments, minus the processor</p>
               <h2 className={`mt-3 ${h2}`}>Stop losing money to fees.</h2>
               <p className={`mt-5 text-base leading-relaxed ${lt.muted}`}>
-                A card processor sits between you and your customer and charges rent for it: a percentage, a fixed fee, a reserve, a chargeback penalty and a three-day wait. Escrow on a smart contract does the one thing a processor is actually for — protecting the buyer — and skips the rest.
+                A card processor sits between you and your customer and charges rent for it: a percentage, a fixed fee, a reserve, a chargeback penalty and a three-day wait. A protected payment on a smart contract does the one thing a processor is actually for — protecting the buyer — and skips the rest.
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link href="/plugins" className={lt.btnPrimary}>View integrations</Link>

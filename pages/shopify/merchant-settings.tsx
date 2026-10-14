@@ -114,13 +114,13 @@ export default function MerchantSettings() {
               }}
             />
             <p style={{ fontSize: '14px', color: '#6d7175', marginTop: '8px' }}>
-              This is where you'll receive USDC payments after the escrow period.
+              This is where you'll receive USDC payments after the protection period.
             </p>
           </div>
 
           <div style={{ marginBottom: '32px' }}>
             <label style={{ display: 'block', color: '#202223', fontWeight: '600', marginBottom: '8px' }}>
-              Escrow Period (days)
+              Protection Period (days)
             </label>
             <select
               value={payoutDelayDays}
@@ -140,7 +140,7 @@ export default function MerchantSettings() {
               ))}
             </select>
             <p style={{ fontSize: '14px', color: '#6d7175', marginTop: '8px' }}>
-              Buyer protection period. Funds are held in escrow and can be disputed during this time.
+              Buyer protection period. Funds are held in the payment contract and can be disputed during this time.
             </p>
           </div>
 
@@ -148,7 +148,7 @@ export default function MerchantSettings() {
             <h3 style={{ margin: '0 0 12px', color: '#667eea' }}>💡 How it works:</h3>
             <ul style={{ margin: 0, paddingLeft: '20px', color: '#6d7175' }}>
               <li>Customer pays with USDC at checkout</li>
-              <li>Funds held in smart contract escrow for {payoutDelayDays} days</li>
+              <li>Funds held in the payment contract for {payoutDelayDays} days</li>
               <li>Customer can dispute if product not received</li>
               <li>After {payoutDelayDays} days, USDC automatically sent to your wallet</li>
               <li>Only 1% transaction fee (no monthly fees!)</li>

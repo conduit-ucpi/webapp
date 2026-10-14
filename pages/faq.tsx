@@ -215,7 +215,7 @@ export default function FAQ() {
         "name": "What about international transactions and different countries' laws?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "This is an escrow money transfer service, not a legal dispute-resolution service. Formal legal proceedings are between buyer and seller. Once resolution has been agreed (with or without legal involvement), funds are allocated according to that agreement."
+          "text": "This is a protected money transfer service, not a legal dispute-resolution service. Formal legal proceedings are between buyer and seller. Once resolution has been agreed (with or without legal involvement), funds are allocated according to that agreement."
         }
       },
       {
@@ -313,7 +313,7 @@ export default function FAQ() {
         "name": "How long should I wait before disputing if I need time to inspect complex items?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "This system provides escrow infrastructure to make transactions trustless. Agreements about inspection periods and acceptance criteria are for buyer and seller to negotiate between themselves."
+          "text": "This system provides payment-protection infrastructure to make transactions trustless. Agreements about inspection periods and acceptance criteria are for buyer and seller to negotiate between themselves."
         }
       },
       // Getting Started
@@ -437,7 +437,7 @@ export default function FAQ() {
         "name": "Why no reserve requirements?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "Reserves exist so processors can cover chargebacks if you can't. Our system doesn't have chargebacks — disputes are resolved before funds leave escrow. Nothing to reserve against."
+          "text": "Reserves exist so processors can cover chargebacks if you can't. Our system doesn't have chargebacks — disputes are resolved before funds leave the payment contract. Nothing to reserve against."
         }
       },
       {
@@ -461,7 +461,7 @@ export default function FAQ() {
         "name": "Can my merchant account be frozen or terminated?",
         "acceptedAnswer": {
           "@type": "Answer",
-          "text": "We can't freeze funds that aren't in our custody. Your money is either in the escrow contract (where only you and the buyer can claim it) or in your wallet. There's no 'account' to terminate — each transaction is its own contract."
+          "text": "We can't freeze funds that aren't in our custody. Your money is either in the payment contract (where only you and the buyer can claim it) or in your wallet. There's no 'account' to terminate — each transaction is its own contract."
         }
       },
       // Merchant How It Works
@@ -724,8 +724,8 @@ export default function FAQ() {
   return (
     <>
       <SEO
-        title="FAQ - Crypto Escrow Questions Answered | Conduit Escrow"
-        description="Get answers to all your questions about crypto escrow, USDC payments, disputes, security, merchant payment processing, chargebacks, PCI compliance, and how our blockchain escrow system protects buyers and sellers."
+        title="FAQ - Protected Payment Questions Answered | Stabledrop"
+        description="Get answers to all your questions about protected payments, USDC payments, disputes, security, merchant payment processing, chargebacks, PCI compliance, and how our protected payments protect buyers and sellers."
         keywords="crypto escrow faq, blockchain escrow questions, USDC payment help, escrow dispute resolution, smart contract security, crypto payment protection, merchant payments, stablecoin payments, no chargebacks, PCI compliance free, high-risk merchant, escrow how it works"
         canonical="/faq"
         structuredData={faqSchema}
@@ -773,7 +773,7 @@ export default function FAQ() {
                 className="text-2xl sm:text-3xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                How the escrow system works.
+                How protected payments work.
               </h2>
             </Fade>
 
@@ -1037,7 +1037,7 @@ export default function FAQ() {
               <Fade>
                 <FAQItem question="What about international transactions and different countries' laws?">
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-                    This is an escrow money transfer service, not a legal dispute-resolution service. Formal legal proceedings are between buyer and seller. Once resolution has been agreed (with or without legal involvement), funds are allocated according to that agreement.
+                    This is a protected money transfer service, not a legal dispute-resolution service. Formal legal proceedings are between buyer and seller. Once resolution has been agreed (with or without legal involvement), funds are allocated according to that agreement.
                   </p>
                 </FAQItem>
               </Fade>
@@ -1197,7 +1197,7 @@ export default function FAQ() {
               <Fade delay={0.25}>
                 <FAQItem question="How long should I wait before disputing if I need time to inspect complex items?">
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-                    This system provides escrow infrastructure to make transactions trustless. Agreements about inspection periods and acceptance criteria are for buyer and seller to negotiate between themselves.
+                    This system provides payment-protection infrastructure to make transactions trustless. Agreements about inspection periods and acceptance criteria are for buyer and seller to negotiate between themselves.
                   </p>
                 </FAQItem>
               </Fade>
@@ -1413,7 +1413,7 @@ export default function FAQ() {
               <Fade delay={0.15}>
                 <FAQItem question="Why no reserve requirements?">
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-                    Reserves exist so processors can cover chargebacks if you can&apos;t. Our system doesn&apos;t have chargebacks — disputes are resolved before funds leave escrow. Nothing to reserve against.
+                    Reserves exist so processors can cover chargebacks if you can&apos;t. Our system doesn&apos;t have chargebacks — disputes are resolved before funds leave the payment contract. Nothing to reserve against.
                   </p>
                 </FAQItem>
               </Fade>
@@ -1437,7 +1437,7 @@ export default function FAQ() {
               <Fade delay={0.3}>
                 <FAQItem question="Can my merchant account be frozen or terminated?">
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 leading-relaxed">
-                    We can&apos;t freeze funds that aren&apos;t in our custody. Your money is either in the escrow contract (where only you and the buyer can claim it) or in your wallet. There&apos;s no &quot;account&quot; to terminate — each transaction is its own contract.
+                    We can&apos;t freeze funds that aren&apos;t in our custody. Your money is either in the payment contract (where only you and the buyer can claim it) or in your wallet. There&apos;s no &quot;account&quot; to terminate — each transaction is its own contract.
                   </p>
                 </FAQItem>
               </Fade>

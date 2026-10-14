@@ -46,12 +46,12 @@ export default class CustomDocument extends Document<DocumentProps> {
         <link rel="apple-touch-icon" href="/icon-512.png" />
 
         {/* Farcaster mini-app configuration */}
-        <meta name="fc:miniapp" content={`{"version": "next", "imageUrl": "${farcasterBaseUrl}/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Instant Escrow", "url": "${farcasterBaseUrl}"}}}`} />
+        <meta name="fc:miniapp" content={`{"version": "next", "imageUrl": "${farcasterBaseUrl}/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Stabledrop", "url": "${farcasterBaseUrl}"}}}`} />
         {/* For backward compatibility */}
-        <meta name="fc:frame" content={`{"version": "next", "imageUrl": "${farcasterBaseUrl}/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Instant Escrow", "url": "${farcasterBaseUrl}"}}}`} />
+        <meta name="fc:frame" content={`{"version": "next", "imageUrl": "${farcasterBaseUrl}/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Stabledrop", "url": "${farcasterBaseUrl}"}}}`} />
         <meta property="og:image" content={`${farcasterBaseUrl}/preview.png`} />
-        <meta property="og:title" content="Conduit Escrow" />
-        <meta property="og:description" content="Time-delayed escrow contracts on blockchain" />
+        <meta property="og:title" content="Stabledrop" />
+        <meta property="og:description" content="Protected payments with a dispute window, settled on-chain" />
         
         {/* Farcaster domain verification */}
         <link rel="canonical" href="/.well-known/farcaster.json" />

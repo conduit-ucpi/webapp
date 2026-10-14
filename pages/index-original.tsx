@@ -41,9 +41,8 @@ export default function Home() {
     {
       "@context": "https://schema.org",
       "@type": "FinancialService",
-      "name": "Conduit Escrow",
-      "alternateName": "InstantEscrow",
-      "description": "100% open source cryptocurrency escrow service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed escrow with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
+      "name": "Stabledrop",
+      "description": "100% open source protected payment service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed payments with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
       "url": "https://conduit-ucpi.com",
       "logo": "https://conduit-ucpi.com/icon.png",
       "image": "https://conduit-ucpi.com/preview.png",
@@ -64,13 +63,13 @@ export default function Home() {
       },
       "hasOfferCatalog": {
         "@type": "OfferCatalog",
-        "name": "Escrow Services",
+        "name": "Protected Payment Services",
         "itemListElement": [
           {
             "@type": "Offer",
             "itemOffered": {
               "@type": "Service",
-              "name": "Time-Delayed Escrow Contracts",
+              "name": "Time-Delayed Payment Contracts",
               "description": "Secure smart contract payment holding with automatic release after delivery confirmation. Built-in buyer protection with instant dispute resolution. Gas-free transactions, no chargeback fees, final settlement once payout timer expires."
             }
           },
@@ -99,7 +98,7 @@ export default function Home() {
           }
         }
       },
-      "serviceType": "Cryptocurrency Escrow Service",
+      "serviceType": "Protected Cryptocurrency Payment Service",
       "provider": {
         "@type": "Organization",
         "name": "Conduit UCPI",
@@ -120,7 +119,7 @@ export default function Home() {
       },
       "publisher": {
         "@type": "Organization",
-        "name": "Conduit Escrow",
+        "name": "Stabledrop",
         "logo": {
           "@type": "ImageObject",
           "url": "https://conduit-ucpi.com/icon.png"
@@ -136,8 +135,8 @@ export default function Home() {
   return (
     <>
       <SEO
-        title="Conduit Escrow - Open Source Crypto Payments with Built-in Buyer Protection | 1% Fee"
-        description="Get paid safely with blockchain escrow. 100% open source - audit the code yourself. Hold USDC payments in trust until delivery is confirmed. No lawyers, no banks - just security. 60 second setup, 1% fee, free testing."
+        title="Stabledrop - Open Source Crypto Payments with Built-in Buyer Protection | 1% Fee"
+        description="Get paid safely with blockchain payment protection. 100% open source - audit the code yourself. Hold USDC payments in trust until delivery is confirmed. No lawyers, no banks - just security. 60 second setup, 1% fee, free testing."
         keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow, trustless payments, cryptocurrency escrow, time-delayed payments, blockchain payment protection, auditable escrow, transparent blockchain"
         canonical="/"
         structuredData={structuredData}
@@ -190,7 +189,7 @@ export default function Home() {
                       Send or Request Payment
                     </h3>
                     <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-3">
-                      Create payment requests or manage your escrow transactions
+                      Create payment requests or manage your protected payments
                     </p>
                     <p className="text-xs text-secondary-500 dark:text-secondary-400 mb-6">
                       Authenticate with social ID, passwordless email or existing wallet
@@ -272,7 +271,7 @@ export default function Home() {
           <div className="hidden lg:block">
             <Image
               src="/payment_gateway.png"
-              alt="Secure blockchain escrow payment gateway for cryptocurrency transactions with buyer protection"
+              alt="Protected blockchain payment gateway for cryptocurrency transactions with buyer protection"
               className="w-full h-auto max-w-lg mx-auto"
               width={500}
               height={500}
@@ -351,13 +350,13 @@ export default function Home() {
         </section>
 
         {/* Interactive Demo Section */}
-        <section className="mt-40 lg:mt-48" id="how-it-works" aria-label="How Conduit Escrow Works">
+        <section className="mt-40 lg:mt-48" id="how-it-works" aria-label="How Stabledrop Works">
           <InteractiveDemo />
         </section>
 
-        <section className="mt-40 lg:mt-48" aria-label="Escrow Process Steps">
+        <section className="mt-40 lg:mt-48" aria-label="Protected Payment Steps">
         <h2 className="text-4xl lg:text-5xl font-bold text-secondary-900 dark:text-white text-center mb-20 tracking-tight">
-          Simple 3-Step Escrow Process
+          Simple 3-Step Payment Process
         </h2>
         <div className="relative">
           {/* Connection lines */}
@@ -409,7 +408,7 @@ export default function Home() {
                     </div>
                     <div>
                       <h3 className="text-xl font-semibold text-secondary-900 mb-3">Buyer raises a dispute</h3>
-                      <p className="text-secondary-600 leading-relaxed">If goods don't arrive, arrive damaged, or aren't as described, the buyer can click "Raise Dispute" before the payout date. Funds immediately freeze in escrow - the seller can't access them.</p>
+                      <p className="text-secondary-600 leading-relaxed">If goods don't arrive, arrive damaged, or aren't as described, the buyer can click "Raise Dispute" before the payout date. Funds immediately freeze in the payment contract - the seller can't access them.</p>
                     </div>
                   </div>
                 </div>
@@ -422,7 +421,7 @@ export default function Home() {
                     </div>
                     <div>
                       <h3 className="text-xl font-semibold text-secondary-900 mb-3">Buyer and seller negotiate directly</h3>
-                      <p className="text-secondary-600 leading-relaxed mb-4">Our automated system facilitates direct negotiation between buyer and seller. Each party proposes a fair split of the escrowed funds (e.g., 70% refund to buyer, 30% to seller for shipping costs).</p>
+                      <p className="text-secondary-600 leading-relaxed mb-4">Our automated system facilitates direct negotiation between buyer and seller. Each party proposes a fair split of the protected funds (e.g., 70% refund to buyer, 30% to seller for shipping costs).</p>
                       <div className="bg-secondary-50 rounded-lg p-5 border border-secondary-200">
                         <p className="text-sm font-semibold text-secondary-900 mb-3">Why this works better than chargebacks:</p>
                         <ul className="text-sm text-secondary-700 space-y-2">

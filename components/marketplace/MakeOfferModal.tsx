@@ -136,7 +136,7 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
     setStep('creating');
     try {
       if (!tokenAddress) {
-        throw new Error('This escrow\u2019s payment token could not be determined, so there is nothing to deposit.');
+        throw new Error('This protected payment\u2019s token could not be determined, so there is nothing to deposit.');
       }
       // The platform deploys the vault. No money moves and the LP signs nothing. Everything
       // after this — which wallet the capital comes from, and opening the offer once it
@@ -237,8 +237,8 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
                   </>
                 ) : (
                   <>
-                    This escrow already carries a residual from an earlier sale, and an escrow can
-                    hold only one. You cannot set another.
+                    This protected payment already carries a residual from an earlier sale, and a
+                    payment can hold only one. You cannot set another.
                   </>
                 )}
               </p>
@@ -306,7 +306,7 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
               )}
               {payoutUnavailable && (
                 <p className="text-xs text-amber-700 dark:text-amber-300 pt-1">
-                  The escrow&apos;s exact payout could not be read, so this is priced off the gross
+                  The payment&apos;s exact payout could not be read, so this is priced off the gross
                   amount. The real figure is slightly lower — the creator fee comes out of it.
                 </p>
               )}

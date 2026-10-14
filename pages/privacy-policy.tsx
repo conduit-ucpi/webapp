@@ -29,7 +29,7 @@ export default function PrivacyPolicy({ lastUpdated }: { lastUpdated: string }) 
             <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
               <li>Wallet addresses and public blockchain data</li>
               <li>Email addresses for account identification</li>
-              <li>Transaction data related to escrow contracts</li>
+              <li>Transaction data related to payment contracts</li>
               <li>Usage analytics and performance metrics</li>
             </ul>
           </section>
@@ -40,7 +40,7 @@ export default function PrivacyPolicy({ lastUpdated }: { lastUpdated: string }) 
               We use the information we collect to:
             </p>
             <ul className="list-disc pl-6 text-secondary-700 dark:text-secondary-200 space-y-2">
-              <li>Provide and maintain our escrow services</li>
+              <li>Provide and maintain our protected payment services</li>
               <li>Process transactions and manage contracts</li>
               <li>Communicate with you about your account and transactions</li>
               <li>Improve our services and user experience</li>

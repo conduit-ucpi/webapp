@@ -84,7 +84,7 @@ export function verifyCloneBytecode(
       ok: false,
       reason: 'no-expected-implementation',
       detail:
-        'No known-good escrow implementation is baked into this build ' +
+        'No known-good payment contract implementation is baked into this build ' +
         '(NEXT_PUBLIC_ESCROW_IMPLEMENTATION_ADDRESS). Refusing to verify.',
     };
   }

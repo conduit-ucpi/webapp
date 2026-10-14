@@ -31,8 +31,8 @@ export default function Landing7() {
   return (
     <>
       <SEO
-        title="Conduit Escrow - Stablecoin Payments with Buyer Protection"
-        description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee. 10-minute setup. Gas-free transactions. Open source escrow on Base."
+        title="Stabledrop - Stablecoin Payments with Buyer Protection"
+        description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee. 10-minute setup. Gas-free transactions. Open source payment contracts on Base."
         keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow, MCP server, AI agent payments, agentic payments"
         canonical="/landing7"
         structuredData={structuredData}
@@ -65,7 +65,7 @@ export default function Landing7() {
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
                 style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Create a payment request in a few clicks. Funds sit in escrow until the payout date&nbsp;&mdash; your buyer is protected, and you can&apos;t be charged back. No vetting, no gas fees.
+                Create a payment request in a few clicks. Funds are held until the payout date&nbsp;&mdash; your buyer is protected, and you can&apos;t be charged back. No vetting, no gas fees.
               </motion.p>
 
               {/* Replaces the former "Explore Plugins" CTA and the
@@ -250,7 +250,7 @@ export default function Landing7() {
                 },
                 {
                   label: 'No floats',
-                  text: 'Your money is never held by a payment processor. Funds go straight from escrow to your wallet on the payout date.',
+                  text: 'Your money is never held by a payment processor. Funds go straight from the payment contract to your wallet on the payout date.',
                 },
                 {
                   label: 'No freezes',
@@ -319,7 +319,7 @@ export default function Landing7() {
               {[
                 {
                   label: 'Buyer protection on every payment',
-                  text: 'Funds are held in escrow until a pre-agreed date. If something goes wrong, raise a dispute before payout to freeze the funds. Works on P2P payments too.',
+                  text: 'Funds are held in the payment contract until a pre-agreed date. If something goes wrong, raise a dispute before payout to freeze the funds. Works on P2P payments too.',
                 },
                 {
                   label: 'Gas-free transactions',
@@ -368,7 +368,7 @@ export default function Landing7() {
                 Let an agent pay on your behalf. Keep the right to object.
               </h2>
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-16 max-w-md">
-                Stabledrop ships as an MCP server. Connect it to Claude, ChatGPT, Cursor or any MCP client and your agent can prepare, settle and verify escrow payments in plain conversation.
+                Stabledrop ships as an MCP server. Connect it to Claude, ChatGPT, Cursor or any MCP client and your agent can prepare, settle and verify protected payments in plain conversation.
               </p>
             </Fade>
 
@@ -392,7 +392,7 @@ export default function Landing7() {
                 },
                 {
                   label: 'No credential required',
-                  text: 'Streamable HTTP, no API key, no sign-up. The escrow address is a pure function of its terms, so there is nothing to authenticate.',
+                  text: 'Streamable HTTP, no API key, no sign-up. The payment address is a pure function of its terms, so there is nothing to authenticate.',
                 },
                 {
                   label: 'Discoverable',

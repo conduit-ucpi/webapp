@@ -6,9 +6,8 @@
 export const financialServiceSchema = {
   "@context": "https://schema.org",
   "@type": "FinancialService",
-  "name": "Conduit Escrow",
-  "alternateName": "InstantEscrow",
-  "description": "100% open source cryptocurrency escrow service for USDC stablecoin payments with built-in buyer protection. Smart contract-based time-delayed escrow with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
+  "name": "Stabledrop",
+  "description": "100% open source protected payments in USDC stablecoins with built-in buyer protection. Funds are held by a smart contract until a pre-agreed release date, with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
   "url": "https://conduit-ucpi.com",
   "logo": "https://conduit-ucpi.com/icon.png",
   "image": "https://conduit-ucpi.com/preview.png",
@@ -19,14 +18,14 @@ export const financialServiceSchema = {
   "availableChannel": { "@type": "ServiceChannel", "serviceType": "Online Banking", "availableLanguage": "English" },
   "hasOfferCatalog": {
     "@type": "OfferCatalog",
-    "name": "Escrow Services",
+    "name": "Protected Payments",
     "itemListElement": [
-      { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Time-Delayed Escrow Contracts", "description": "Secure smart contract payment holding with automatic release on a pre-agreed payout date. Buyer can dispute before payout." } },
+      { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "Time-Delayed Protected Payments", "description": "Secure smart contract payment holding with automatic release on a pre-agreed payout date. Buyer can dispute before payout." } },
       { "@type": "Offer", "itemOffered": { "@type": "Service", "name": "E-commerce Integration", "description": "WordPress and Shopify plugins, JavaScript SDK for custom websites." } }
     ]
   },
   "offers": { "@type": "Offer", "priceCurrency": "USD", "price": "1", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "0.01", "priceCurrency": "USD", "referenceQuantity": { "@type": "QuantitativeValue", "value": "1", "unitText": "TRANSACTION" } } },
-  "serviceType": "Cryptocurrency Escrow Service",
+  "serviceType": "Protected Stablecoin Payments",
   "provider": { "@type": "Organization", "name": "Conduit UCPI", "url": "https://conduit-ucpi.com" },
   "termsOfService": "https://conduit-ucpi.com/terms-of-service",
   "slogan": "Stablecoin payments made safe and easy"
@@ -43,7 +42,7 @@ export const articleSchema = {
   },
   "publisher": {
     "@type": "Organization",
-    "name": "Conduit Escrow",
+    "name": "Stabledrop",
     "logo": {
       "@type": "ImageObject",
       "url": "https://conduit-ucpi.com/icon.png"

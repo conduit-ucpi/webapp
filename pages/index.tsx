@@ -14,6 +14,7 @@ import AudienceTabs from '@/components/landing-test/AudienceTabs';
 import EmbedExamples from '@/components/landing-test/EmbedExamples';
 import DemoButtons from '@/components/landing-test/DemoButtons';
 import LandingFooter from '@/components/landing-test/LandingFooter';
+import PricingTabs from '@/components/landing-test/PricingTabs';
 import { lt, themeCss } from '@/components/landing-test/theme';
 import { LANDING_PAGE_LOOK } from '@/config/looks';
 import { Announcement, Chapter, CheckoutMock, HoverChapter, ScrollyHero, card, section } from '@/components/landing-test/scrolly';
@@ -26,7 +27,8 @@ import {
   BUYER_POINTS,
   HOW_IT_WORKS,
   MERCHANT_POINTS,
-  PRICING_COMPARISON,
+  PRICING_TABS,
+  PricingKey,
   SEO_DESCRIPTION_GETPAID,
   SEO_KEYWORDS,
   SEO_TITLE_GETPAID,
@@ -37,8 +39,8 @@ import {
  *
  * Sticky-left chapters: the right column is only ever titles, the detail lives on the
  * left and follows the pointer, so nothing on the right ever grows or shifts. The nav's
- * account link is "My dashboard". Pricing is a side-by-side table: what a processor
- * charges for each line, against ours. Layout.tsx renders no site header or footer here;
+ * account link is "My dashboard". Pricing is a side-by-side table with a pill switch between
+ * a card processor and a traditional escrow service, each line against ours. Layout.tsx renders no site header or footer here;
  * the page carries its own.
  */
 
@@ -47,6 +49,8 @@ const ID = 'home';
 export default function Home() {
   const [siteName, setSiteName] = useState('Stabledrop.me');
   useEffect(() => setSiteName(getSiteNameFromDomain()), []);
+  const [pricing, setPricing] = useState<PricingKey>('card');
+  const pricingTab = PRICING_TABS.find((t) => t.key === pricing)!;
 
   return (
     <>
@@ -166,30 +170,12 @@ export default function Home() {
         <Chapter
           id="pricing"
           label="Pricing"
-          title="Traditional processor vs. Stabledrop, line by line."
+          title={pricingTab.title}
           ariaLabel="Pricing"
-          aside={
-            <div className={`${card} overflow-hidden`}>
-              <div className={`grid grid-cols-[1.2fr_1fr_1fr] text-xs uppercase tracking-[0.18em] px-5 py-3 border-b ${lt.border} ${lt.muted}`}>
-                <span>Line item</span>
-                <span>Traditional</span>
-                <span className={lt.accentText}>Stabledrop</span>
-              </div>
-              {PRICING_COMPARISON.map((r) => (
-                <div key={r.item} className={`grid grid-cols-[1.2fr_1fr_1fr] gap-x-3 px-5 py-3.5 text-sm border-b last:border-b-0 ${lt.border} hover:bg-[color:var(--lt-accent-soft)] transition-colors`}>
-                  <span className={lt.muted}>{r.item}</span>
-                  <span className={lt.fg}>{r.traditional}</span>
-                  <span className={`font-semibold ${lt.accentText}`}>{r.us}</span>
-                </div>
-              ))}
-              <div className="p-5">
-                <Link href="/merchant-savings-calculator" className={`${lt.btnSecondary} w-full`}>See how much you&apos;d save vs. Stripe, Square or PayPal</Link>
-              </div>
-            </div>
-          }
+          aside={<PricingTabs active={pricing} onChange={setPricing} />}
         >
           <p className={`text-[7rem] leading-none font-medium tracking-tighter ${lt.accentText}`}>1%</p>
-          <p className={`mt-2 ${lt.muted}`}>per transaction. Every other line is none.</p>
+          <p className={`mt-2 ${lt.muted}`}>{pricingTab.summary}</p>
         </Chapter>
 
         <section className={`border-t ${lt.border}`} aria-label="Why switch">

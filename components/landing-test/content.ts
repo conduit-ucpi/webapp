@@ -376,3 +376,27 @@ export const PRICING_COMPARISON: ReadonlyArray<{ item: string; traditional: stri
   { item: 'Settlement', traditional: '2–3 days', us: 'Seconds, on the payout date' },
   { item: 'Testing', traditional: 'Sandbox, separate keys', us: 'Free: a real $0.001 payment' },
 ];
+
+/** The same comparison against a traditional escrow service, shown above the card one. */
+export const ESCROW_COMPARISON: ReadonlyArray<{ item: string; traditional: string; us: string }> = [
+  { item: 'Fee', traditional: '2–10% plus minimums', us: '1% ($0.30 minimum)' },
+  { item: 'Setup', traditional: 'By hand, takes days', us: 'A couple of clicks' },
+  { item: 'Release', traditional: 'A person approves it', us: 'Automatic' },
+  { item: 'Custody', traditional: 'Custodial', us: 'Non-custodial' },
+  { item: 'Settlement', traditional: 'Days', us: 'Seconds' },
+];
+
+export type PricingKey = 'card' | 'escrow';
+
+/** The pricing switch: which comparison the table shows, and what the page says beside it. */
+export const PRICING_TABS: ReadonlyArray<{
+  key: PricingKey;
+  label: string;
+  title: string;
+  them: string;
+  summary: string;
+  rows: ReadonlyArray<{ item: string; traditional: string; us: string }>;
+}> = [
+  { key: 'card', label: 'Card payments', title: 'Card payments vs. Stabledrop.', them: 'Card', summary: 'per transaction. Every other line is none.', rows: PRICING_COMPARISON },
+  { key: 'escrow', label: 'Traditional escrow', title: 'Traditional escrow vs. Stabledrop.', them: 'Escrow', summary: 'per transaction, against 2–10% plus minimums.', rows: ESCROW_COMPARISON },
+];

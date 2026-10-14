@@ -5,6 +5,7 @@ import {
   API_DOC_URL,
   BENEFITS,
   BUYER_POINTS,
+  ESCROW_COMPARISON,
   HOW_IT_WORKS,
   MAKE_PAYMENT_HREF,
   MCP_URL,
@@ -195,6 +196,19 @@ describe('homepage', () => {
       expect(within(pricing as HTMLElement).getByText(k)).toBeInTheDocument();
     }
     expect(within(pricing as HTMLElement).getByRole('link')).toHaveAttribute('href', '/merchant-savings-calculator');
+    expect(within(pricing as HTMLElement).getByText('Card payments vs. Stabledrop.')).toBeInTheDocument();
+    // The pill switches the table, and the heading beside it, to traditional escrow.
+    const tabs = within(pricing as HTMLElement).getByTestId('pricing-tabs');
+    fireEvent.click(within(tabs).getByRole('tab', { name: 'Traditional escrow' }));
+    for (const r of ESCROW_COMPARISON) {
+      expect(within(tabs).getByText(r.item)).toBeInTheDocument();
+      expect(within(tabs).getByText(r.traditional)).toBeInTheDocument();
+    }
+    expect(within(pricing as HTMLElement).getByText('Traditional escrow vs. Stabledrop.')).toBeInTheDocument();
+    // The calculator compares against card processors only, so it goes with that tab.
+    expect(within(tabs).queryByRole('link')).toBeNull();
+    fireEvent.click(within(tabs).getByRole('tab', { name: 'Card payments' }));
+    expect(within(tabs).getByText('Processing fee')).toBeInTheDocument();
   });
 
   it('F12–F13: benefit quotes, the plugins CTA and the footer links', () => {

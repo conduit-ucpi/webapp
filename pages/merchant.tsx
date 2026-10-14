@@ -236,7 +236,7 @@ export default function Merchant() {
                 },
                 {
                   label: 'No vetting',
-                  text: 'No KYC, no KYB, no applications, no approval process. Install and start accepting payments immediately.',
+                  text: 'No vetting or approval process to start accepting stablecoin payments immediately. Exchanges and banks require KYC and KYB to cash out to FIAT',
                 },
                 {
                   label: '10-minute setup',

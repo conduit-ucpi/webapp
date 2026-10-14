@@ -167,7 +167,7 @@ export const PRICING_ROWS = [
 /** Stripe's closing "benefit quotes" strip — outcomes, not features. */
 export const BENEFITS = [
   { title: 'Get paid without a processor', text: 'No application, no reserve, no one between your customer and your wallet.' },
-  { title: 'Keep every chargeback', text: 'A dispute freezes the funds; it never takes them back out of your account with a fee attached.' },
+  { title: 'Keep every chargeback', text: 'No chargebacks, ever. A dispute freezes the funds; it never takes them back out of your account, and never charges you an extra fee.'},
   { title: 'Sell to people who cannot pay by card', text: 'Anyone with an email address can pay from anywhere, in a currency that holds its value.' },
   { title: 'Put a checkout on your site in ten minutes', text: 'A plugin, one script tag, or one MCP URL — and a free $0.001 test before you commit.' },
 ];
@@ -213,7 +213,7 @@ export const AUDIENCES: Array<{ key: AudienceKey; label: string; headline: strin
       { title: 'Embed in your platform', text: 'The JavaScript SDK opens the checkout from any button; results come back to your webhook. No backend required.', href: '/integrate', cta: 'JavaScript SDK' },
       { title: 'AI agents', text: 'One MCP URL. The agent prepares, settles and verifies; a named person keeps the veto.', href: '/plugins#mcp', cta: 'Connect your agent' },
       { title: 'Liquidity providers', text: 'Buy locked payments at a discount and collect in full at maturity. A yield with a known date.', href: '/liquidity', cta: 'Liquidity marketplace' },
-      { title: 'Large, complex infrastructure', text: 'Open-source contracts on Base, non-custodial by construction. Audit the code, not our promises.', href: SOURCE_URL, cta: 'Source code' },
+      { title: 'Robust scalable infrastructure', text: 'Open-source contracts on Base, non-custodial by construction. Audit the code, not our promises.', href: SOURCE_URL, cta: 'Source code' },
     ],
   },
 ];

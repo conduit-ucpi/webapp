@@ -11,6 +11,8 @@ import { buildAdminContractsCsv, adminContractsCsvFilename } from './adminContra
 
 interface AdminDatabaseListProps {
   onContractSelect?: (contract: PendingContract) => void;
+  /** The route the list is read through. /admin uses the default; /sd-reporting has its own, checked for its user type. */
+  endpoint?: string;
 }
 
 type SortField = 'createdAt' | 'expiryTimestamp' | 'amount' | 'sellerEmail' | 'buyerEmail' | 'description' | 'status';
@@ -103,7 +105,7 @@ const getStatusColor = (status: string) => {
   }
 };
 
-export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseListProps) {
+export default function AdminDatabaseList({ onContractSelect, endpoint = '/api/contracts/admin/database' }: AdminDatabaseListProps) {
   const [contracts, setContracts] = useState<PendingContract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -149,7 +151,7 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
     try {
       const { from, to } = getDateRange(dateRangeFilter);
       
-      const response = await apiFetch('/api/contracts/admin/database', {
+      const response = await apiFetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -449,7 +451,7 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
               return (
                 <tr 
                   key={contract.id} 
-                  className="hover:bg-gray-50 dark:hover:bg-secondary-800 cursor-pointer transition-colors"
+                  className={`hover:bg-gray-50 dark:hover:bg-secondary-800 transition-colors ${onContractSelect ? 'cursor-pointer' : ''}`}
                   onClick={() => onContractSelect?.(contract)}
                 >
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">

@@ -329,6 +329,11 @@ export const pagesEn = {
   'apiKeys.using.title': 'Using your key',
   'apiKeys.using.body':
     'Send your customer the {payLink} from the response. {amount} is in USDC base units (20000000 = 20 USDC), and {expiry} is when the dispute window closes (0 = instant).',
+  'apiKeys.using.exampleDescription': 'Order #123',
+  'apiKeys.using.withNewKey':
+    'This example contains your new key, so you can run it as it is. Keep it to yourself: it stops showing once you hide the key.',
+  'apiKeys.using.withEnvKey':
+    'Set {variable} to your key on your server, then run this as it is. Create a key above if you don’t have one.',
   'apiKeys.copy': 'Copy',
   'apiKeys.copied': 'Copied',
   'apiKeys.error.session': 'Your session has expired. Sign in again to manage your API keys.',

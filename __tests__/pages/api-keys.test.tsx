@@ -173,9 +173,31 @@ describe('/api-keys', () => {
     expect(mockApiFetch).toHaveBeenCalledTimes(1);
   });
 
-  it('shows how to use a key against the API host', async () => {
+  it('shows how to use a key against the API host, runnable as copied', async () => {
     await renderWithKeys([]);
-    expect(screen.getByText(/curl -X POST https:\/\/api\.stabledrop\.me\/api\/ap2\/request/)).toBeInTheDocument();
+    const sample = screen.getByText(/curl -X POST https:\/\/api\.stabledrop\.me\/api\/ap2\/request/);
+    expect(sample.textContent).toContain('Authorization: Bearer $STABLEDROP_API_KEY');
+    expect(sample.textContent).not.toContain('...');
+    const body = sample.textContent!.match(/-d '(.*)'$/)![1];
+    expect(JSON.parse(body)).toEqual({ amount: 20000000, expiry_timestamp: 0, description: 'Order #123' });
+    expect(screen.getByText('STABLEDROP_API_KEY')).toBeInTheDocument();
     expect(screen.getByText('pay_link')).toBeInTheDocument();
+  });
+
+  it('puts a just-created key into the example, and takes it out again when the key is hidden', async () => {
+    await renderWithKeys([]);
+    mockApiFetch.mockResolvedValueOnce(respond(201, CREATED));
+    fireEvent.change(screen.getByLabelText('Key label'), { target: { value: 'WhatsApp bot' } });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Create key' }));
+    });
+
+    const sample = () => screen.getByText(/curl -X POST/).textContent!;
+    expect(sample()).toContain(`Authorization: Bearer ${CREATED.key}`);
+    expect(screen.getByTestId('example-key-note')).toHaveTextContent(/contains your new key/);
+
+    fireEvent.click(screen.getByRole('button', { name: /hide the key/ }));
+    expect(sample()).not.toContain(CREATED.key);
+    expect(sample()).toContain('$STABLEDROP_API_KEY');
   });
 });

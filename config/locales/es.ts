@@ -329,6 +329,11 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'apiKeys.using.title': 'Cómo usar tu clave',
   'apiKeys.using.body':
     'Envía a tu cliente el {payLink} de la respuesta. {amount} está en unidades base de USDC (20000000 = 20 USDC), y {expiry} es cuándo se cierra el periodo de disputa (0 = inmediato).',
+  'apiKeys.using.exampleDescription': 'Pedido #123',
+  'apiKeys.using.withNewKey':
+    'Este ejemplo contiene tu nueva clave, así que puedes ejecutarlo tal cual. No lo compartas: deja de mostrarse cuando ocultes la clave.',
+  'apiKeys.using.withEnvKey':
+    'Define {variable} con tu clave en tu servidor y ejecuta esto tal cual. Si no tienes una clave, créala arriba.',
   'apiKeys.copy': 'Copiar',
   'apiKeys.copied': 'Copiado',
   'apiKeys.error.session': 'Tu sesión expiró. Vuelve a iniciar sesión para gestionar tus claves de API.',

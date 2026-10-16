@@ -280,10 +280,20 @@ export default function ApiKeysPage() {
     );
   }
 
+  // ⚠️ RUNNABLE AS COPIED. Straight after creating a key it carries that key, the one moment the
+  //    page holds it; otherwise it reads the key from the environment rather than showing a
+  //    placeholder that fails when pasted. The body is built with JSON.stringify so a translated
+  //    description can never break the quoting.
+  const exampleBody = JSON.stringify({
+    amount: 20000000,
+    expiry_timestamp: 0,
+    description: t('apiKeys.using.exampleDescription'),
+  }).replace(/'/g, "'\\''");
+  const bearer = created ? created.key : '$STABLEDROP_API_KEY';
   const curl = `curl -X POST ${API_ORIGIN}/api/ap2/request \\
-  -H "Authorization: Bearer sd_live_..." \\
+  -H "Authorization: Bearer ${bearer}" \\
   -H "Content-Type: application/json" \\
-  -d '{"amount": 20000000, "expiry_timestamp": 0, "description": "Order #123"}'`;
+  -d '${exampleBody}'`;
 
   return (
     <>
@@ -402,6 +412,11 @@ export default function ApiKeysPage() {
 
           <section>
             <h2 className="text-lg font-medium text-secondary-900 dark:text-white mb-3">{t('apiKeys.using.title')}</h2>
+            <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-3" data-testid="example-key-note">
+              {created
+                ? t('apiKeys.using.withNewKey')
+                : withCode(t('apiKeys.using.withEnvKey'), { variable: 'STABLEDROP_API_KEY' })}
+            </p>
             <CodeSample>{curl}</CodeSample>
             <p className="text-sm text-secondary-600 dark:text-secondary-400 mt-3">
               {withCode(t('apiKeys.using.body'), {

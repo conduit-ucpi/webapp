@@ -7,9 +7,6 @@ import { methodGuard, proxyToService } from '@/lib/server/serviceProxy';
  * merchant API key (`Authorization: Bearer sd_live_…`, forwarded as the bearer), or no
  * credentials at all with a `seller` named — so this route must not demand a session.
  *
- * ⚠️ forwardClientIp: the anonymous path is limited per client, and without it every caller would
- *    share this server's address and one limit.
- *
  * A PURE PROXY, like /api/ap2/prepare.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -26,7 +23,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     path: '/request',
     method: 'POST',
     body: req.body,
-    requiresAuth: false,
-    forwardClientIp: true
+    requiresAuth: false
   });
 }

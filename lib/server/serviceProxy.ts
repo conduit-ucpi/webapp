@@ -30,25 +30,6 @@ interface ProxyOptions {
    * has no session and never had one.
    */
   requiresAuth?: boolean;
-  /**
-   * Tell the service which client this call came from. Without it every call arrives from this
-   * server, so anything the service limits per client is limited for everyone at once. Only for
-   * services that use it (ap2service's anonymous payment requests): userservice refuses a
-   * service lookup that carries forwarding headers, so this is never the default.
-   */
-  forwardClientIp?: boolean;
-}
-
-/**
- * The client's address as Caddy saw it. Caddy sets X-Forwarded-For to the peer it accepted the
- * connection from and trusts no incoming value, so its last entry is the client; with no proxy in
- * front (local), the socket's peer is.
- */
-export function clientIp(req: NextApiRequest): string | null {
-  const forwarded = req.headers['x-forwarded-for'];
-  const value = Array.isArray(forwarded) ? forwarded[forwarded.length - 1] : forwarded;
-  const last = value?.split(',').pop()?.trim();
-  return last || req.socket?.remoteAddress || null;
 }
 
 function baseUrlFor(service: Service): string | undefined {
@@ -100,11 +81,6 @@ export async function proxyToService(
     // reachable from the browser.
     if (process.env.X_API_KEY) {
       headers['X-API-Key'] = process.env.X_API_KEY;
-    }
-
-    if (options.forwardClientIp) {
-      const ip = clientIp(req);
-      if (ip) headers['X-Forwarded-For'] = ip;
     }
 
     const response = await fetch(`${baseUrl}${options.path}`, {

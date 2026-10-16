@@ -29,13 +29,6 @@ describe('POST /api/ap2/request', () => {
     expect(options.body).toEqual(REQUEST);
   });
 
-  it('tells ap2service which client asked, so its per-client limit is per client', async () => {
-    const { req, res } = createMocks({ method: 'POST', body: REQUEST });
-    await createHandler(req as any, res as any);
-
-    expect(proxyToService.mock.calls[0][2].forwardClientIp).toBe(true);
-  });
-
   it('names a missing field without asking ap2service', async () => {
     const { req, res } = createMocks({ method: 'POST', body: { ...REQUEST, description: undefined } });
     await createHandler(req as any, res as any);

@@ -1,8 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { proxyToService } from '@/lib/server/serviceProxy';
 
+/** A white-label partner's id, as userservice accepts it. */
+const BRAND_ID = /^[a-z0-9-]{2,32}$/;
+
 /**
- * The signed-in merchant's API keys: list them (GET) or make one (POST `{ label }`).
+ * The signed-in merchant's API keys: list them (GET) or make one (POST `{ label, brand? }`).
  *
  * A key is what the merchant's own backend sends as `Authorization: Bearer sd_live_...` to create
  * payment requests without a browser session. userservice owns them and scopes every call to the
@@ -20,13 +23,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'POST') {
-    // Only the label: whatever else the browser sends is not ours to forward.
-    // userservice validates it (1-60 characters) and says why when it refuses.
+    // Only the label and brand: whatever else the browser sends is not ours to forward.
+    // userservice validates the label (1-60 characters) and says why when it refuses. The brand is
+    // the partner page the key was made on; anything that is not a slug is dropped rather than
+    // refused, so a stray value costs the branding, not the key.
+    const brand = req.body?.brand;
     return proxyToService(req, res, {
       service: 'user',
       path: '/api/user/api-keys',
       method: 'POST',
-      body: { label: req.body?.label ?? null },
+      body: {
+        label: req.body?.label ?? null,
+        ...(typeof brand === 'string' && BRAND_ID.test(brand) ? { brand } : {}),
+      },
     });
   }
 

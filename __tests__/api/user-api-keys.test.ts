@@ -57,6 +57,27 @@ describe('/api/user/api-keys', () => {
     expect(JSON.parse(res._getData())).toEqual(created);
   });
 
+  it('forwards the brand the key is made under', async () => {
+    fetchMock.mockResolvedValue(upstream(201, {}));
+    const { req, res } = createMocks({ method: 'POST', headers: { cookie: 'AUTH-TOKEN=tok' }, body: { label: 'Bot', brand: 'escrow-me' } });
+
+    await listOrCreate(req as any, res as any);
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ label: 'Bot', brand: 'escrow-me' });
+  });
+
+  it.each([['COBRO'], ['c'], ['cobro.me'], ['x'.repeat(33)], [42], [null], [{ id: 'cobro' }]])(
+    'drops a brand that is not a brand id (%p)',
+    async (brand) => {
+      fetchMock.mockResolvedValue(upstream(201, {}));
+      const { req, res } = createMocks({ method: 'POST', headers: { cookie: 'AUTH-TOKEN=tok' }, body: { label: 'Bot', brand } });
+
+      await listOrCreate(req as any, res as any);
+
+      expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({ label: 'Bot' });
+    }
+  );
+
   it.each([
     [400, { error: 'User has no wallet yet' }],
     [401, { error: 'Unauthorized' }],

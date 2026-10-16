@@ -2,6 +2,8 @@ import { NextApiRequest, NextApiResponse } from 'next';
 
 import { methodGuard } from '@/lib/server/serviceProxy';
 
+const BRAND_SLUG = /^[a-z0-9-]{2,32}$/;
+
 /**
  * The OpenAPI spec for the escrow settlement service, in Spanish (the docs page's `?lang=es`).
  *
@@ -22,7 +24,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const response = await fetch(`${upstream}/openapi.es.json`);
+    // `?b=` brands the spec in a partner's name; only a slug is passed on.
+    const brand = typeof req.query.b === 'string' && BRAND_SLUG.test(req.query.b) ? `?b=${req.query.b}` : '';
+    const response = await fetch(`${upstream}/openapi.es.json${brand}`);
     const spec = await response.json();
     return res.status(response.status).json(spec);
   } catch (error) {

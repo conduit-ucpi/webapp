@@ -7,8 +7,10 @@ import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { SkeletonCard } from '@/components/ui/Skeleton';
+import { useBrand, useLocale } from '@conduit-ucpi/whitelabel-sdk';
 import { usePageT } from '@/config/locales';
 import type { PagesMessageKey } from '@/config/locales';
+import { BRANDS, DEFAULT_BRAND_ID, HOST_BRANDS } from '@/config/brands';
 
 /**
  * API keys: what a merchant's own backend sends to create payment links without a browser.
@@ -21,6 +23,9 @@ import type { PagesMessageKey } from '@/config/locales';
  * ⚠️ THE FULL KEY IS SHOWN ONCE. userservice returns it only in the response that creates it and
  *    stores nothing it could show again, so the page holds it in state until the merchant
  *    dismisses it, then drops it. It is never written anywhere else.
+ *
+ * A key made on a partner's page (`?b=cobro`) is recorded with that partner, and ap2service brands
+ * the key's payment links for them unless a request says otherwise.
  */
 
 interface ApiKey {
@@ -31,6 +36,8 @@ interface ApiKey {
   createdAt: number;
   /** Unix seconds; null until the key is first used. */
   lastUsedAt: number | null;
+  /** The partner the key was made under; null for our own brands. */
+  brandId: string | null;
 }
 
 interface CreatedKey extends ApiKey {
@@ -38,6 +45,14 @@ interface CreatedKey extends ApiKey {
 }
 
 const LABEL_MAX = 60;
+
+/** Our own sites' brands. A key made on one of them is not a partner's, so it records no brand. */
+const OWN_BRAND_IDS = new Set([DEFAULT_BRAND_ID, ...Object.values(HOST_BRANDS)]);
+
+/** A brand's display name from the bundled records; the bare id for a partner added since the build. */
+function brandName(id: string): string {
+  return BRANDS[id]?.name || id;
+}
 
 /** The deployed API host where API_BASE is empty (the box build), as /integrate does. */
 const API_ORIGIN = API_BASE || 'https://api.stabledrop.me';
@@ -144,7 +159,18 @@ function KeyRow({ apiKey, onRevoke }: { apiKey: ApiKey; onRevoke: (id: string) =
   return (
     <li className="flex flex-wrap items-center justify-between gap-3 px-4 py-3" data-testid="api-key-row">
       <div className="min-w-0">
-        <div className="text-sm font-medium text-secondary-900 dark:text-white truncate">{apiKey.label}</div>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-medium text-secondary-900 dark:text-white truncate">{apiKey.label}</span>
+          {apiKey.brandId && (
+            <span
+              className="shrink-0 rounded border border-secondary-300 dark:border-secondary-600 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-secondary-600 dark:text-secondary-300"
+              title={t('apiKeys.list.brand', { brand: brandName(apiKey.brandId) })}
+              data-testid="api-key-brand"
+            >
+              {brandName(apiKey.brandId)}
+            </span>
+          )}
+        </div>
         <div className="font-mono text-xs text-secondary-600 dark:text-secondary-300 mt-0.5">{apiKey.prefix}…</div>
         <div className="text-xs text-secondary-500 dark:text-secondary-400 mt-1">
           {t('apiKeys.list.meta', {
@@ -180,6 +206,9 @@ export default function ApiKeysPage() {
   tRef.current = t;
   const { isLoading, isConnected, user } = useAuth();
   const wallet = user?.walletAddress || null;
+  const activeBrandId = useBrand().id;
+  const partnerBrandId = OWN_BRAND_IDS.has(activeBrandId) ? null : activeBrandId;
+  const locale = useLocale();
 
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loadingKeys, setLoadingKeys] = useState(false);
@@ -221,14 +250,21 @@ export default function ApiKeysPage() {
       const res = await apiFetch('/api/user/api-keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: trimmed }),
+        body: JSON.stringify(partnerBrandId ? { label: trimmed, brand: partnerBrandId } : { label: trimmed }),
       });
       if (!res.ok) throw new Error(await describeKeyFailure(res, 'create', t));
       const data = (await res.json()) as CreatedKey;
       setCreated(data);
       setLabel('');
       // The list never carries the secret: only the public fields go there.
-      const listed: ApiKey = { id: data.id, label: data.label, prefix: data.prefix, createdAt: data.createdAt, lastUsedAt: null };
+      const listed: ApiKey = {
+        id: data.id,
+        label: data.label,
+        prefix: data.prefix,
+        createdAt: data.createdAt,
+        lastUsedAt: null,
+        brandId: data.brandId ?? null,
+      };
       setKeys((current) => [listed, ...current.filter((k) => k.id !== data.id)]);
     } catch (err) {
       setCreateError(err instanceof Error ? err.message : t('apiKeys.error.create'));
@@ -294,6 +330,13 @@ export default function ApiKeysPage() {
   -H "Authorization: Bearer ${bearer}" \\
   -H "Content-Type: application/json" \\
   -d '${exampleBody}'`;
+
+  // ap2service white-labels the reference from `?b=` and translates it from `?lang=`.
+  const referenceParams = new URLSearchParams();
+  if (partnerBrandId) referenceParams.set('b', partnerBrandId);
+  if (locale === 'es') referenceParams.set('lang', 'es');
+  const referenceQuery = referenceParams.toString();
+  const referenceHref = `${API_ORIGIN}/api/ap2/settle/doc${referenceQuery ? `?${referenceQuery}` : ''}`;
 
   return (
     <>
@@ -381,6 +424,11 @@ export default function ApiKeysPage() {
                 {creating ? t('apiKeys.create.submitting') : t('apiKeys.create.submit')}
               </Button>
             </form>
+            {partnerBrandId && (
+              <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-2" data-testid="create-brand-note">
+                {t('apiKeys.create.brand', { brand: brandName(partnerBrandId) })}
+              </p>
+            )}
           </section>
 
           <section className="mb-10">
@@ -425,6 +473,14 @@ export default function ApiKeysPage() {
                 expiry: 'expiry_timestamp',
               })}
             </p>
+            <a
+              href={referenceHref}
+              target="_blank"
+              rel="noopener"
+              className="inline-block mt-3 text-sm font-medium text-primary-600 dark:text-primary-400 underline"
+            >
+              {t('apiKeys.using.reference')}
+            </a>
           </section>
         </div>
       </div>

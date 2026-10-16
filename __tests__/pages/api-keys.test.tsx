@@ -1,8 +1,8 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import ApiKeysPage from '@/pages/api-keys';
 import { useAuth } from '@/components/auth';
 import { apiFetch } from '@/lib/apiFetch';
-import { I18nProvider } from '@conduit-ucpi/whitelabel-sdk';
+import { I18nProvider, useBrand } from '@conduit-ucpi/whitelabel-sdk';
 
 jest.mock('@/components/auth', () => ({ useAuth: jest.fn() }));
 jest.mock('@/components/auth/ConnectWalletEmbedded', () => function ConnectWalletEmbedded() {
@@ -10,18 +10,26 @@ jest.mock('@/components/auth/ConnectWalletEmbedded', () => function ConnectWalle
 });
 jest.mock('@/lib/apiFetch', () => ({ apiFetch: jest.fn(), API_BASE: '' }));
 jest.mock('next/head', () => ({ __esModule: true, default: () => null }));
+// The page is rendered without BrandProvider, where the real useBrand() throws.
+jest.mock('@conduit-ucpi/whitelabel-sdk', () => ({
+  ...jest.requireActual('@conduit-ucpi/whitelabel-sdk'),
+  useBrand: jest.fn(),
+}));
 
 const mockUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
+const mockUseBrand = useBrand as jest.MockedFunction<typeof useBrand>;
+const onBrand = (id: string) => mockUseBrand.mockReturnValue({ id } as ReturnType<typeof useBrand>);
 const mockApiFetch = apiFetch as jest.MockedFunction<typeof apiFetch>;
 
 const respond = (status: number, body?: unknown) =>
   ({ ok: status >= 200 && status < 300, status, json: async () => body }) as Response;
 
-const EXISTING = { id: 'k1', label: 'Shop backend', prefix: 'sd_live_Ab3x', createdAt: 1759276800, lastUsedAt: null };
-const CREATED = { id: 'k2', label: 'WhatsApp bot', prefix: 'sd_live_Zz9q', createdAt: 1759363200, lastUsedAt: null, key: 'sd_live_Zz9qTHE_FULL_SECRET' };
+const EXISTING = { id: 'k1', label: 'Shop backend', prefix: 'sd_live_Ab3x', createdAt: 1759276800, lastUsedAt: null, brandId: null };
+const CREATED = { id: 'k2', label: 'WhatsApp bot', prefix: 'sd_live_Zz9q', createdAt: 1759363200, lastUsedAt: null, brandId: null, key: 'sd_live_Zz9qTHE_FULL_SECRET' };
 
 beforeEach(() => {
   mockApiFetch.mockReset();
+  onBrand('stabledrop');
   mockUseAuth.mockReturnValue({ isLoading: false, isConnected: true, user: { walletAddress: '0xabc' } } as any);
 });
 
@@ -121,6 +129,49 @@ describe('/api-keys', () => {
     expect(screen.queryByText(CREATED.key)).toBeNull();
   });
 
+  it('records the partner brand the key is made under, and lists it on the key', async () => {
+    onBrand('cobro');
+    await renderWithKeys();
+    expect(screen.getByTestId('create-brand-note')).toHaveTextContent('carry the COBRO branding');
+    mockApiFetch.mockResolvedValueOnce(respond(201, { ...CREATED, brandId: 'cobro' }));
+
+    fireEvent.change(screen.getByLabelText('Key label'), { target: { value: 'WhatsApp bot' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create key' }));
+    await screen.findByTestId('new-api-key');
+
+    expect(mockApiFetch).toHaveBeenLastCalledWith('/api/user/api-keys', expect.objectContaining({
+      body: JSON.stringify({ label: 'WhatsApp bot', brand: 'cobro' }),
+    }));
+    const [created, existing] = screen.getAllByTestId('api-key-row');
+    expect(within(created).getByTestId('api-key-brand')).toHaveTextContent('COBRO');
+    expect(within(existing).queryByTestId('api-key-brand')).toBeNull();
+  });
+
+  it.each(['stabledrop', 'conduit-ucpi', 'usdcbay'])('sends no brand on our own site (%s)', async (id) => {
+    onBrand(id);
+    await renderWithKeys();
+    expect(screen.queryByTestId('create-brand-note')).toBeNull();
+    mockApiFetch.mockResolvedValueOnce(respond(201, CREATED));
+
+    fireEvent.change(screen.getByLabelText('Key label'), { target: { value: 'WhatsApp bot' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create key' }));
+    await screen.findByTestId('new-api-key');
+
+    expect(mockApiFetch).toHaveBeenLastCalledWith('/api/user/api-keys', expect.objectContaining({
+      body: JSON.stringify({ label: 'WhatsApp bot' }),
+    }));
+  });
+
+  it('badges a listed key with its brand, by the id when the brand is not bundled', async () => {
+    await renderWithKeys([
+      { ...EXISTING, id: 'k1', brandId: 'escrow-me' },
+      { ...EXISTING, id: 'k3', label: 'Other', brandId: 'new-partner' },
+    ]);
+    const badges = screen.getAllByTestId('api-key-brand');
+    expect(badges.map((b) => b.textContent)).toEqual(['Escrow Me', 'new-partner']);
+    expect(badges[0]).toHaveAttribute('title', 'Payment links made with this key carry the Escrow Me branding');
+  });
+
   it('copies the new key to the clipboard', async () => {
     const writeText = jest.fn().mockResolvedValue(undefined);
     Object.assign(navigator, { clipboard: { writeText } });
@@ -182,6 +233,31 @@ describe('/api-keys', () => {
     expect(JSON.parse(body)).toEqual({ amount: 20000000, expiry_timestamp: 0, description: 'Order #123' });
     expect(screen.getByText('STABLEDROP_API_KEY')).toBeInTheDocument();
     expect(screen.getByText('pay_link')).toBeInTheDocument();
+  });
+
+  it('links to the full API reference, carrying a partner brand and Spanish', async () => {
+    const reference = () => screen.getByRole('link', { name: /Full API reference|Referencia completa de la API/ });
+
+    await renderWithKeys([]);
+    expect(reference()).toHaveAttribute('href', 'https://api.stabledrop.me/api/ap2/settle/doc');
+    expect(reference()).toHaveAttribute('target', '_blank');
+    expect(reference()).toHaveAttribute('rel', 'noopener');
+    cleanup();
+
+    onBrand('cobro');
+    await renderWithKeys([]);
+    expect(reference()).toHaveAttribute('href', 'https://api.stabledrop.me/api/ap2/settle/doc?b=cobro');
+    cleanup();
+
+    mockApiFetch.mockResolvedValueOnce(respond(200, []));
+    render(
+      <I18nProvider brandLocale="es">
+        <ApiKeysPage />
+      </I18nProvider>
+    );
+    await screen.findByText('Aún no tienes claves de API.');
+    expect(reference()).toHaveTextContent('Referencia completa de la API');
+    expect(reference()).toHaveAttribute('href', 'https://api.stabledrop.me/api/ap2/settle/doc?b=cobro&lang=es');
   });
 
   it('puts a just-created key into the example, and takes it out again when the key is hidden', async () => {

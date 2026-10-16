@@ -2,6 +2,8 @@ import { NextApiRequest, NextApiResponse } from 'next';
 
 import { methodGuard } from '@/lib/server/serviceProxy';
 
+const BRAND_SLUG = /^[a-z0-9-]{2,32}$/;
+
 /**
  * The browsable API reference for the escrow settlement service.
  *
@@ -24,9 +26,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const page = req.query.redoc !== undefined ? '/settle/doc/redoc' : '/settle/doc';
-  // The language is ap2service's to render; only the values it knows are passed on.
-  const lang = req.query.lang === 'es' || req.query.lang === 'en' ? `?lang=${req.query.lang}` : '';
-  const path = `${page}${lang}`;
+  // The language and the partner brand are ap2service's to render; only values it could know
+  // are passed on (a brand id is a slug, as whitelabelservice accepts them).
+  const params = new URLSearchParams();
+  if (req.query.lang === 'es' || req.query.lang === 'en') params.set('lang', req.query.lang);
+  if (typeof req.query.b === 'string' && BRAND_SLUG.test(req.query.b)) params.set('b', req.query.b);
+  const query = params.toString();
+  const path = query ? `${page}?${query}` : page;
 
   try {
     const response = await fetch(`${upstream}${path}`);

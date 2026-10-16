@@ -4,6 +4,7 @@
 import { createMocks } from 'node-mocks-http';
 import createHandler from '@/pages/api/ap2/request';
 import prepareHandler from '@/pages/api/ap2/request/[id]/prepare';
+import listHandler from '@/pages/api/ap2/requests';
 import * as serviceProxy from '@/lib/server/serviceProxy';
 
 jest.mock('@/lib/server/serviceProxy', () => ({
@@ -18,14 +19,21 @@ const REQUEST = { amount: 25000000, expiry_timestamp: 1893456000, description: '
 describe('POST /api/ap2/request', () => {
   beforeEach(() => proxyToService.mockReset());
 
-  it('carries the terms to ap2service and requires a session: the request is in the seller’s name', async () => {
+  it('carries the terms to ap2service and leaves who may ask to it: a session, an API key, or a named seller', async () => {
     const { req, res } = createMocks({ method: 'POST', body: REQUEST });
     await createHandler(req as any, res as any);
 
     const options = proxyToService.mock.calls[0][2];
     expect(options.path).toBe('/request');
-    expect(options.requiresAuth).not.toBe(false);
+    expect(options.requiresAuth).toBe(false);
     expect(options.body).toEqual(REQUEST);
+  });
+
+  it('tells ap2service which client asked, so its per-client limit is per client', async () => {
+    const { req, res } = createMocks({ method: 'POST', body: REQUEST });
+    await createHandler(req as any, res as any);
+
+    expect(proxyToService.mock.calls[0][2].forwardClientIp).toBe(true);
   });
 
   it('names a missing field without asking ap2service', async () => {
@@ -60,5 +68,26 @@ describe('POST /api/ap2/request/[id]/prepare', () => {
 
     expect(res._getStatusCode()).toBe(400);
     expect(proxyToService).not.toHaveBeenCalled();
+  });
+});
+
+describe('GET /api/ap2/requests', () => {
+  beforeEach(() => proxyToService.mockReset());
+
+  it('passes the caller through for ap2service to decide, with a numeric limit only', async () => {
+    const { req, res } = createMocks({ method: 'GET', query: { limit: '20' } });
+    await listHandler(req as any, res as any);
+
+    const options = proxyToService.mock.calls[0][2];
+    expect(options.path).toBe('/requests?limit=20');
+    expect(options.method).toBe('GET');
+    expect(options.requiresAuth).toBe(false);
+  });
+
+  it('drops a limit that is not a number', async () => {
+    const { req, res } = createMocks({ method: 'GET', query: { limit: '5&x=1' } });
+    await listHandler(req as any, res as any);
+
+    expect(proxyToService.mock.calls[0][2].path).toBe('/requests');
   });
 });

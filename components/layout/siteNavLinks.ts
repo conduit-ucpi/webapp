@@ -59,6 +59,8 @@ export function accountLinks({ emailVerificationLive, isAdmin }: { emailVerifica
     { label: 'Disputes', href: '/disputes' },
     { label: 'Wallet', href: '/wallet' },
     { label: 'Get paid early', href: '/offers' },
+    // Keys a merchant's own backend uses to create payment links without a browser session.
+    { label: 'API keys', href: '/api-keys' },
     ...(emailVerificationLive ? [{ label: 'Verify email', href: '/email-verification' }] : []),
     ...(isAdmin ? [{ label: 'Admin panel', href: '/admin', admin: true }] : []),
   ];

@@ -3,8 +3,12 @@ import { methodGuard, proxyToService } from '@/lib/server/serviceProxy';
 
 /**
  * A payment request: terms without a buyer, and a link whoever opens it can pay. What /create
- * makes. ap2service stores it in contractservice AS THE SIGNED-IN SELLER, so it needs their
- * session — the request is in their name and pays into their wallet.
+ * makes. Three ways in, all decided by ap2service, not here: a signed-in seller's session, a
+ * merchant API key (`Authorization: Bearer sd_live_…`, forwarded as the bearer), or no
+ * credentials at all with a `seller` named — so this route must not demand a session.
+ *
+ * ⚠️ forwardClientIp: the anonymous path is limited per client, and without it every caller would
+ *    share this server's address and one limit.
  *
  * A PURE PROXY, like /api/ap2/prepare.
  */
@@ -21,6 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     service: 'ap2',
     path: '/request',
     method: 'POST',
-    body: req.body
+    body: req.body,
+    requiresAuth: false,
+    forwardClientIp: true
   });
 }

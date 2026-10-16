@@ -23,7 +23,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(503).json({ error: 'AP2_SERVICE_URL is not configured' });
   }
 
-  const path = req.query.redoc !== undefined ? '/settle/doc/redoc' : '/settle/doc';
+  const page = req.query.redoc !== undefined ? '/settle/doc/redoc' : '/settle/doc';
+  // The language is ap2service's to render; only the values it knows are passed on.
+  const lang = req.query.lang === 'es' || req.query.lang === 'en' ? `?lang=${req.query.lang}` : '';
+  const path = `${page}${lang}`;
 
   try {
     const response = await fetch(`${upstream}${path}`);

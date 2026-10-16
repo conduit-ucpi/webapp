@@ -21,8 +21,8 @@ interface ProxyOptions {
   service: Service;
   /** Path on that service, including the leading slash. */
   path: string;
-  method?: 'GET' | 'POST' | 'PATCH';
-  /** Forwarded verbatim as the request body; omit for GETs. */
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  /** Forwarded verbatim as the request body; omit for GETs and DELETEs. */
   body?: unknown;
   /**
    * Defaults to true. Set false only for a route that is genuinely public — the
@@ -30,6 +30,25 @@ interface ProxyOptions {
    * has no session and never had one.
    */
   requiresAuth?: boolean;
+  /**
+   * Tell the service which client this call came from. Without it every call arrives from this
+   * server, so anything the service limits per client is limited for everyone at once. Only for
+   * services that use it (ap2service's anonymous payment requests): userservice refuses a
+   * service lookup that carries forwarding headers, so this is never the default.
+   */
+  forwardClientIp?: boolean;
+}
+
+/**
+ * The client's address as Caddy saw it. Caddy sets X-Forwarded-For to the peer it accepted the
+ * connection from and trusts no incoming value, so its last entry is the client; with no proxy in
+ * front (local), the socket's peer is.
+ */
+export function clientIp(req: NextApiRequest): string | null {
+  const forwarded = req.headers['x-forwarded-for'];
+  const value = Array.isArray(forwarded) ? forwarded[forwarded.length - 1] : forwarded;
+  const last = value?.split(',').pop()?.trim();
+  return last || req.socket?.remoteAddress || null;
 }
 
 function baseUrlFor(service: Service): string | undefined {
@@ -83,10 +102,15 @@ export async function proxyToService(
       headers['X-API-Key'] = process.env.X_API_KEY;
     }
 
+    if (options.forwardClientIp) {
+      const ip = clientIp(req);
+      if (ip) headers['X-Forwarded-For'] = ip;
+    }
+
     const response = await fetch(`${baseUrl}${options.path}`, {
       method,
       headers,
-      body: method === 'GET' ? undefined : JSON.stringify(options.body ?? {})
+      body: method === 'GET' || method === 'DELETE' ? undefined : JSON.stringify(options.body ?? {})
     });
 
     const text = await response.text();
@@ -114,7 +138,7 @@ export async function proxyToService(
 }
 
 /** Reject anything but the one method a route supports. */
-export function methodGuard(req: NextApiRequest, res: NextApiResponse, allowed: 'GET' | 'POST' | 'PATCH'): boolean {
+export function methodGuard(req: NextApiRequest, res: NextApiResponse, allowed: 'GET' | 'POST' | 'PATCH' | 'DELETE'): boolean {
   if (req.method !== allowed) {
     res.status(405).json({ error: 'Method not allowed' });
     return false;

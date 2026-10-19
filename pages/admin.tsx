@@ -13,6 +13,7 @@ import DisputeQueue from '@/components/admin/DisputeQueue';
 import DisputeCasePanel from '@/components/admin/DisputeCasePanel';
 import { normalizeTimestamp } from '@/utils/validation';
 import DisputeResolutionModal from '@/components/admin/DisputeResolutionModal';
+import FeeSweepModal from '@/components/admin/FeeSweepModal';
 import { Contract, PendingContract } from '@/types';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 
@@ -44,6 +45,7 @@ export default function AdminPage() {
   const [isLoadingRawData, setIsLoadingRawData] = useState(false);
   const [selectedDispute, setSelectedDispute] = useState<string | null>(null);
   const [disputeRefreshKey, setDisputeRefreshKey] = useState(0);
+  const [isFeeSweepOpen, setIsFeeSweepOpen] = useState(false);
 
   const fetchDetailedContract = async (contractId: string) => {
     setIsLoadingDetails(true);
@@ -167,6 +169,17 @@ export default function AdminPage() {
               <span className="font-mono text-sm">{walletAddress}</span>
             </div>
           </div>
+        </div>
+
+        {/* Fee sweep: release an escrow's retained platform fee */}
+        <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6 mb-8 flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Platform Fees</h2>
+            <p className="text-sm text-secondary-600 dark:text-secondary-300">Release the fee an escrow is holding with sweepFees.</p>
+          </div>
+          <Button onClick={() => setIsFeeSweepOpen(true)} size="sm">
+            Fee Sweep
+          </Button>
         </div>
 
         {/* Dispute management: the queue, and the selected case */}
@@ -360,6 +373,8 @@ export default function AdminPage() {
           </p>
         </div>
       </div>
+
+      <FeeSweepModal isOpen={isFeeSweepOpen} onClose={() => setIsFeeSweepOpen(false)} />
 
       {/* Dispute Resolution Modal */}
       {selectedContract && (

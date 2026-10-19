@@ -1237,10 +1237,44 @@ export class ReownWalletConnectProvider {
 
       // Step 3: Sign the message
       const hexMessage = '0x' + Buffer.from(message, 'utf8').toString('hex')
-      const signature = await this.withApprovalPrompt(() => walletProvider.request({
-        method: 'personal_sign',
-        params: [hexMessage, address]
-      })) as string
+
+      /* Embedded (social / email) wallets sign inside AppKit's secure iframe,
+         and AppKit treats personal_sign as a request that must run while its own
+         modal is open: whenever the modal reads closed with nothing on its
+         transaction stack it calls rejectRpcRequests(), which rejects the pending
+         sign with "Request was aborted" (W3mFrameProvider). After a social connect
+         the modal is already closed, so the backend-auth signature is aborted and
+         no AUTH-TOKEN is ever issued - the failure Grafana showed on the test site
+         (nonce 200, then request-authentication "Request was aborted", no verify).
+         Hold the modal open across the signature and restore it after. External
+         wallets sign in their own extension UI and must not be shown an AppKit
+         modal, so this is gated to the embedded-wallet case only. */
+      const signingThroughEmbeddedFrame = Boolean(account?.embeddedWalletInfo)
+      let openedModalForSigning = false
+      if (signingThroughEmbeddedFrame) {
+        try {
+          const alreadyOpen = !!this.appKit.getState?.().open
+          if (!alreadyOpen) {
+            await this.appKit.open()
+            openedModalForSigning = true
+          }
+        } catch (openError) {
+          // Opening is best-effort; the signature below still runs.
+          console.warn('🔧 ReownWalletConnect: could not open modal before embedded sign', openError)
+        }
+      }
+
+      let signature: string
+      try {
+        signature = await this.withApprovalPrompt(() => walletProvider.request({
+          method: 'personal_sign',
+          params: [hexMessage, address]
+        })) as string
+      } finally {
+        if (openedModalForSigning) {
+          try { await this.appKit.close() } catch { /* closing is best-effort */ }
+        }
+      }
 
       console.log('🔧 ReownWalletConnect: Message signed by wallet')
 

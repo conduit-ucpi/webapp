@@ -9,13 +9,40 @@ import { EmbeddedOnlySIWX } from '@/lib/auth/EmbeddedOnlySIWX'
 import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement'
 import { requestAuthNonce, buildSiweMessage, verifyAuthSignature } from '@/lib/auth/walletAuthClient'
 import { getSiteNameFromDomain } from '@/utils/siteName'
-import { mLog } from '@/utils/mobileLogger'
+import mobileLogger, { mLog } from '@/utils/mobileLogger'
 import { classifyAuthError, type AuthFailure } from '@/lib/auth/classifyAuthError'
 import { reportAuthFailure } from '@/lib/auth/reportAuthFailure'
 export { classifyAuthError } from '@/lib/auth/classifyAuthError'
 export type { AuthFailure, AuthFailureKind } from '@/lib/auth/classifyAuthError'
 
 import type { ConnectionMode } from '@/lib/auth/types/unified-provider'
+
+/* A plain copy of a diagnostic payload, safe to queue for the box. AppKit hands
+   its event properties over as valtio proxies, and a single entry that cannot be
+   serialised would wedge the logger's retry queue for the rest of the session. */
+function snapshot(value: unknown): unknown {
+  if (value === undefined) return undefined
+  try {
+    return JSON.parse(JSON.stringify(value, (_key, v) => (typeof v === 'bigint' ? v.toString() : v)))
+  } catch {
+    return { unserialisable: String(value) }
+  }
+}
+
+/* Ship a Reown-path diagnostic to the box's log, and so to Grafana, from every
+   device. mLog only ships from mobile browsers, so a desktop social login that
+   died after the OAuth popup left nothing server-side to read. This goes straight
+   to the logger instance, which also mirrors to the console; when the build has
+   debug logging off the queue is discarded unsent, so nothing leaves the device.
+   `flush` sends at once - for an outcome the user may navigate away from. */
+function ship(level: 'info' | 'warn' | 'error', message: string, data?: unknown, flush = false) {
+  const logger: any = mobileLogger
+  if (!logger || typeof logger[level] !== 'function') return
+  logger[level]('ReownWalletConnect', message, snapshot(data))
+  if (flush && typeof logger.forceFlush === 'function') {
+    void logger.forceFlush()
+  }
+}
 
 export class ReownWalletConnectProvider {
   private appKit: any = null
@@ -589,6 +616,7 @@ export class ReownWalletConnectProvider {
           checkAttempts++
           if (checkAttempts > maxAttempts) {
             document.removeEventListener('visibilitychange', handleVisibilityChange)
+            ship('error', 'Connection timeout - no address after the polling window', { attempts: checkAttempts }, true)
             resolveOnce({
               success: false,
               error: 'Connection timeout - user may have cancelled'
@@ -622,6 +650,7 @@ export class ReownWalletConnectProvider {
               const address = parts[2] // The address is the third part
 
               console.log('🔧 ReownWalletConnect: ✅ Connected successfully')
+              ship('info', 'Connected successfully', { caipAddress, attempts: checkAttempts }, true)
               console.log('🔧 ReownWalletConnect: CAIP Address:', caipAddress)
               console.log('🔧 ReownWalletConnect: Address:', address)
 
@@ -758,7 +787,7 @@ export class ReownWalletConnectProvider {
                 const name: string | undefined = state?.data?.event
                 if (!name) return
                 const properties = state?.data?.properties
-                console.log('🔧 ReownWalletConnect: AppKit event:', name, properties ?? '')
+                ship('info', `AppKit event: ${name}`, properties)
 
                 if (name === 'SELECT_WALLET' ||
                     name === 'SOCIAL_LOGIN_STARTED' ||
@@ -771,7 +800,7 @@ export class ReownWalletConnectProvider {
                 }
 
                 if (name === 'SOCIAL_LOGIN_ERROR' || name === 'CONNECT_ERROR') {
-                  console.warn('🔧 ReownWalletConnect: AppKit reported a connection error:', name, properties?.message ?? '')
+                  ship('error', `AppKit reported a connection error: ${name}`, properties, true)
                 }
 
                 if (name === 'CONNECT_SUCCESS' ||
@@ -915,6 +944,7 @@ export class ReownWalletConnectProvider {
               }
 
               console.log('🔧 ReownWalletConnect: Modal dismissed without choosing - cancelling')
+              ship('info', 'Modal dismissed without choosing - cancelling', { attempts: checkAttempts }, true)
               resolveOnce({
                 success: false,
                 cancelled: true,
@@ -938,6 +968,7 @@ export class ReownWalletConnectProvider {
 
     } catch (error) {
       console.error('🔧 ReownWalletConnect: ❌ Connection failed:', error)
+      ship('error', 'Connection failed', { message: error instanceof Error ? error.message : String(error) }, true)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown connection error'

@@ -196,7 +196,6 @@ async function buildConfig() {
     maxGasPriceGwei: process.env.MAX_GAS_PRICE_GWEI || '0.001',
     maxGasCostGwei: process.env.MAX_GAS_COST_GWEI || '0.15',
     usdcGrantFoundryGas: process.env.USDC_GRANT_FOUNDRY_GAS || '150000',
-    depositFundsFoundryGas: process.env.DEPOSIT_FUNDS_FOUNDRY_GAS || '150000',
     resolutionVoteFoundryGas: process.env.RESOLUTION_VOTE_FOUNDRY_GAS || '80000',
     raiseDisputeFoundryGas: process.env.RAISE_DISPUTE_FOUNDRY_GAS || '150000',
     claimFundsFoundryGas: process.env.CLAIM_FUNDS_FOUNDRY_GAS || '150000',

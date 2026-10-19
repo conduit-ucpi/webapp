@@ -4,9 +4,9 @@
  * Bytecode verification (verifyEscrowClone.ts) proves an address runs our implementation. It
  * does not prove who initialized it: EscrowContract.initialize() accepts whatever its first
  * caller passes and records that caller as FACTORY. Our factory only ever initializes with a
- * partner split its FEE_SPLIT_SIGNER signed, and a fee at or above its own rule — but anyone can
- * deploy their own factory that clones the same implementation and initializes it with any
- * partner or fee. That clone passes the bytecode check.
+ * fee at or above its own rule and with OUR FEE_SWEEPER as the one address that can release
+ * it — but anyone can deploy their own factory that clones the same implementation and
+ * initializes it with any fee and any sweeper. That clone passes the bytecode check.
  *
  * So the escrow's FACTORY() is compared with the factory this build trusts. Like the
  * implementation, that address is a BUILD-TIME constant (NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS)
@@ -62,7 +62,7 @@ export function verifyFactory(
       reason: 'wrong-factory',
       detail:
         `This payment contract was created by ${actual.toLowerCase()}, not by our factory ` +
-        `${expectedFactory.toLowerCase()}. It runs our code but its terms, fee and partner ` +
+        `${expectedFactory.toLowerCase()}. It runs our code but its terms, fee and fee sweeper ` +
         'were set by someone else. Refusing to proceed.',
     };
   }

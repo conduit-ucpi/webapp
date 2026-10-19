@@ -422,7 +422,6 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
   
   setContractMethods(methods: any) {
     console.log('🔧 Farcaster Provider: Setting contract methods:', {
-      hasFundContract: !!methods.fundContract,
       hasClaimFunds: !!methods.claimFunds,
       hasRaiseDispute: !!methods.raiseDispute,
       methodKeys: Object.keys(methods)
@@ -450,26 +449,6 @@ class FarcasterAuthProviderImpl implements IAuthProvider {
       return await this.contractMethods.createContract(...args);
     }
     throw new Error('createContract not available');
-  }
-
-  async approveUSDC(...args: any[]): Promise<any> {
-    if (this.contractMethods.approveUSDC) {
-      return await this.contractMethods.approveUSDC(...args);
-    }
-    throw new Error('approveUSDC not available');
-  }
-
-  async depositFunds(...args: any[]): Promise<any> {
-    if (this.contractMethods.depositFunds) {
-      return await this.contractMethods.depositFunds(...args);
-    }
-    throw new Error('depositFunds not available');
-  }
-
-  async fundContract(...args: any[]): Promise<any> {
-    // This method is deprecated - contract funding should be done through API calls
-    // The ContractAcceptance component now uses authenticatedFetch to call the chain service APIs
-    throw new Error('fundContract is deprecated. Use API endpoints /api/chain/create-contract, /api/chain/approve-usdc, and /api/chain/deposit-funds instead');
   }
 
   async claimFunds(...args: any[]): Promise<any> {
@@ -1240,7 +1219,6 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
   // Debug logging for context value - moved before return
   React.useEffect(() => {
     console.log('🔧 Farcaster: Context value debug:', {
-      hasFundContract: !!contextValue.fundContract,
       hasClaimFunds: !!contextValue.claimFunds,
       hasRaiseDispute: !!contextValue.raiseDispute,
       hasContractMethods: !!contractMethods,

@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const authToken = requireAuth(req);
 
-    // Expect signed transaction format like deposit-funds
+    // Expect a client-signed transaction
     const { contractAddress, userWalletAddress, signedTransaction } = req.body;
     
     if (!contractAddress || !userWalletAddress || !signedTransaction) {

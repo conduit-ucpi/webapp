@@ -79,13 +79,6 @@ export interface ContractFundingParams {
   onStatusUpdate?: (step: string, message: string, data?: any) => void;
 }
 
-// Contract funding result
-export interface ContractFundingResult {
-  contractAddress: string;
-  approvalTxHash: string;
-  depositTxHash: string;
-}
-
 export interface AuthMethods {
   // Core authentication
   connect: (loginHint?: string) => Promise<void>;
@@ -109,9 +102,6 @@ export interface AuthMethods {
   
   // High-level contract operations
   createContract?: (contract: ContractFundingParams['contract'], userAddress: string, config: ContractFundingParams['config'], utils: ContractFundingParams['utils']) => Promise<string>;
-  approveUSDC?: (contractAddress: string, amount: number, currency: string | undefined, userAddress: string, config: ContractFundingParams['config'], utils: ContractFundingParams['utils']) => Promise<string>;
-  depositFunds?: (params: ContractFundingParams & { contractAddress: string }) => Promise<string>;
-  fundContract?: (params: ContractFundingParams) => Promise<ContractFundingResult>;
   claimFunds?: (contractAddress: string, userAddress: string) => Promise<string>;
   raiseDispute?: (params: {
     contractAddress: string;

@@ -30,7 +30,6 @@ export const ESCROW_CONTRACT_ABI = [
   'function canDeposit() view returns (bool)',
   'function isDisputed() view returns (bool)',
   'function isClaimed() view returns (bool)',
-  'function depositFunds()',
   'function raiseDispute()',
   'function claimFunds()',
   'function submitResolutionVote(uint256 _buyerPercentage)',
@@ -709,11 +708,6 @@ export class Web3Service {
     return await this.rpcClient.getTokenAllowance(userAddress, spenderAddress, tokenAddress);
   }
 
-  // Deprecated - use signUSDCApproval instead
-  async approveUSDC(amount: string, spenderAddress: string): Promise<string> {
-    throw new Error('approveUSDC is deprecated. Use signUSDCApproval method instead.');
-  }
-
   // Hash description for smart contract compatibility
   hashDescription(description: string): string {
     return ethers.keccak256(ethers.toUtf8Bytes(description));
@@ -1322,10 +1316,7 @@ export class Web3Service {
         const transactionType = this.detectTransactionType(txParams.data);
         let foundryGasEstimate: number;
 
-        if (transactionType === 'depositFunds') {
-          foundryGasEstimate = parseInt(this.config.depositFundsFoundryGas || '200000');
-          console.log(`Using Foundry fallback for depositFunds (DEPOSIT_FUNDS_FOUNDRY_GAS): ${foundryGasEstimate} gas`);
-        } else if (transactionType === 'submitResolutionVote') {
+        if (transactionType === 'submitResolutionVote') {
           // Resolution votes need MORE gas because they:
           // 1. Write vote to storage
           // 2. Check for consensus (reads 3 votes)
@@ -2016,10 +2007,6 @@ export class Web3Service {
       }
     }
 
-    if (type === 'depositFunds') {
-      return `depositing funds into the contract at ${shorten(tx.to)}`;
-    }
-
     if (type === 'claimFunds') {
       return `claiming funds from the contract at ${shorten(tx.to)}`;
     }
@@ -2027,7 +2014,7 @@ export class Web3Service {
     return `submitting a transaction to ${shorten(tx.to)}`;
   }
 
-  private detectTransactionType(data: string): 'depositFunds' | 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds' | 'unknown' {
+  private detectTransactionType(data: string): 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds' | 'unknown' {
     if (!data || data === '0x') {
       return 'unknown';
     }
@@ -2039,7 +2026,6 @@ export class Web3Service {
     try {
       // Define function signatures we want to detect
       const functionSignatures = {
-        'depositFunds': 'function depositFunds()',
         'approve': 'function approve(address,uint256)',
         'transfer': 'function transfer(address,uint256)',
         'submitResolutionVote': 'function submitResolutionVote(uint256)',
@@ -2055,7 +2041,7 @@ export class Web3Service {
           const calculatedSelector = func.selector;
 
           if (functionSelector === calculatedSelector) {
-            return functionName as 'depositFunds' | 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds';
+            return functionName as 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds';
           }
         }
       }

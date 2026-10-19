@@ -31,7 +31,6 @@ describe('Session Cleanup', () => {
     maxGasPriceGwei: '100',
     maxGasCostGwei: '1000',
     usdcGrantFoundryGas: '100000',
-    depositFundsFoundryGas: '100000',
     resolutionVoteFoundryGas: '80000',
     raiseDisputeFoundryGas: '150000',
     claimFundsFoundryGas: '150000',

@@ -41,7 +41,6 @@ describe('Web3Service - RPC for read-only operations', () => {
       maxGasPriceGwei: '50',
       maxGasCostGwei: '500000',
       usdcGrantFoundryGas: '100000',
-      depositFundsFoundryGas: '200000',
     resolutionVoteFoundryGas: '80000',
     raiseDisputeFoundryGas: '150000',
     claimFundsFoundryGas: '150000',

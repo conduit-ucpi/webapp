@@ -66,7 +66,6 @@ describe('ContractActions - Context Fields for Dispute', () => {
     maxGasPriceGwei: '0.001',
     maxGasCostGwei: '0.15',
     usdcGrantFoundryGas: '150000',
-    depositFundsFoundryGas: '150000',
     resolutionVoteFoundryGas: '80000',
     raiseDisputeFoundryGas: '150000',
     claimFundsFoundryGas: '150000',

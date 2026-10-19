@@ -739,6 +739,35 @@ export class ReownWalletConnectProvider {
 
                  AppKit closes the modal itself once the request settles, so
                  skipping the close here costs nothing. */
+              /* Embedded (social / email) wallets: authenticate to our backend NOW,
+                 while the modal is still open, instead of leaving it to the app's
+                 lazy 401-triggered auth. The embedded personal_sign is headless and
+                 AppKit only lets it through on an ALREADY-open modal (its
+                 onRpcRequest no-ops when the modal is open, but opens an empty
+                 ApproveTransaction and aborts the request when the modal is closed -
+                 "Request was aborted"). On the deployed site the lazy sign fires ~20s
+                 after connect, by which point the modal has closed, so it was always
+                 aborted. Signing here, on the open modal, is the original mechanism
+                 (commit 5d8a2b6). getCachedAuthToken short-circuits a repeat login.
+                 Best-effort: on failure we still resolve the connection and the app's
+                 lazy path can try again. Embedded-only; external wallets are untouched. */
+              let embeddedAccount: any
+              try { embeddedAccount = this.appKit.getAccount?.('eip155') } catch { embeddedAccount = undefined }
+              if (embeddedAccount?.embeddedWalletInfo && !this.getCachedAuthToken?.(address)) {
+                try {
+                  if (!this.appKit.getState?.().open) {
+                    await this.appKit.open()
+                  }
+                  ship('info', 'Embedded wallet: authenticating while the modal is open', { attempts: checkAttempts }, true)
+                  const authed = await this.requestAuthentication()
+                  ship(authed ? 'info' : 'error',
+                    authed ? 'Embedded eager auth succeeded' : 'Embedded eager auth returned false',
+                    { attempts: checkAttempts }, true)
+                } catch (eagerError) {
+                  ship('error', 'Embedded eager auth threw', { message: eagerError instanceof Error ? eagerError.message : String(eagerError) }, true)
+                }
+              }
+
               if (this.hasPendingApprovalPrompt()) {
                 console.log('🔧 ReownWalletConnect: Leaving modal open - wallet approval prompt is on screen')
               } else {

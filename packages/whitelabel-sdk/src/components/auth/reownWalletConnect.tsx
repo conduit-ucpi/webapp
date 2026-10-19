@@ -783,9 +783,17 @@ export class ReownWalletConnectProvider {
                  never reacted to anything and the one line that explains a
                  failed social login (SOCIAL_LOGIN_ERROR with its message) was
                  invisible. */
+              /* The state also changes on every analytics flush (its lastFlush
+                 ticks every ten seconds), which re-delivered the last event each
+                 time. An event is identified by its own timestamp, so each one
+                 is handled once. */
+              let lastEventStamp: unknown = null
               const unsubscribe = this.appKit.subscribeEvents((state: any) => {
                 const name: string | undefined = state?.data?.event
                 if (!name) return
+                const stamp = state?.timestamp ?? `${name}:${JSON.stringify(state?.data?.properties ?? null)}`
+                if (stamp === lastEventStamp) return
+                lastEventStamp = stamp
                 const properties = state?.data?.properties
                 ship('info', `AppKit event: ${name}`, properties)
 
@@ -924,7 +932,13 @@ export class ReownWalletConnectProvider {
             sawOpen = true
           }
 
+          let lastOpen: boolean | null = null
           const unsubscribe = this.appKit.subscribeState((state: any) => {
+            const open = !!state?.open
+            if (open !== lastOpen) {
+              lastOpen = open
+              ship('info', `Modal ${open ? 'opened' : 'closed'}`, { view: state?.view, attempts: checkAttempts })
+            }
             if (state?.open) {
               sawOpen = true
               return
@@ -957,6 +971,22 @@ export class ReownWalletConnectProvider {
             cleanupFunctions.push(() => unsubscribe())
           }
         }
+
+        const onWindowMessage = (event: MessageEvent) => {
+          if (typeof event.origin !== 'string' || !event.origin.includes('walletconnect')) return
+          const data: any = event.data
+          const keys = data && typeof data === 'object' ? Object.keys(data).slice(0, 20) : [typeof data]
+          ship('info', 'Window message from the secure site', {
+            origin: event.origin,
+            keys,
+            hasResultUri: Boolean(data?.resultUri),
+            visibility: typeof document !== 'undefined' ? document.visibilityState : undefined,
+            modalOpen: (() => { try { return !!this.appKit.getState?.().open } catch { return undefined } })(),
+            attempts: checkAttempts
+          }, true)
+        }
+        window.addEventListener('message', onWindowMessage, false)
+        cleanupFunctions.push(() => window.removeEventListener('message', onWindowMessage, false))
 
         // Set up event subscriptions
         subscribeToEvents()

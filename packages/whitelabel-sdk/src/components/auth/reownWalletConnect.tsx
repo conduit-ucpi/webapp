@@ -10,6 +10,7 @@ import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement'
 import { requestAuthNonce, buildSiweMessage, verifyAuthSignature } from '@/lib/auth/walletAuthClient'
 import { getSiteNameFromDomain } from '@/utils/siteName'
 import mobileLogger, { mLog } from '@/utils/mobileLogger'
+import { ConnectionController, ConnectorController } from '@reown/appkit-controllers'
 import { classifyAuthError, type AuthFailure } from '@/lib/auth/classifyAuthError'
 import { reportAuthFailure } from '@/lib/auth/reportAuthFailure'
 export { classifyAuthError } from '@/lib/auth/classifyAuthError'
@@ -972,18 +973,79 @@ export class ReownWalletConnectProvider {
           }
         }
 
+        /* The one origin a social result may legitimately come from. AppKit
+           compares against exactly this (ConstantsUtil.SECURE_SITE_ORIGIN), so
+           the rescue path below must hold to the same bar - never a substring
+           match, which would let https://secure.walletconnect.org.evil.example
+           through. The env override mirrors AppKit's own. */
+        const secureSiteOrigin =
+          (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SECURE_SITE_ORIGIN) ||
+          'https://secure.walletconnect.org'
+
+        /* Finish a social login AppKit received but dropped.
+           AppKit's connecting-social view listens for the OAuth result on the
+           window, but its one-second "has the popup closed?" timer tears that
+           view down - and removes the listener - the moment the Google popup
+           closes. The popup closes itself the instant it posts its result, and
+           when our tab is backgrounded (the popup held focus) that timer wins the
+           race: the resultUri then arrives on a window with no AppKit listener
+           and the connection silently never completes. Grafana showed exactly
+           this on test.conduit-ucpi.com - a resultUri received, modal open, tab
+           hidden, then no REQUEST_USER_DATA / SUCCESS / ERROR.
+
+           We listen on the same window, reliably. So if a result arrives from the
+           secure origin and AppKit has not produced an address shortly after, we
+           drive the same completion AppKit's own view would have: hand the
+           socialUri to the auth connector. Guarded to fire once, only for an
+           exact-origin result with no error, only while still unresolved and not
+           yet connected. On the happy path AppKit wins and this never runs.
+           Nothing here touches the Privy path. */
+        let socialCompletionTried = false
+        const completeSocialFromResult = async (resultUri: string) => {
+          if (socialCompletionTried || isResolved) return
+          socialCompletionTried = true
+          try {
+            if (this.appKit.getCaipAddress?.()) return
+            const authConnector = ConnectorController.getAuthConnector?.()
+            if (!authConnector) {
+              ship('warn', 'resultUri arrived but no auth connector to complete it')
+              return
+            }
+            ship('info', 'Completing social login from the received resultUri (AppKit did not)', { attempts: checkAttempts }, true)
+            await ConnectionController.connectExternal(
+              { id: authConnector.id, type: authConnector.type, socialUri: resultUri } as any,
+              authConnector.chain
+            )
+            // The poll loop below sees the new caipAddress and resolves with auth.
+          } catch (error) {
+            ship('error', 'Social completion from resultUri failed', { message: error instanceof Error ? error.message : String(error) }, true)
+          }
+        }
+
         const onWindowMessage = (event: MessageEvent) => {
+          const fromSecureSite = event.origin === secureSiteOrigin
+          // Log any walletconnect-origin message for diagnostics, but only ever
+          // act on one that is an exact-origin match.
           if (typeof event.origin !== 'string' || !event.origin.includes('walletconnect')) return
           const data: any = event.data
           const keys = data && typeof data === 'object' ? Object.keys(data).slice(0, 20) : [typeof data]
+          const resultUri: unknown = data?.resultUri
           ship('info', 'Window message from the secure site', {
             origin: event.origin,
+            exactOrigin: fromSecureSite,
             keys,
-            hasResultUri: Boolean(data?.resultUri),
+            hasResultUri: Boolean(resultUri),
             visibility: typeof document !== 'undefined' ? document.visibilityState : undefined,
             modalOpen: (() => { try { return !!this.appKit.getState?.().open } catch { return undefined } })(),
             attempts: checkAttempts
           }, true)
+
+          // Rescue only an exact-origin result that carries no error; an error is
+          // AppKit's to surface. Give AppKit first chance via the delay.
+          if (fromSecureSite && typeof resultUri === 'string'
+              && !resultUri.includes('?error=') && !resultUri.includes('&error=')) {
+            setTimeout(() => { void completeSocialFromResult(resultUri) }, 2500)
+          }
         }
         window.addEventListener('message', onWindowMessage, false)
         cleanupFunctions.push(() => window.removeEventListener('message', onWindowMessage, false))

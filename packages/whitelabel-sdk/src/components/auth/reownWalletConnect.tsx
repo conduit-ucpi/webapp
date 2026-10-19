@@ -746,25 +746,39 @@ export class ReownWalletConnectProvider {
             if (this.appKit.subscribeEvents) {
               console.log('🔧 ReownWalletConnect: Setting up event subscriptions...')
 
-              const unsubscribe = this.appKit.subscribeEvents((event: any) => {
-                console.log('🔧 ReownWalletConnect: AppKit event:', event)
+              /* subscribeEvents hands back AppKit's whole EventsController state,
+                 not a single event: the name is at state.data.event and any
+                 detail (provider, error message) at state.data.properties. This
+                 used to log the raw state - an unreadable Proxy in the console -
+                 and compare state.type against names AppKit never emits, so it
+                 never reacted to anything and the one line that explains a
+                 failed social login (SOCIAL_LOGIN_ERROR with its message) was
+                 invisible. */
+              const unsubscribe = this.appKit.subscribeEvents((state: any) => {
+                const name: string | undefined = state?.data?.event
+                if (!name) return
+                const properties = state?.data?.properties
+                console.log('🔧 ReownWalletConnect: AppKit event:', name, properties ?? '')
 
-                // Check for events that indicate wallet selection/connection attempt
-                if (event?.type === 'wallet_selected' ||
-                    event?.type === 'connect_started' ||
-                    event?.type === 'session_request') {
-                  console.log('🔧 ReownWalletConnect: Connection initiated event detected')
+                if (name === 'SELECT_WALLET' ||
+                    name === 'SOCIAL_LOGIN_STARTED' ||
+                    name === 'EMAIL_LOGIN_SELECTED' ||
+                    name === 'CONNECT_PROXY_ERROR') {
                   if (!hasInitiatedConnection) {
+                    console.log('🔧 ReownWalletConnect: Connection initiated event detected')
                     hasInitiatedConnection = true
                   }
                 }
 
-                // Check on any connection-related event
-                if (event?.type === 'session_event' ||
-                    event?.type === 'connect' ||
-                    event?.type === 'session_update' ||
-                    event?.name === 'accountsChanged') {
-                  console.log('🔧 ReownWalletConnect: Session event detected, checking connection...')
+                if (name === 'SOCIAL_LOGIN_ERROR' || name === 'CONNECT_ERROR') {
+                  console.warn('🔧 ReownWalletConnect: AppKit reported a connection error:', name, properties?.message ?? '')
+                }
+
+                if (name === 'CONNECT_SUCCESS' ||
+                    name === 'SOCIAL_LOGIN_SUCCESS' ||
+                    name === 'SOCIAL_LOGIN_REQUEST_USER_DATA' ||
+                    name === 'EMAIL_VERIFICATION_CODE_PASS') {
+                  console.log('🔧 ReownWalletConnect: Connection event detected, checking connection...')
                   checkConnection()
                 }
               })

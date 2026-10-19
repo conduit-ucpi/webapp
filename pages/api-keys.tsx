@@ -1,9 +1,10 @@
 import Head from 'next/head';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { apiFetch, API_BASE } from '@/lib/apiFetch';
 import { useAuth } from '@/components/auth';
-import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
+import WalletChoiceCards from '@/components/auth/WalletChoiceCards';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { SkeletonCard } from '@/components/ui/Skeleton';
@@ -205,6 +206,8 @@ export default function ApiKeysPage() {
   const tRef = useRef(t);
   tRef.current = t;
   const { isLoading, isConnected, user } = useAuth();
+  const router = useRouter();
+  const autoConnect = router.query.autoConnect === 'true';
   const wallet = user?.walletAddress || null;
   const activeBrandId = useBrand().id;
   const partnerBrandId = OWN_BRAND_IDS.has(activeBrandId) ? null : activeBrandId;
@@ -310,7 +313,8 @@ export default function ApiKeysPage() {
           <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md mx-auto">
             {t('apiKeys.signIn.body')}
           </p>
-          <ConnectWalletEmbedded useSmartRouting={true} />
+          {/* The same wallet gate as /dashboard, so signing in looks the same wherever it is asked. */}
+          <WalletChoiceCards autoConnect={autoConnect} className="mx-auto w-full max-w-md text-left" />
         </div>
       </div>
     );

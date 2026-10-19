@@ -64,9 +64,10 @@ describe('SiteNav', () => {
     expect(within(screen.getByRole('menu')).getByText('Projects')).toBeInTheDocument();
   });
 
-  it('offers Dashboard (not "Sign in") when signed out', () => {
+  it('offers Dashboard (not "Sign in") and API keys when signed out', () => {
     render(<SiteNav />);
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/dashboard');
+    expect(screen.getByRole('link', { name: 'API keys' })).toHaveAttribute('href', '/api-keys');
     expect(screen.queryByText('Sign in')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Account menu' })).toBeNull();
   });
@@ -156,6 +157,7 @@ describe('SiteNav', () => {
     expect(screen.getByText('Escrow Me').closest('a')).toHaveAttribute('href', '/dashboard');
     expect(screen.getAllByText('Request payment').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Dashboard').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('API keys').length).toBeGreaterThan(0);
   });
 
   it('can be forced dark for a page that is dark by design', () => {

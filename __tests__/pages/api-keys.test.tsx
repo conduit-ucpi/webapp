@@ -5,10 +5,11 @@ import { apiFetch } from '@/lib/apiFetch';
 import { I18nProvider, useBrand } from '@conduit-ucpi/whitelabel-sdk';
 
 jest.mock('@/components/auth', () => ({ useAuth: jest.fn() }));
-jest.mock('@/components/auth/ConnectWalletEmbedded', () => function ConnectWalletEmbedded() {
-  return <div data-testid="connect-wallet-embedded" />;
+jest.mock('@/components/auth/WalletChoiceCards', () => function WalletChoiceCards() {
+  return <div data-testid="wallet-choice-cards" />;
 });
 jest.mock('@/lib/apiFetch', () => ({ apiFetch: jest.fn(), API_BASE: '' }));
+jest.mock('next/router', () => ({ useRouter: () => ({ query: {} }) }));
 jest.mock('next/head', () => ({ __esModule: true, default: () => null }));
 // The page is rendered without BrandProvider, where the real useBrand() throws.
 jest.mock('@conduit-ucpi/whitelabel-sdk', () => ({
@@ -82,7 +83,7 @@ describe('/api-keys', () => {
   it('asks a signed-out visitor to sign in and loads nothing', () => {
     mockUseAuth.mockReturnValue({ isLoading: false, isConnected: false, user: null } as any);
     render(<ApiKeysPage />);
-    expect(screen.getByTestId('connect-wallet-embedded')).toBeInTheDocument();
+    expect(screen.getByTestId('wallet-choice-cards')).toBeInTheDocument();
     expect(mockApiFetch).not.toHaveBeenCalled();
   });
 

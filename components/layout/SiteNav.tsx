@@ -268,9 +268,15 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
                 </div>
               ) : (
                 // "Dashboard", not "Sign in": the same door for new and returning visitors, and it signs them in.
-                <Link href="/dashboard" className="px-3 py-2 text-sm text-secondary-900 dark:text-white hover:opacity-80">
-                  Dashboard
-                </Link>
+                // API keys likewise signs them in, so a merchant can reach it before they have an account.
+                <>
+                  <Link href="/api-keys" className="px-3 py-2 text-sm text-secondary-900 dark:text-white hover:opacity-80">
+                    API keys
+                  </Link>
+                  <Link href="/dashboard" className="px-3 py-2 text-sm text-secondary-900 dark:text-white hover:opacity-80">
+                    Dashboard
+                  </Link>
+                </>
               )}
               <Link href="/create" className={`${btnPrimary} !px-4 !py-2 !text-sm`}>
                 Request payment
@@ -310,6 +316,11 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
                 </div>
               ))}
               {marketing && <a href={pricingHref} className={itemClass} onClick={closeAll}>{SITE_NAV_PRICING.label}</a>}
+              {!signedIn && (
+                <Link href="/api-keys" className={itemClass} onClick={closeAll}>
+                  <span className="block font-medium">API keys</span>
+                </Link>
+              )}
               <div className="flex gap-3 pt-2">
                 {!signedIn && (
                   <Link href="/dashboard" className="flex-1 inline-flex items-center justify-center px-4 py-3 text-sm font-medium border border-secondary-300 dark:border-secondary-600 rounded-[var(--wl-button-radius)] text-secondary-900 dark:text-white" onClick={closeAll}>

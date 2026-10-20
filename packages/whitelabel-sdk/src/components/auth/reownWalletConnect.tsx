@@ -264,7 +264,13 @@ export class ReownWalletConnectProvider {
       mLog.info('ReownWalletConnect', 'External wallets always use lazy auth (no connect-time prompt)')
       mLog.info('ReownWalletConnect', '========================================')
 
-      const siwxConfig = embeddedSiwxEnabled ? new EmbeddedOnlySIWX() : undefined
+      const siwxConfig = embeddedSiwxEnabled
+        ? new EmbeddedOnlySIWX({
+            chainId: parseInt(this.config.chainId.toString()),
+            serviceLink: this.config.serviceLink,
+            termsVersion: this.config.termsVersion
+          })
+        : undefined
       this.siwxConfig = siwxConfig
 
       /* If the caller already chose wallet-only before AppKit existed (the very

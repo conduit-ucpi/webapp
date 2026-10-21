@@ -9,7 +9,7 @@ import { displayCurrency, formatDateTimeWithTZ, normalizeTimestamp } from '@/uti
 
 // Extended type for admin contracts that includes chain data and blockchain status
 type AdminContract = PendingContract & {
-  status?: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED';
+  status?: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED' | 'SANCTIONS_REFUSED';
   funded?: boolean;
   fundedAt?: string;
   disputedAt?: string;

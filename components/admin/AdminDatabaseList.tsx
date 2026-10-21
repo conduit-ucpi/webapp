@@ -42,6 +42,11 @@ const STATUSES: Array<{ value: string; label: string; meaning: string }> = [
     meaning: 'A payment address has been issued for a buyer, but no money has arrived in it yet.'
   },
   {
+    value: 'SANCTIONS_REFUSED',
+    label: 'Refused: sanctions',
+    meaning: 'chainservice refused to deploy it because a party carries sanctions risk. Any money sent is frozen at the address; nothing more should be sent.'
+  },
+  {
     value: 'ACTIVE',
     label: 'Active (funded)',
     meaning: 'The money is held on chain and the payout date has not passed. The buyer can still raise a dispute.'
@@ -99,6 +104,7 @@ const getStatusColor = (status: string) => {
       return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
     case 'EXPIRED':
     case 'ERROR':
+    case 'SANCTIONS_REFUSED':
       return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
     default:
       return 'bg-gray-100 dark:bg-secondary-800 text-gray-800 dark:text-secondary-200';

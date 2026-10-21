@@ -139,7 +139,8 @@ export function paidEscrowFrom(settled: Settled | null, fallbackAddress: string)
   };
 }
 
-type Stage = 'details' | 'review' | 'done';
+// 'refused' is final: a sanctions refusal. Nothing on it can pay, and nothing leads back.
+type Stage = 'details' | 'review' | 'done' | 'refused';
 
 /** A prepare refusal that is about how much, and so belongs under the amount field. */
 function isAmountRefusal(result: { error: string; message?: string }): boolean {
@@ -241,6 +242,24 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
   /** Why a checkout's payment could not be set up: its terms have no form to show an error on. */
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
+  /** Why the payment was refused on sanctions grounds, once it has been. */
+  const [refusal, setRefusal] = useState<string | null>(null);
+  /** Read by the transfer poll, which runs outside React's render: once refused, it stops settling. */
+  const refused = useRef(false);
+
+  /**
+   * A sanctions refusal (`sanctioned_party`) at pay or settle ends the payment: unlike any other
+   * failure, nothing is re-enabled — no pay button, no QR, no address — because anything more
+   * sent to the address would be frozen there too. ap2service enforces it regardless; this only
+   * stops offering.
+   */
+  const refuse = (message?: string) => {
+    refused.current = true;
+    setRefusal(message || null);
+    setStage('refused');
+    checkout?.onFailed(message || t('push.refusedTitle'), 'pay');
+  };
+
   const fail = (message?: string) => {
     const said = message || t('wizard.genericError');
     showToast({ type: 'error', title: t('push.failed'), message: said });
@@ -324,6 +343,9 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
         // against the amount, and the buyer stays on the form: they never get an address to
         // pay into. Its first sentence is written for a person; the rest is for developers.
         if (isAmountRefusal(result)) return fieldError(setAmountError, firstSentence(result.message));
+        // A sanctions refusal here (sanctioned_party) stays on the form, like any refusal at
+        // prepare: no address has been shown, so there is nothing to pay with to take away, and
+        // the terms can be corrected. Once an address HAS been shown, it is final (refuse()).
         return fail(result.message);
       }
       // ⚠️ NOT TAKEN ON TRUST. The address came from the API; before it is shown or paid, the
@@ -401,7 +423,8 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
       });
       if (isAp2ToolError(result)) {
         updateStep('settle', 'error');
-        fail(result.message);
+        if (result.error === 'sanctioned_party') refuse(result.message);
+        else fail(result.message);
         return false;
       }
       updateStep('settle', 'completed');
@@ -426,6 +449,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     // Only if it failed after the money moved does this settle what is there.
     const inFlight = walletPayment.current;
     if (inFlight && (await inFlight)) return true;
+    if (refused.current) return false;
     const result = await callAp2Tool<Settled>('settle_escrow_payment', {
       ...terms(),
       ...attribution,
@@ -434,7 +458,8 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     if (isAp2ToolError(result)) {
       // The money may well be there — this ran because the balance check saw it. Say why settle
       // turned it down, rather than letting the panel read it as "no payment found".
-      fail(result.message);
+      if (result.error === 'sanctioned_party') refuse(result.message);
+      else fail(result.message);
       return false;
     }
     setSettled(result);
@@ -620,7 +645,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     <div className="py-10">
       <div className="w-full max-w-2xl mx-auto px-4">
         <CreateProgressSteps
-          current={stage === 'details' ? 0 : stage === 'review' ? 1 : 2}
+          current={stage === 'details' ? 0 : stage === 'done' ? 2 : 1}
           steps={PUSH_JOURNEY_STEPS}
         />
 
@@ -765,6 +790,14 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
               </div>
             )}
           </>
+        )}
+
+        {stage === 'refused' && (
+          <div className="rounded-2xl border border-error-500 bg-white dark:bg-secondary-900 p-6 sm:p-8 text-center">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-error-600">{t('push.refusedTitle')}</h2>
+            <p className="mt-3 text-secondary-600 dark:text-secondary-300">{t('push.refusedBody')}</p>
+            {refusal && <p className="mt-3 text-sm text-secondary-500 dark:text-secondary-400 break-words">{refusal}</p>}
+          </div>
         )}
 
         {stage === 'done' && (

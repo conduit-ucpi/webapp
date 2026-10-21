@@ -327,6 +327,52 @@ describe('/pay', () => {
     expect(screen.getByRole('button', { name: 'I have paid' })).toBeInTheDocument();
   });
 
+  // ── a sanctions refusal is final: nothing to pay with is left on the page ──
+
+  const SANCTIONED = { error: 'sanctioned_party', retryable: false, message: 'seller 0xd366 of contract 0x53f5 is on the sanctioned list' };
+
+  function expectNothingToPayWith() {
+    expect(screen.queryByRole('button', { name: /from this wallet/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'I have paid' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+    expect(screen.queryByText(ESCROW)).toBeNull();
+  }
+
+  it('a sanctions refusal when paying from the wallet ends the payment instead of re-offering it', async () => {
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce(SANCTIONED);
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await screen.findByText('Payment refused', { selector: 'h2' });
+    expectNothingToPayWith();
+  });
+
+  it('a sanctions refusal after a transfer ends the payment and is not asked again', async () => {
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce(SANCTIONED);
+    render(<PayPage />);
+    fill();
+    const paid = await screen.findByRole('button', { name: 'I have paid' });
+
+    mockBalances.escrow = '10';
+    fireEvent.click(paid);
+
+    await screen.findByText('Payment refused', { selector: 'h2' });
+    expectNothingToPayWith();
+    expect(mockCall).toHaveBeenCalledTimes(2);
+  });
+
+  it('any other settle failure still leaves the payment open to try again', async () => {
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({ error: 'service_unavailable', retryable: true, message: 'down' });
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await waitFor(() => expect(mockCall).toHaveBeenCalledTimes(2));
+    expect(screen.queryByText('Payment refused', { selector: 'h2' })).toBeNull();
+    expect(await screen.findByRole('button', { name: /from this wallet/ })).toBeTruthy();
+  });
+
   it('"I have paid" settles the funded address through the same tool, unsigned, with the same terms', async () => {
     mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({ status: 'settled' });
     render(<PayPage />);

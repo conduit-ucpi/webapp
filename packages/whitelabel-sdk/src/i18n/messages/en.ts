@@ -693,6 +693,8 @@ export const en = {
   'push.settling': 'Protecting your payment…',
   'push.failed': 'Payment not made',
   'push.addressUnverified': "We couldn't confirm this payment with the payment contract, so we've stopped. Don't send money to the address shown.",
+  'push.refusedTitle': 'Payment refused',
+  'push.refusedBody': "This payment failed a sanctions check, so it can't go ahead. Don't send any more money to its address: anything already sent is held there and can't be released.",
   'push.doneTitle': 'Payment protected',
   'push.doneBody': '{amount} {token} is held in the payment contract for {seller}. It releases to them on {date} unless you dispute it before then.',
   'push.viewPayment': 'View this payment',

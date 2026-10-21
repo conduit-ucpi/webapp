@@ -16,6 +16,7 @@ function colorFor(status: string): string {
     case 'ACTIVE':
       return 'bg-success-50 text-success-600 border-success-200';
     case 'DISPUTED':
+    case 'SANCTIONS_REFUSED':
       return 'bg-error-50 text-error-600 border-error-200';
     case 'EXPIRED':
       return 'bg-warning-50 text-warning-600 border-warning-200';
@@ -32,6 +33,11 @@ function colorFor(status: string): string {
 export function contractStatusDisplay(status: string | undefined, isPending: boolean): ContractStatusDisplay {
   // A pending contract without a status of its own is awaiting the buyer's funding.
   const displayStatus = status || (isPending ? 'PENDING' : '');
-  const label = displayStatus.toUpperCase() === 'PENDING' ? 'PENDING FUNDING' : displayStatus || 'Unknown';
+  const label =
+    displayStatus.toUpperCase() === 'PENDING'
+      ? 'PENDING FUNDING'
+      : displayStatus.toUpperCase() === 'SANCTIONS_REFUSED'
+        ? 'REFUSED: SANCTIONS CHECK'
+        : displayStatus || 'Unknown';
   return { label, color: colorFor(displayStatus || 'UNKNOWN') };
 }

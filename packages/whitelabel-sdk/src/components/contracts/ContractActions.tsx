@@ -399,6 +399,15 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         </div>
       );
 
+    // Refused on sanctions grounds: money sent is frozen at the address. A status, never a
+    // button — above all not a route back to the pay page.
+    case 'SANCTIONS_REFUSED':
+      return (
+        <p className="text-sm text-error-600">
+          {contract.ctaLabel || 'Refused: sanctions check'}. Do not send any more funds to this payment.
+        </p>
+      );
+
     case 'NONE':
     default:
       return null;

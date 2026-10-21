@@ -795,6 +795,8 @@ export const es: Catalogue = {
   'push.settling': 'Protegiendo tu pago…',
   'push.failed': 'No se realizó el pago',
   'push.addressUnverified': 'No pudimos confirmar este pago con el contrato de pago, así que nos hemos detenido. No envíes dinero a la dirección mostrada.',
+  'push.refusedTitle': 'Pago rechazado',
+  'push.refusedBody': 'Este pago no superó una verificación de sanciones, así que no puede continuar. No envíes más dinero a su dirección: lo ya enviado queda retenido allí y no se puede liberar.',
   'push.doneTitle': 'Pago protegido',
   'push.doneBody': '{amount} {token} quedan retenidos en el contrato de pago para {seller}. Se liberan en {date} salvo que lo disputes antes.',
   'push.viewPayment': 'Ver este pago',

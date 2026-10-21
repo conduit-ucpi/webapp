@@ -97,7 +97,7 @@ export interface Contract {
   amount: number;
   expiryTimestamp: number;
   description: string;
-  status: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED';
+  status: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED' | 'SANCTIONS_REFUSED';
   createdAt: number;
   funded?: boolean;
   fundedAt?: string;
@@ -182,7 +182,7 @@ export interface PendingContract {
   createdBy: string;
   state: 'OK' | 'IN-PROCESS';
   // Backend-provided status for pending contracts
-  status?: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED';
+  status?: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED' | 'SANCTIONS_REFUSED';
   // Admin notes array from contract service
   adminNotes?: Array<{
     id: string;

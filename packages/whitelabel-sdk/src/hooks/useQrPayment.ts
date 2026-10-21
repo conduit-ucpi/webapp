@@ -1,24 +1,26 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
- * QR-payment subsystem shared by contract-create and contract-pay.
+ * QR-payment subsystem shared by /pay (and /contract-create, which renders it) and the
+ * marketplace's offer funding.
  *
- * Owns the balance polling, the activation round-trip to
- * /api/chain/check-and-activate, and the EIP-681 URI helper. The page-specific differences are
- * injected:
- *   - `createContract`   how the on-chain escrow is produced for this page
- *                        (create POSTs /api/chain/create-contract; pay uses
- *                        resolveOrCreateOnChainContract). Returns the resolved
- *                        contract address, or undefined/empty on failure.
+ * Owns the balance polling, the activation round-trip, and the EIP-681 URI helper. The
+ * page-specific differences are injected:
+ *   - `createContract`   the address the money is sent to (/pay: the escrow address ap2service
+ *                        derived at prepare; marketplace: the offer vault). Returns the
+ *                        address, or undefined/empty on failure.
  *   - `requiredAmount`   token-unit amount that must arrive before we mark the
  *                        payment detected (create: form amount; pay:
  *                        contract.amount / 1e6).
  *   - `requiredAmountMicro` micro amount embedded in the EIP-681 URI.
- *   - `onActivated`      what to do once the backend confirms activation
- *                        (create: postMessage + WordPress/iframe/popup redirect;
- *                        pay: router.push('/dashboard')).
+ *   - `activation`       how the funded address is activated (/pay: ap2service's
+ *                        settle_escrow_payment, which deploys through chainservice's
+ *                        deploy-and-activate; marketplace: fund-offer). Required: there is
+ *                        no default, because the old default (chainservice's check-and-activate)
+ *                        activated without the deploy-time sanctions check and was retired.
+ *   - `onActivated`      what to do once the backend confirms activation.
  *
- * checkAndActivate reads the escrow's token balance before it will spend
+ * checkAndActivate reads the address's token balance before it will spend
  * anything — see the comment on the call itself. Both callers (the "I have
  * paid" button and the balance poll's automatic sweep) get that gate.
  */
@@ -80,11 +82,6 @@ interface QrActivationTarget {
   run?: (fundedAddress: string) => Promise<boolean>;
 }
 
-const ESCROW_ACTIVATION: QrActivationTarget = {
-  endpoint: '/api/chain/check-and-activate',
-  buildBody: (contractAddress) => ({ contractAddress }),
-};
-
 interface UseQrPaymentParams {
   authenticatedFetch: ((url: string, init?: RequestInit) => Promise<Response>) | undefined;
   getTokenBalance: (address: string, tokenAddress: string) => Promise<string>;
@@ -94,8 +91,7 @@ interface UseQrPaymentParams {
   requiredAmountMicro: number;
   createContract: () => Promise<string | undefined>;
   onActivated: (contractAddress: string) => void;
-  /** Omit for the escrow flow. */
-  activation?: QrActivationTarget;
+  activation: QrActivationTarget;
   /**
    * An escrow that already exists on chain. Supplied when the payer returns to
    * a request whose contract was deployed on an earlier visit — funds may
@@ -138,7 +134,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     requiredAmountMicro,
     createContract: createContractImpl,
     onActivated,
-    activation = ESCROW_ACTIVATION,
+    activation,
     existingContractAddress = null,
   } = params;
 
@@ -205,7 +201,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
 
     try {
       // The activation endpoint is NOT a read. chainservice signs and submits an on-chain
-      // call — checkAndActivate() on an escrow, fund() on an OfferVault — and BOTH revert
+      // call — the escrow's deploy-and-activate, fund() on an OfferVault — and both revert
       // with InsufficientDirectPayment when the money has not arrived, burning gas on the
       // reverting transaction (gas estimation fails, but chainservice falls back to a
       // configured limit and sends anyway). balanceOf is free, so confirm the money is

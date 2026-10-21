@@ -6,7 +6,7 @@
  *  - balance polling every 10s for 2 min, 20s to 5 min, 30s to 7 min, then
  *    stops; "I have paid" finding nothing polls every 20s for 2 min. Sets
  *    paymentDetected when balance >= required and sweeps once
- *  - checkAndActivate POSTs /api/chain/check-and-activate and drives status,
+ *  - checkAndActivate POSTs the injected activation endpoint and drives status,
  *    invoking the page-specific onActivated callback on success
  *  - createContract delegates to the page-supplied creator and stores the address
  *  - buildEip681Uri pure helper
@@ -35,6 +35,8 @@ describe('useQrPayment', () => {
     requiredAmountMicro: 10_000_000, // micro for the EIP-681 uri
     createContract: mockCreateContract,
     onActivated: mockOnActivated,
+    // A POST activation, as the marketplace's offer funding uses.
+    activation: { endpoint: '/api/chain/marketplace/fund-offer', buildBody: (address: string) => ({ vaultAddress: address }) },
   });
 
   beforeEach(() => {
@@ -295,7 +297,7 @@ describe('useQrPayment', () => {
 
       await waitFor(() => {
         expect(mockAuthenticatedFetch).toHaveBeenCalledWith(
-          '/api/chain/check-and-activate',
+          '/api/chain/marketplace/fund-offer',
           expect.objectContaining({ method: 'POST' })
         );
       });
@@ -337,8 +339,8 @@ describe('useQrPayment', () => {
     });
   });
 
-  // check-and-activate submits a real on-chain checkAndActivate() transaction,
-  // which reverts with InsufficientDirectPayment and still burns platform gas
+  // Activation submits a real on-chain transaction, which reverts with
+  // InsufficientDirectPayment and still burns platform gas
   // when the escrow is empty. Nothing may reach it unless the escrow is funded.
   describe('gas safety: balance gate in front of activation', () => {
     it('sends nothing when the user presses "I have paid" but no payment arrived', async () => {
@@ -418,7 +420,7 @@ describe('useQrPayment', () => {
       });
 
       expect(mockAuthenticatedFetch).toHaveBeenCalledWith(
-        '/api/chain/check-and-activate',
+        '/api/chain/marketplace/fund-offer',
         expect.objectContaining({ method: 'POST' })
       );
       expect(result.current.qrActivationStatus).toBe('success');

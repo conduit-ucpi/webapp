@@ -10,7 +10,7 @@ const ADDRESS = /^0x[a-fA-F0-9]{40}$/;
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!methodGuard(req, res, 'POST')) return;
-  const { contractAddress, target1, target2 } = req.body ?? {};
+  const { contractAddress, target1, target2, trace } = req.body ?? {};
   const escrow = typeof contractAddress === 'string' ? contractAddress.trim() : '';
   const targets = [target1, target2]
     .filter((t): t is string => typeof t === 'string' && t.trim() !== '')
@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    res.status(200).json(await screenBeforeSweep(req, escrow, targets));
+    res.status(200).json(await screenBeforeSweep(req, escrow, targets, trace === true));
   } catch (error) {
     if (error instanceof Error && error.message === 'Authentication required') {
       return void res.status(401).json({ clean: false, error: 'Authentication required' });

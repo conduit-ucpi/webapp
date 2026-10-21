@@ -70,7 +70,7 @@ describe('FeeSweepModal', () => {
     expect(screen.getByText('buyer, funder')).toBeTruthy();
     const [url, init] = fetchMock.mock.calls[0];
     expect(String(url)).toContain('/api/admin/sweep-fees-screen');
-    expect(JSON.parse(init.body)).toEqual({ contractAddress: escrow, target1: a1, target2: '' });
+    expect(JSON.parse(init.body)).toEqual({ contractAddress: escrow, target1: a1, target2: '', trace: false });
   });
 
   it('shows an incomplete check with its warnings, not as clean', async () => {
@@ -100,5 +100,18 @@ describe('FeeSweepModal', () => {
     fill();
     fireEvent.click(screen.getByText('Check Sanctions'));
     await waitFor(() => expect(screen.getByText('Sanctions check failed: Sanctions screening is unavailable')).toBeTruthy());
+  });
+  it('sends the trace flag when ticked, and shows which check scored each subject', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, {
+      clean: false, complete: true, hits: 1, warnings: [],
+      subjects: [{ roles: 'buyer', type: 'WALLET', value: a1, risk: 80, source: 'TRACE' }]
+    }));
+    render(<FeeSweepModal isOpen onClose={() => {}} />);
+    fill();
+    fireEvent.click(screen.getByLabelText(/Trace wallets/));
+    fireEvent.click(screen.getByText('Check Sanctions'));
+    await waitFor(() => expect(screen.getByText('HIT 80')).toBeTruthy());
+    expect(screen.getByText('trace')).toBeTruthy();
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).trace).toBe(true);
   });
 });

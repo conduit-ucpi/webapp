@@ -25,6 +25,8 @@ export interface ScreenedSubject {
   type: 'WALLET' | 'EMAIL' | 'DOMAIN';
   value: string;
   risk: number;
+  /** Which of sanctionservice's checks scored it: LIST, TRACE (a traced wallet the lists scored 0) or NONE. */
+  source?: string;
 }
 
 export interface SweepScreenResult {
@@ -88,13 +90,13 @@ async function callAsAdmin<T>(req: NextApiRequest, baseUrl: string | undefined, 
   return { status: response.status, body };
 }
 
-async function scores(subjects: { type: string; value: string }[], reference: string): Promise<number[]> {
+async function scores(subjects: { type: string; value: string; trace?: boolean }[], reference: string): Promise<{ risk: number; source?: string }[]> {
   const baseUrl = process.env.SANCTION_SERVICE_URL;
   if (!baseUrl) throw new ScreenFailure(500, 'SANCTION_SERVICE_URL is not configured');
-  const risks: number[] = [];
+  const risks: { risk: number; source?: string }[] = [];
   for (let i = 0; i < subjects.length; i += MAX_SUBJECTS) {
     const batch = subjects.slice(i, i + MAX_SUBJECTS);
-    let results: { risk?: number }[] | undefined;
+    let results: { risk?: number; source?: string }[] | undefined;
     try {
       const response = await fetch(`${baseUrl}/api/sanctions/screen`, {
         method: 'POST',
@@ -108,12 +110,13 @@ async function scores(subjects: { type: string; value: string }[], reference: st
     if (!results || results.length !== batch.length || results.some((r) => typeof r.risk !== 'number')) {
       throw new ScreenFailure(503, 'Sanctions screening is unavailable: sanctionservice did not score every subject');
     }
-    risks.push(...results.map((r) => r.risk as number));
+    risks.push(...results.map((r) => ({ risk: r.risk as number, source: r.source })));
   }
   return risks;
 }
 
-export async function screenBeforeSweep(req: NextApiRequest, contractAddress: string, targets: string[]): Promise<SweepScreenResult> {
+/** [trace] asks sanctionservice to trace every wallet its lists score 0 (its `trace` flag, wallets only). */
+export async function screenBeforeSweep(req: NextApiRequest, contractAddress: string, targets: string[], trace = false): Promise<SweepScreenResult> {
   requireAuth(req); // before any call, so "no session" is a 401 and not a warning about contractservice
   const chainUrl = process.env.CHAIN_SERVICE_URL;
   const contractUrl = process.env.CONTRACT_SERVICE_URL;
@@ -182,8 +185,13 @@ export async function screenBeforeSweep(req: NextApiRequest, contractAddress: st
 
   // 5. Score them all.
   const list = Array.from(subjects.values());
-  const risks = await scores(list.map((s) => ({ type: s.type, value: s.value })), contractAddress);
-  const results: ScreenedSubject[] = list.map((s, i) => ({ roles: Array.from(s.roles).join(', '), type: s.type, value: s.value, risk: risks[i] }));
+  const risks = await scores(
+    list.map((s) => (trace && s.type === 'WALLET' ? { type: s.type, value: s.value, trace: true } : { type: s.type, value: s.value })),
+    contractAddress
+  );
+  const results: ScreenedSubject[] = list.map((s, i) => ({
+    roles: Array.from(s.roles).join(', '), type: s.type, value: s.value, risk: risks[i].risk, source: risks[i].source
+  }));
   const hits = results.filter((r) => r.risk > 0);
   // Roles can quote an email, so only wallets and domains are named; sanctionservice's own log
   // holds the keyed hash of a matched email.

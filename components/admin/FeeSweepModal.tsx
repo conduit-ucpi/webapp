@@ -26,6 +26,7 @@ interface ScreenedSubject {
   type: string;
   value: string;
   risk: number;
+  source?: string;
 }
 
 interface ScreenResult {
@@ -58,6 +59,7 @@ export default function FeeSweepModal({ isOpen, onClose }: FeeSweepModalProps) {
   const [result, setResult] = useState<SweepFeesResult | null>(null);
   const [isScreening, setIsScreening] = useState(false);
   const [screen, setScreen] = useState<ScreenResult | null>(null);
+  const [trace, setTrace] = useState(false);
 
   const handleClose = () => {
     setContractAddress('');
@@ -67,6 +69,7 @@ export default function FeeSweepModal({ isOpen, onClose }: FeeSweepModalProps) {
     setBps2('0');
     setResult(null);
     setScreen(null);
+    setTrace(false);
     onClose();
   };
 
@@ -78,7 +81,7 @@ export default function FeeSweepModal({ isOpen, onClose }: FeeSweepModalProps) {
       const response = await apiFetch('/api/admin/sweep-fees-screen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contractAddress: contractAddress.trim(), target1, target2 })
+        body: JSON.stringify({ contractAddress: contractAddress.trim(), target1, target2, trace })
       });
       const data = await response.json().catch(() => ({}));
       setScreen({ ...data, clean: response.ok && data.clean === true, error: data.error ?? (response.ok ? undefined : `Request failed (${response.status})`) });
@@ -142,6 +145,15 @@ export default function FeeSweepModal({ isOpen, onClose }: FeeSweepModalProps) {
         <p className="text-sm text-secondary-500 dark:text-secondary-400">
           BPS are basis points of the escrow&apos;s fee and must sum to 10000. Address 2 receives any rounding dust.
         </p>
+        <label className="flex items-start gap-2 text-sm text-gray-900 cursor-pointer">
+          <input type="checkbox" className="mt-0.5 h-4 w-4 shrink-0" checked={trace} onChange={(e) => { setTrace(e.target.checked); setScreen(null); }} />
+          <span>
+            Trace wallets
+            <span className="block text-xs text-secondary-500">
+              Also trace every wallet that is not on a sanctions list; its trace score replaces the 0.
+            </span>
+          </span>
+        </label>
 
         {screen && (
           <div className={`rounded-md border border-gray-200 border-l-4 p-3 text-sm text-gray-900 space-y-2 ${screen.clean ? 'border-l-success-500' : 'border-l-error-500'}`}>
@@ -167,6 +179,7 @@ export default function FeeSweepModal({ isOpen, onClose }: FeeSweepModalProps) {
                       <tr key={`${s.type}:${s.value}`} className={s.risk > 0 ? 'font-bold text-error-600' : ''}>
                         <td className="pr-2 py-0.5 whitespace-nowrap">{s.risk > 0 ? `HIT ${s.risk}` : 'clear'}</td>
                         <td className="pr-2 py-0.5 whitespace-nowrap">{s.type}</td>
+                        <td className="pr-2 py-0.5 whitespace-nowrap">{s.source?.toLowerCase() ?? ''}</td>
                         <td className="pr-2 py-0.5 font-mono break-all">{s.value}</td>
                         <td className="py-0.5">{s.roles}</td>
                       </tr>

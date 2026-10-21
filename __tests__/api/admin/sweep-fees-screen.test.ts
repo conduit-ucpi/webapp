@@ -41,7 +41,7 @@ function services({ contract, chain, risky = [] as string[] }: { contract?: Rout
     if (url.startsWith('http://chainservice')) return chain ? chain(url, req) : reply(200, chainParties());
     if (url.startsWith('http://sanctionservice')) {
       const { subjects } = JSON.parse(req.body as string);
-      return reply(200, { results: subjects.map((s: { value: string }) => ({ ...s, risk: risky.includes(s.value.toLowerCase()) ? 100 : 0 })) });
+      return reply(200, { results: subjects.map((s: { value: string; trace?: boolean }) => ({ ...s, risk: risky.includes(s.value.toLowerCase()) ? 100 : 0, source: s.trace ? 'TRACE' : 'LIST' })) });
     }
     throw new Error(`unexpected ${url}`);
   });
@@ -146,5 +146,20 @@ describe('/api/admin/sweep-fees-screen', () => {
     const { status, body } = await run();
     expect(status).toBe(503);
     expect(body.clean).toBe(false);
+  });
+  it('asks sanctionservice to trace the wallets, and only the wallets, when the flag is set', async () => {
+    services({});
+    const { body } = await run({ contractAddress: escrow, target1: target, trace: true });
+    const sent = JSON.parse((sanctionCalls()[0][1] as RequestInit).body as string).subjects;
+    sent.forEach((s: { type: string; trace?: boolean }) => expect(s.trace === true).toBe(s.type === 'WALLET'));
+    expect(body.subjects.find((s: any) => s.type === 'WALLET').source).toBe('TRACE');
+    expect(body.subjects.find((s: any) => s.type === 'EMAIL').source).toBe('LIST');
+  });
+
+  it('sends no trace flag when it is not set', async () => {
+    services({});
+    await run();
+    const sent = JSON.parse((sanctionCalls()[0][1] as RequestInit).body as string).subjects;
+    expect(sent.some((s: { trace?: boolean }) => s.trace)).toBe(false);
   });
 });

@@ -144,14 +144,8 @@ export default function FeeSweepModal({ isOpen, onClose }: FeeSweepModalProps) {
         </p>
 
         {screen && (
-          <div
-            className={`border rounded-md p-3 text-sm space-y-2 ${
-              screen.clean
-                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300'
-                : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
-            }`}
-          >
-            <p className="font-medium">
+          <div className={`rounded-md border border-gray-200 border-l-4 p-3 text-sm text-gray-900 space-y-2 ${screen.clean ? 'border-l-success-500' : 'border-l-error-500'}`}>
+            <p className={`font-medium ${screen.clean ? 'text-success-600' : 'text-error-600'}`}>
               {screen.error
                 ? `Sanctions check failed: ${screen.error}`
                 : screen.hits
@@ -170,7 +164,7 @@ export default function FeeSweepModal({ isOpen, onClose }: FeeSweepModalProps) {
                 <table className="w-full text-xs">
                   <tbody>
                     {screen.subjects.map((s) => (
-                      <tr key={`${s.type}:${s.value}`} className={s.risk > 0 ? 'font-bold' : ''}>
+                      <tr key={`${s.type}:${s.value}`} className={s.risk > 0 ? 'font-bold text-error-600' : ''}>
                         <td className="pr-2 py-0.5 whitespace-nowrap">{s.risk > 0 ? `HIT ${s.risk}` : 'clear'}</td>
                         <td className="pr-2 py-0.5 whitespace-nowrap">{s.type}</td>
                         <td className="pr-2 py-0.5 font-mono break-all">{s.value}</td>
@@ -189,17 +183,17 @@ export default function FeeSweepModal({ isOpen, onClose }: FeeSweepModalProps) {
 
         {result && (
           result.success ? (
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3 text-sm space-y-1">
-              <p className="font-medium text-green-800 dark:text-green-300">Fee swept: {result.feeAmount} (token {result.tokenAddress})</p>
+            <div className="rounded-md border border-gray-200 border-l-4 border-l-success-500 p-3 text-sm text-gray-900 space-y-1">
+              <p className="font-medium text-success-600">Fee swept: {result.feeAmount} (token {result.tokenAddress})</p>
               {result.payments?.map((p) => (
-                <p key={p.target} className="font-mono text-xs text-green-800 dark:text-green-300">{p.target}: {p.amount} ({p.bps} bps)</p>
+                <p key={p.target} className="font-mono text-xs">{p.target}: {p.amount} ({p.bps} bps)</p>
               ))}
-              <p className="font-mono text-xs break-all text-green-800 dark:text-green-300">Tx: {result.transactionHash}</p>
+              <p className="font-mono text-xs break-all">Tx: {result.transactionHash}</p>
             </div>
           ) : (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md p-3 text-sm">
-              <p className="text-red-800 dark:text-red-300">{result.error}</p>
-              {result.transactionHash && <p className="font-mono text-xs break-all text-red-800 dark:text-red-300 mt-1">Tx: {result.transactionHash}</p>}
+            <div className="rounded-md border border-gray-200 border-l-4 border-l-error-500 p-3 text-sm text-gray-900">
+              <p className="text-error-600">{result.error}</p>
+              {result.transactionHash && <p className="font-mono text-xs break-all mt-1">Tx: {result.transactionHash}</p>}
             </div>
           )
         )}

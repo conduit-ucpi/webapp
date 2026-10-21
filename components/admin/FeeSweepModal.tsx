@@ -21,6 +21,24 @@ interface SweepFeesResult {
   error?: string;
 }
 
+interface ScreenedSubject {
+  roles: string;
+  type: string;
+  value: string;
+  risk: number;
+}
+
+interface ScreenResult {
+  clean: boolean;
+  complete?: boolean;
+  hits?: number;
+  subjects?: ScreenedSubject[];
+  warnings?: string[];
+  fundersFromBlock?: string;
+  fundersToBlock?: string;
+  error?: string;
+}
+
 interface FeeSweepModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -38,6 +56,8 @@ export default function FeeSweepModal({ isOpen, onClose }: FeeSweepModalProps) {
   const [bps2, setBps2] = useState('0');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<SweepFeesResult | null>(null);
+  const [isScreening, setIsScreening] = useState(false);
+  const [screen, setScreen] = useState<ScreenResult | null>(null);
 
   const handleClose = () => {
     setContractAddress('');
@@ -46,7 +66,27 @@ export default function FeeSweepModal({ isOpen, onClose }: FeeSweepModalProps) {
     setTarget2('');
     setBps2('0');
     setResult(null);
+    setScreen(null);
     onClose();
+  };
+
+  // chainservice screens and decides what is clean; this only shows its answer.
+  const handleScreen = async () => {
+    setIsScreening(true);
+    setScreen(null);
+    try {
+      const response = await apiFetch('/api/admin/sweep-fees-screen', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contractAddress: contractAddress.trim(), target1, target2 })
+      });
+      const data = await response.json().catch(() => ({}));
+      setScreen({ ...data, clean: response.ok && data.clean === true, error: data.error ?? (response.ok ? undefined : `Request failed (${response.status})`) });
+    } catch (error) {
+      setScreen({ clean: false, error: error instanceof Error ? error.message : 'Request failed' });
+    } finally {
+      setIsScreening(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -77,7 +117,7 @@ export default function FeeSweepModal({ isOpen, onClose }: FeeSweepModalProps) {
         <Input
           label="Escrow contract address"
           value={contractAddress}
-          onChange={(e) => setContractAddress(e.target.value)}
+          onChange={(e) => { setContractAddress(e.target.value); setScreen(null); }}
           placeholder="0x..."
           className="font-mono"
         />
@@ -103,6 +143,50 @@ export default function FeeSweepModal({ isOpen, onClose }: FeeSweepModalProps) {
           BPS are basis points of the escrow&apos;s fee and must sum to 10000. Address 2 receives any rounding dust.
         </p>
 
+        {screen && (
+          <div
+            className={`border rounded-md p-3 text-sm space-y-2 ${
+              screen.clean
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-800 dark:text-green-300'
+                : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
+            }`}
+          >
+            <p className="font-medium">
+              {screen.error
+                ? `Sanctions check failed: ${screen.error}`
+                : screen.hits
+                  ? `${screen.hits} sanctions hit${screen.hits === 1 ? '' : 's'}. Do not sweep.`
+                  : screen.clean
+                    ? `No sanctions hits across ${screen.subjects?.length ?? 0} wallets, emails and domains.`
+                    : 'No hits, but the check was incomplete:'}
+            </p>
+            {screen.warnings && screen.warnings.length > 0 && (
+              <ul className="list-disc pl-5 space-y-1">
+                {screen.warnings.map((w) => <li key={w}>{w}</li>)}
+              </ul>
+            )}
+            {screen.subjects && screen.subjects.length > 0 && (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <tbody>
+                    {screen.subjects.map((s) => (
+                      <tr key={`${s.type}:${s.value}`} className={s.risk > 0 ? 'font-bold' : ''}>
+                        <td className="pr-2 py-0.5 whitespace-nowrap">{s.risk > 0 ? `HIT ${s.risk}` : 'clear'}</td>
+                        <td className="pr-2 py-0.5 whitespace-nowrap">{s.type}</td>
+                        <td className="pr-2 py-0.5 font-mono break-all">{s.value}</td>
+                        <td className="py-0.5">{s.roles}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {screen.fundersFromBlock && (
+              <p className="text-xs">Funders scanned in blocks {screen.fundersFromBlock}–{screen.fundersToBlock}.</p>
+            )}
+          </div>
+        )}
+
         {result && (
           result.success ? (
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-3 text-sm space-y-1">
@@ -123,6 +207,9 @@ export default function FeeSweepModal({ isOpen, onClose }: FeeSweepModalProps) {
         <div className="flex justify-end space-x-3 pt-4 border-t border-secondary-200 dark:border-secondary-700">
           <Button variant="outline" onClick={handleClose} disabled={isSubmitting}>
             Close
+          </Button>
+          <Button variant="outline" onClick={handleScreen} disabled={isScreening || isSubmitting || !contractAddress.trim()}>
+            {isScreening ? <LoadingSpinner size="sm" /> : 'Check Sanctions'}
           </Button>
           <Button onClick={handleSubmit} disabled={isSubmitting || !contractAddress.trim() || !target1.trim()}>
             {isSubmitting ? <LoadingSpinner size="sm" /> : 'Sweep Fee'}

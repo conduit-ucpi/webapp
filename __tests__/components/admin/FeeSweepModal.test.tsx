@@ -54,4 +54,51 @@ describe('FeeSweepModal', () => {
     fireEvent.click(screen.getByText('Sweep Fee'));
     expect(fetchMock).not.toHaveBeenCalled();
   });
+  it('runs the sanctions check and lists every subject, hits included', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, {
+      clean: false, complete: true, hits: 1, warnings: [], fundersFromBlock: '1', fundersToBlock: '9',
+      subjects: [
+        { roles: 'domain of x@bad.example', type: 'DOMAIN', value: 'bad.example', risk: 100 },
+        { roles: 'buyer, funder', type: 'WALLET', value: a1, risk: 0 }
+      ]
+    }));
+    render(<FeeSweepModal isOpen onClose={() => {}} />);
+    fill();
+    fireEvent.click(screen.getByText('Check Sanctions'));
+    await waitFor(() => expect(screen.getByText('1 sanctions hit. Do not sweep.')).toBeTruthy());
+    expect(screen.getByText('HIT 100')).toBeTruthy();
+    expect(screen.getByText('buyer, funder')).toBeTruthy();
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toContain('/api/admin/sweep-fees-screen');
+    expect(JSON.parse(init.body)).toEqual({ contractAddress: escrow, target1: a1, target2: '' });
+  });
+
+  it('shows an incomplete check with its warnings, not as clean', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, {
+      clean: false, complete: false, hits: 0, subjects: [], warnings: ['contractservice has no record of this escrow']
+    }));
+    render(<FeeSweepModal isOpen onClose={() => {}} />);
+    fill();
+    fireEvent.click(screen.getByText('Check Sanctions'));
+    await waitFor(() => expect(screen.getByText('No hits, but the check was incomplete:')).toBeTruthy());
+    expect(screen.getByText('contractservice has no record of this escrow')).toBeTruthy();
+  });
+
+  it('reports a clean check', async () => {
+    fetchMock.mockResolvedValueOnce(json(200, {
+      clean: true, complete: true, hits: 0, warnings: [], subjects: [{ roles: 'seller', type: 'WALLET', value: a1, risk: 0 }]
+    }));
+    render(<FeeSweepModal isOpen onClose={() => {}} />);
+    fill();
+    fireEvent.click(screen.getByText('Check Sanctions'));
+    await waitFor(() => expect(screen.getByText('No sanctions hits across 1 wallets, emails and domains.')).toBeTruthy());
+  });
+
+  it("shows chainservice's refusal of the check", async () => {
+    fetchMock.mockResolvedValueOnce(json(503, { clean: false, error: 'Sanctions screening is unavailable' }));
+    render(<FeeSweepModal isOpen onClose={() => {}} />);
+    fill();
+    fireEvent.click(screen.getByText('Check Sanctions'));
+    await waitFor(() => expect(screen.getByText('Sanctions check failed: Sanctions screening is unavailable')).toBeTruthy());
+  });
 });

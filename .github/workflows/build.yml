@@ -323,6 +323,7 @@ jobs:
             -e CONTRACT_SERVICE_URL="${{ vars.CONTRACT_SERVICE_URL }}" \\
             -e AP2_SERVICE_URL="${{ vars.AP2_SERVICE_URL }}" \\
             -e DISPUTE_SERVICE_URL="${{ vars.DISPUTE_SERVICE_URL }}" \\
+            -e SANCTION_SERVICE_URL="${{ vars.SANCTION_SERVICE_URL }}" \\
             -e WHITELABEL_SERVICE_URL="${{ vars.WHITELABEL_SERVICE_URL }}" \\
             -e MOONPAY_API_KEY="${{ secrets.MOONPAY_API_KEY }}" \\
             -e X_API_KEY="${{ secrets.X_API_KEY }}" \\

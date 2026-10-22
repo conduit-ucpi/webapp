@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
-import { EMBED_EXAMPLES, EmbedKey } from './content';
+import { API_PLACEHOLDER, EMBED_EXAMPLES, EmbedKey } from './content';
+import { useApiOrigin } from '@/lib/useApiOrigin';
 import { lt } from './theme';
 
 interface Props {
@@ -16,6 +17,7 @@ interface Props {
 export default function EmbedExamples({ className = '', layout = 'tabs' }: Props) {
   const [active, setActive] = useState<EmbedKey>('javascript');
   const ex = EMBED_EXAMPLES.find((e) => e.key === active)!;
+  const apiOrigin = useApiOrigin();
 
   const tab = (key: EmbedKey, label: string) => {
     const selected = key === active;
@@ -45,7 +47,7 @@ export default function EmbedExamples({ className = '', layout = 'tabs' }: Props
         className={`p-5 text-xs sm:text-[13px] leading-relaxed overflow-x-auto ${lt.card} ${lt.fg}`}
         style={{ fontFamily: 'var(--lt-font-mono)' }}
       >
-        <code>{ex.code}</code>
+        <code>{ex.code.split(API_PLACEHOLDER).join(apiOrigin)}</code>
       </pre>
     </div>
   );

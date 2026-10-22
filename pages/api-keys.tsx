@@ -1,10 +1,11 @@
 import Head from 'next/head';
 import Link from 'next/link';
-import { useRouter } from 'next/router';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
-import { apiFetch, API_BASE } from '@/lib/apiFetch';
+import { apiFetch } from '@/lib/apiFetch';
+import { useApiOrigin } from '@/lib/useApiOrigin';
 import { useAuth } from '@/components/auth';
-import WalletChoiceCards from '@/components/auth/WalletChoiceCards';
+import { CodeSample, CopyButton, SecretValue } from '@/components/developer/CopySnippets';
+import SignInPrompt from '@/components/developer/SignInPrompt';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { SkeletonCard } from '@/components/ui/Skeleton';
@@ -54,9 +55,6 @@ const OWN_BRAND_IDS = new Set([DEFAULT_BRAND_ID, ...Object.values(HOST_BRANDS)])
 function brandName(id: string): string {
   return BRANDS[id]?.name || id;
 }
-
-/** The deployed API host where API_BASE is empty (the box build), as /integrate does. */
-const API_ORIGIN = API_BASE || 'https://api.stabledrop.me';
 
 type T = (key: PagesMessageKey, vars?: Record<string, string | number>) => string;
 
@@ -108,38 +106,6 @@ async function describeKeyFailure(res: Response, action: 'create' | 'load' | 're
   if (action === 'revoke' && res.status === 404) return t('apiKeys.error.gone');
   const fallback = t(`apiKeys.error.${action}`);
   return detail ? `${detail} (${res.status})` : `${fallback} (${res.status})`;
-}
-
-function CopyButton({ text, label }: { text: string; label?: string }) {
-  const t = usePageT();
-  const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard?.writeText(text).then(
-      () => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      },
-      () => setCopied(false)
-    );
-  };
-  return (
-    <Button type="button" size="sm" variant="outline" onClick={copy}>
-      {copied ? t('apiKeys.copied') : label ?? t('apiKeys.copy')}
-    </Button>
-  );
-}
-
-function CodeSample({ children }: { children: string }) {
-  return (
-    <div className="relative rounded-md border border-secondary-200 dark:border-secondary-700 bg-secondary-50 dark:bg-secondary-800 p-4 pr-20 overflow-x-auto">
-      <div className="absolute top-3 right-3">
-        <CopyButton text={children} />
-      </div>
-      <pre className="m-0">
-        <code className="text-sm font-mono text-secondary-900 dark:text-secondary-100 whitespace-pre">{children}</code>
-      </pre>
-    </div>
-  );
 }
 
 function KeyRow({ apiKey, onRevoke }: { apiKey: ApiKey; onRevoke: (id: string) => Promise<void> }) {
@@ -206,12 +172,12 @@ export default function ApiKeysPage() {
   const tRef = useRef(t);
   tRef.current = t;
   const { isLoading, isConnected, user } = useAuth();
-  const router = useRouter();
-  const autoConnect = router.query.autoConnect === 'true';
   const wallet = user?.walletAddress || null;
   const activeBrandId = useBrand().id;
   const partnerBrandId = OWN_BRAND_IDS.has(activeBrandId) ? null : activeBrandId;
   const locale = useLocale();
+  // The API host in this environment: never one written into the code.
+  const API_ORIGIN = useApiOrigin();
 
   const [keys, setKeys] = useState<ApiKey[]>([]);
   const [loadingKeys, setLoadingKeys] = useState(false);
@@ -302,21 +268,11 @@ export default function ApiKeysPage() {
 
   if (!isConnected) {
     return (
-      <div className="bg-white dark:bg-secondary-900 transition-colors min-h-[80vh] flex items-center">
-        <div className="max-w-3xl mx-auto px-6 sm:px-8 w-full text-center">
-          <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">
-            {t('apiKeys.signIn.eyebrow')}
-          </p>
-          <h1 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-4">
-            {t('apiKeys.signIn.title')}
-          </h1>
-          <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md mx-auto">
-            {t('apiKeys.signIn.body')}
-          </p>
-          {/* The same wallet gate as /dashboard, so signing in looks the same wherever it is asked. */}
-          <WalletChoiceCards autoConnect={autoConnect} className="mx-auto w-full max-w-md text-left" />
-        </div>
-      </div>
+      <SignInPrompt
+        eyebrow={t('apiKeys.signIn.eyebrow')}
+        title={t('apiKeys.signIn.title')}
+        body={t('apiKeys.signIn.body')}
+      />
     );
   }
 
@@ -396,12 +352,7 @@ export default function ApiKeysPage() {
               <p className="text-sm text-secondary-700 dark:text-secondary-200 mb-3">
                 {t('apiKeys.new.warning')}
               </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <code className="flex-1 min-w-0 break-all rounded-md border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 px-3 py-2 font-mono text-sm text-secondary-900 dark:text-white">
-                  {created.key}
-                </code>
-                <CopyButton text={created.key} label={t('apiKeys.new.copy')} />
-              </div>
+              <SecretValue value={created.key} copyLabel={t('apiKeys.new.copy')} />
               <div className="mt-3">
                 <Button size="sm" variant="ghost" onClick={() => setCreated(null)}>
                   {t('apiKeys.new.dismiss')}

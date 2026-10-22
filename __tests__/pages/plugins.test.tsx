@@ -11,7 +11,9 @@ jest.mock('@/components/ui/Fade', () => ({ children }: { children: React.ReactNo
 jest.mock('next/router', () => ({ useRouter: () => ({ pathname: '/plugins', query: {}, asPath: '/plugins' }) }));
 
 import PluginsPage from '@/pages/plugins';
-import { API_DOCS_URL } from '@/lib/apiDocs';
+import { API_DOCS_PATH } from '@/lib/apiDocs';
+// The API host in this environment: in jsdom, with no API_BASE, the page's own origin.
+const API_DOCS_URL = `${window.location.origin}${API_DOCS_PATH}`;
 
 it('links to the API reference in plain sight, from the hero, without opening any panel', () => {
   const { container } = render(<PluginsPage />);

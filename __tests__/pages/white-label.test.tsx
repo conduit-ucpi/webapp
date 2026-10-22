@@ -17,7 +17,9 @@ jest.mock('@/lib/apiFetch', () => ({
 }));
 
 import WhiteLabelGuide from '@/pages/white-label';
-import { API_DOCS_URL } from '@/lib/apiDocs';
+import { API_DOCS_PATH } from '@/lib/apiDocs';
+// The API host in this environment: in jsdom, with no API_BASE, the page's own origin.
+const API_DOCS_URL = `${window.location.origin}${API_DOCS_PATH}`;
 
 const text = () => document.body.textContent || '';
 

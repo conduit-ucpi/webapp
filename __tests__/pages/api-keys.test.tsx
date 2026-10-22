@@ -227,7 +227,7 @@ describe('/api-keys', () => {
 
   it('shows how to use a key against the API host, runnable as copied', async () => {
     await renderWithKeys([]);
-    const sample = screen.getByText(/curl -X POST https:\/\/api\.stabledrop\.me\/api\/ap2\/request/);
+    const sample = screen.getByText(/curl -X POST http:\/\/localhost\/api\/ap2\/request/);
     expect(sample.textContent).toContain('Authorization: Bearer $STABLEDROP_API_KEY');
     expect(sample.textContent).not.toContain('...');
     const body = sample.textContent!.match(/-d '(.*)'$/)![1];
@@ -240,14 +240,14 @@ describe('/api-keys', () => {
     const reference = () => screen.getByRole('link', { name: /Full API reference|Referencia completa de la API/ });
 
     await renderWithKeys([]);
-    expect(reference()).toHaveAttribute('href', 'https://api.stabledrop.me/api/ap2/settle/doc');
+    expect(reference()).toHaveAttribute('href', `${window.location.origin}/api/ap2/settle/doc`);
     expect(reference()).toHaveAttribute('target', '_blank');
     expect(reference()).toHaveAttribute('rel', 'noopener');
     cleanup();
 
     onBrand('cobro');
     await renderWithKeys([]);
-    expect(reference()).toHaveAttribute('href', 'https://api.stabledrop.me/api/ap2/settle/doc?b=cobro');
+    expect(reference()).toHaveAttribute('href', `${window.location.origin}/api/ap2/settle/doc?b=cobro`);
     cleanup();
 
     mockApiFetch.mockResolvedValueOnce(respond(200, []));
@@ -258,7 +258,7 @@ describe('/api-keys', () => {
     );
     await screen.findByText('Aún no tienes claves de API.');
     expect(reference()).toHaveTextContent('Referencia completa de la API');
-    expect(reference()).toHaveAttribute('href', 'https://api.stabledrop.me/api/ap2/settle/doc?b=cobro&lang=es');
+    expect(reference()).toHaveAttribute('href', `${window.location.origin}/api/ap2/settle/doc?b=cobro&lang=es`);
   });
 
   it('puts a just-created key into the example, and takes it out again when the key is hidden', async () => {

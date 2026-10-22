@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
-import { methodGuard } from '@/lib/server/serviceProxy';
+import { methodGuard, publicOriginHeaders } from '@/lib/server/serviceProxy';
 
 const BRAND_SLUG = /^[a-z0-9-]{2,32}$/;
 
@@ -26,7 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     // `?b=` brands the spec in a partner's name; only a slug is passed on.
     const brand = typeof req.query.b === 'string' && BRAND_SLUG.test(req.query.b) ? `?b=${req.query.b}` : '';
-    const response = await fetch(`${upstream}/openapi.json${brand}`);
+    // The host the reader used, so the spec's examples and links name this deployment's API.
+    const response = await fetch(`${upstream}/openapi.json${brand}`, { headers: publicOriginHeaders(req) });
     const spec = await response.json();
     return res.status(response.status).json(spec);
   } catch (error) {

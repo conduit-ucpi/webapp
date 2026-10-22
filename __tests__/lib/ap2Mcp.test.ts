@@ -50,4 +50,44 @@ describe('callAp2Tool', () => {
     reply(200, { error: { message: 'Unknown tool' } });
     await expect(callAp2Tool('nope', {})).rejects.toThrow('Unknown tool');
   });
+
+  describe('with the page\'s authenticatedFetch', () => {
+    const toolReply = (body: unknown) =>
+      ({ ok: true, status: 200, json: async () => ({ result: { structuredContent: body, content: [] } }) }) as Response;
+
+    it('sends every call through it, so the session travels with the tool call', async () => {
+      const fetcher = jest.fn().mockResolvedValueOnce(toolReply({ escrow_address: '0xabc' }));
+
+      await callAp2Tool('prepare_escrow_payment', { amount: 1 }, { fetcher });
+
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(fetcher.mock.calls[0][0]).toBe('/api/ap2/mcp');
+      expect(global.fetch).not.toHaveBeenCalled();
+    });
+
+    it('signs the user in and tries once more when a tool needs an access code', async () => {
+      const fetcher = jest
+        .fn()
+        .mockResolvedValueOnce(toolReply({ error: 'api_access_required', reason: 'missing', message: 'sign in' }))
+        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) } as Response)
+        .mockResolvedValueOnce(toolReply({ status: 'settled' }));
+
+      const result = await callAp2Tool('settle_escrow_payment', {}, { fetcher });
+
+      expect(fetcher.mock.calls.map((call) => call[0])).toEqual(['/api/ap2/mcp', '/api/auth/identity', '/api/ap2/mcp']);
+      expect(result).toEqual({ status: 'settled' });
+    });
+
+    it('gives up after one retry, returning the refusal for the page to show', async () => {
+      const refusal = { error: 'api_access_required', reason: 'terms_changed', message: 'terms changed' };
+      const fetcher = jest
+        .fn()
+        .mockResolvedValueOnce(toolReply(refusal))
+        .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({}) } as Response)
+        .mockResolvedValueOnce(toolReply(refusal));
+
+      expect(await callAp2Tool('settle_escrow_payment', {}, { fetcher })).toEqual(refusal);
+      expect(fetcher).toHaveBeenCalledTimes(3);
+    });
+  });
 });

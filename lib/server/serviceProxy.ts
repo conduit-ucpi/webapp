@@ -30,6 +30,12 @@ interface ProxyOptions {
    * has no session and never had one.
    */
   requiresAuth?: boolean;
+  /**
+   * The status to answer with, given the service's. Defaults to passing it through, which is
+   * almost always right; a route overrides it only to change what the browser does next (e.g. a
+   * 401 that makes authenticatedFetch sign the user in again).
+   */
+  statusFor?: (status: number, body: unknown) => number;
 }
 
 function baseUrlFor(service: Service): string | undefined {
@@ -47,6 +53,25 @@ function baseUrlFor(service: Service): string | undefined {
     case 'dispute':
       return process.env.DISPUTE_SERVICE_URL;
   }
+}
+
+/**
+ * The public host this request reached us on, as `X-Forwarded-Host` / `X-Forwarded-Proto`, for
+ * ap2service to build links a caller can follow (its 401s point at the API reference's section on
+ * access codes, its spec names the API host the reader used).
+ *
+ * ⚠️ ap2service ONLY. userservice refuses any service lookup that carries a forwarded header —
+ *    that is how it tells a proxied call from a direct one — so these must never reach it.
+ *
+ * Caddy passes the original Host through and sets X-Forwarded-Proto; when a further proxy in front
+ * set X-Forwarded-Host, that one is the public host and wins.
+ */
+export function publicOriginHeaders(req: NextApiRequest): Record<string, string> {
+  const first = (value: string | string[] | undefined) =>
+    (Array.isArray(value) ? value[0] : value)?.split(',')[0]?.trim() || '';
+  const host = first(req.headers['x-forwarded-host']) || first(req.headers.host);
+  if (!host) return {};
+  return { 'X-Forwarded-Host': host, 'X-Forwarded-Proto': first(req.headers['x-forwarded-proto']) || 'http' };
 }
 
 export async function proxyToService(
@@ -83,6 +108,10 @@ export async function proxyToService(
       headers['X-API-Key'] = process.env.X_API_KEY;
     }
 
+    if (options.service === 'ap2') {
+      Object.assign(headers, publicOriginHeaders(req));
+    }
+
     const response = await fetch(`${baseUrl}${options.path}`, {
       method,
       headers,
@@ -98,11 +127,13 @@ export async function proxyToService(
       return void res.status(response.status).end();
     }
 
+    let body: unknown;
     try {
-      res.status(response.status).json(JSON.parse(text));
+      body = JSON.parse(text);
     } catch {
-      res.status(response.status).json({ error: text.substring(0, 500) });
+      body = { error: text.substring(0, 500) };
     }
+    res.status(options.statusFor ? options.statusFor(response.status, body) : response.status).json(body);
   } catch (error) {
     console.error(`Proxy to ${options.service}service ${options.path} failed:`, error);
     if (error instanceof Error && error.message === 'Authentication required') {

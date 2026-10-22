@@ -9,8 +9,8 @@ import { btnPrimary, btnOutline } from '@/utils/landingStyles';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import WalletRegistrationPrereq from '@/components/ui/WalletRegistrationPrereq';
-import { API_BASE } from '@/lib/apiFetch';
-import { API_DOCS_URL } from '@/lib/apiDocs';
+import { API_DOCS_PATH } from '@/lib/apiDocs';
+import { useApiOrigin } from '@/lib/useApiOrigin';
 import { useOptionalBrand, usePartnerBrand } from '@conduit-ucpi/whitelabel-sdk';
 import { usePageT } from '@/config/locales';
 
@@ -90,9 +90,10 @@ export default function IntegratePage() {
    * ⚠️ THE API HOST, NOT THE APP HOST. `/api/results` on the app origin is the Next proxy, and
    *    that one calls requireAuth — a merchant's server has no session and gets 401. Caddy routes
    *    the API host straight to resultservice, which is public and is what these examples must
-   *    show. Falls back to the deployed host for the box build, where API_BASE is empty.
+   *    show. useApiOrigin names that host in this environment; none is written into the code.
    */
-  const apiOrigin = API_BASE || 'https://api.stabledrop.me';
+  const apiOrigin = useApiOrigin();
+  const API_DOCS_URL = `${apiOrigin}${API_DOCS_PATH}`;
   /*
    * A white-label partner's merchants copy these samples from the partner's framed page, so the
    * partner's brand goes into them: the checkout then shows the partner's branding and records the
@@ -584,6 +585,7 @@ export default function IntegratePage() {
                   </p>
                   <CodeBlock id="server-prepare" language="bash">
                     {`curl -X POST ${apiOrigin}/api/ap2/prepare \\
+  -H "Authorization: Bearer $STABLEDROP_ACCESS_CODE" \\
   -H 'Content-Type: application/json' \\
   -d '{
     "seller": "0xYourWalletAddress",

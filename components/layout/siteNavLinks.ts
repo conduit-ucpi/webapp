@@ -1,4 +1,4 @@
-import { NAV_GROUPS, NAV_PRICING, NavGroup, NavLink } from '@/components/landing-test/content';
+import { API_PLACEHOLDER, NAV_GROUPS, NAV_PRICING, NavGroup, NavLink } from '@/components/landing-test/content';
 
 /**
  * Every link the site navigation shows, in one place.
@@ -30,11 +30,13 @@ const EXTRA_RESOURCES: SiteNavLink[] = [
 export interface SiteNavOptions {
   /** Projects is behind a release flag (config.projectsLive). */
   projectsLive: boolean;
+  /** This environment's API host (useApiOrigin), for links to the API reference. */
+  apiOrigin: string;
 }
 
-export function siteNavGroups({ projectsLive }: SiteNavOptions): SiteNavGroup[] {
+export function siteNavGroups({ projectsLive, apiOrigin }: SiteNavOptions): SiteNavGroup[] {
   return NAV_GROUPS.map((group: NavGroup) => {
-    let items: SiteNavLink[] = group.items;
+    let items: SiteNavLink[] = group.items.map((i) => ({ ...i, href: i.href.split(API_PLACEHOLDER).join(apiOrigin) }));
     if (group.label === 'Products' && !projectsLive) items = items.filter((i) => i.href !== '/projects');
     if (group.label === 'Resources') items = [...items, ...EXTRA_RESOURCES];
     return { label: group.label, items };
@@ -61,6 +63,8 @@ export function accountLinks({ emailVerificationLive, isAdmin }: { emailVerifica
     { label: 'Get paid early', href: '/offers' },
     // Keys a merchant's own backend uses to create payment links without a browser session.
     { label: 'API keys', href: '/api-keys' },
+    // The free code an app or AI assistant sends to use the payment API and MCP server for them.
+    { label: 'Access code', href: '/myAPIAccessCode' },
     ...(emailVerificationLive ? [{ label: 'Verify email', href: '/email-verification' }] : []),
     ...(isAdmin ? [{ label: 'Admin panel', href: '/admin', admin: true }] : []),
   ];

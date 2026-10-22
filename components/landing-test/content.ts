@@ -7,8 +7,12 @@ export const DEMO_SELLER = '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d';
 export const VIDEO_ID = 'uUSlf3FmazQ';
 export const VIDEO_URL = `https://youtu.be/${VIDEO_ID}`;
 export const SOURCE_URL = 'https://github.com/conduit-ucpi/contracts';
-export const API_DOC_URL = 'https://api.stabledrop.me/api/ap2/settle/doc';
-export const MCP_URL = 'https://api.stabledrop.me/api/ap2/mcp';
+/**
+ * Where a code sample names the API host. ⚠️ NO HOST IS WRITTEN HERE: EmbedExamples fills it with
+ * this environment's (useApiOrigin), so test's homepage shows test's API.
+ */
+export const API_PLACEHOLDER = '{api}';
+export const MCP_PATH = '/api/ap2/mcp';
 export const WORDPRESS_PLUGIN_URL = 'https://wordpress.org/plugins/usdc-payments-with-buyer-protection/';
 export const CONTACT_EMAIL = 'info@stabledrop.me';
 
@@ -71,7 +75,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: 'JavaScript SDK', href: '/integrate', description: 'No backend required' },
       { label: 'WordPress plugin', href: WORDPRESS_PLUGIN_URL, external: true },
       { label: 'Shopify', href: '/shopify/install-button' },
-      { label: 'API reference', href: API_DOC_URL, external: true },
+      { label: 'API reference', href: `${API_PLACEHOLDER}/api/ap2/settle/doc`, external: true },
       { label: 'Whitelabel', href: '/white-label', description: 'Embed our pages under your brand' },
       { label: 'Open source', href: SOURCE_URL, external: true },
     ],
@@ -286,17 +290,24 @@ and none of them can be charged back.`,
   {
     key: 'mcp',
     label: 'AI agents (MCP)',
-    intro: 'One URL, no API key. Your agent gets tools to prepare a protected payment, settle it, and verify the receipt.',
+    intro: 'One URL and your free access code (get it at /myAPIAccessCode, it takes a minute). Your agent gets tools to prepare a protected payment, settle it, and verify the receipt.',
     language: 'bash',
     code: `# Claude Code
-claude mcp add --transport http stabledrop ${MCP_URL}
+claude mcp add --transport http stabledrop ${API_PLACEHOLDER}${MCP_PATH} \\
+  --header "Authorization: Bearer <your access code>"
 
 # Cursor, Windsurf, any JSON config
 {
   "mcpServers": {
-    "stabledrop": { "url": "${MCP_URL}" }
+    "stabledrop": {
+      "url": "${API_PLACEHOLDER}${MCP_PATH}",
+      "headers": { "Authorization": "Bearer <your access code>" }
+    }
   }
-}`,
+}
+
+# Claude.ai or ChatGPT: a custom connector with this address
+${API_PLACEHOLDER}${MCP_PATH}?code=<your access code>`,
     link: { label: 'MCP setup', href: '/plugins#mcp' },
   },
 ];

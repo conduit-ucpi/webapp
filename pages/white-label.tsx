@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import toast from 'react-hot-toast';
 import SEO from '@/components/SEO';
-import { API_DOCS_URL } from '@/lib/apiDocs';
+import { API_DOCS_PATH } from '@/lib/apiDocs';
+import { useApiOrigin, useSiteOrigin } from '@/lib/useApiOrigin';
 import { usePartnerBrand } from '@conduit-ucpi/whitelabel-sdk';
 import BrandRequestForm from '@/components/whitelabel/BrandRequestForm';
 
@@ -13,8 +14,6 @@ import BrandRequestForm from '@/components/whitelabel/BrandRequestForm';
  * /integrate's do; otherwise a placeholder. No partner is named on the public page.
  */
 
-const SITE = 'https://stabledrop.me';
-const API = 'https://api.stabledrop.me';
 const TEST = 'https://test.conduit-ucpi.com';
 
 type Role = 'partner' | 'us' | 'merchant';
@@ -95,6 +94,10 @@ function H3({ children }: { children: ReactNode }) {
 
 export default function WhiteLabelGuide() {
   const brand = usePartnerBrand()?.id ?? 'your-brand';
+  // This environment's site and API: never hosts written into the code.
+  const SITE = useSiteOrigin();
+  const API = useApiOrigin();
+  const API_DOCS_URL = `${API}${API_DOCS_PATH}`;
 
   const contractCreatePage = `<div id="checkout"></div>
 <script>
@@ -161,9 +164,9 @@ export default function WhiteLabelGuide() {
           </header>
 
           <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-sm mb-8">
-            <dt className="text-secondary-500 dark:text-secondary-400">Site (production)</dt>
+            <dt className="text-secondary-500 dark:text-secondary-400">Site</dt>
             <dd className="min-w-0 break-all"><C>{SITE}</C></dd>
-            <dt className="text-secondary-500 dark:text-secondary-400">API (production)</dt>
+            <dt className="text-secondary-500 dark:text-secondary-400">API</dt>
             <dd className="min-w-0 break-all"><C>{API}</C></dd>
             <dt className="text-secondary-500 dark:text-secondary-400">Test (site and API)</dt>
             <dd className="min-w-0 break-all"><C>{TEST}</C></dd>
@@ -334,11 +337,12 @@ WHITELABEL_URL=${API} WHITELABEL_ADMIN_KEY=… node scripts/brands/push.mjs ${br
 
             <H3>C. From the merchant&apos;s server, with no script</H3>
             <p>
-              No sign-in or API key. The answer contains the payment address, how to fund it, a <C>pay_link</C> to send the
+              With the merchant&apos;s free access code (they get it at <C>{`${SITE}/myAPIAccessCode`}</C>, it takes a minute). The answer contains the payment address, how to fund it, a <C>pay_link</C> to send the
               customer, and the exact request that creates the protected payment once paid. We do not email the customer for a server
               call; the merchant sends the <C>pay_link</C>.
             </p>
             <Snippet label="shell">{`curl -X POST ${API}/api/ap2/prepare \\
+  -H "Authorization: Bearer $STABLEDROP_ACCESS_CODE" \\
   -H 'Content-Type: application/json' \\
   -d '{
     "seller": "0xYourWalletAddress",

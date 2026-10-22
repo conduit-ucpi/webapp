@@ -41,11 +41,9 @@ describe('POST /api/ap2/settle', () => {
   });
 
   /**
-   * The callers are merchants and agent platforms with no Conduit session, and there is no
-   * credential to require. The terms a caller sends ARE the escrow's address, and the payer's
-   * EIP-3009 signature names that address as the destination of their own tokens — so altering
-   * any field moves the address and stops matching the signature. Nothing here can move money
-   * its owner did not already authorise.
+   * The callers are merchants and agent platforms with no Conduit session: they send an access
+   * code or merchant key, which this app's session check does not know. ap2service admits the
+   * call (or answers 401 with where to get a code), so the proxy passes the credential through.
    */
   it('does not require a Conduit session', async () => {
     const { req, res } = createMocks({ method: 'POST', body: BODY });

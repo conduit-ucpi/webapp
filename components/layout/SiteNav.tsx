@@ -12,6 +12,7 @@ import { btnPrimary } from '@/utils/landingStyles';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { useBarFit } from './useBarFit';
 import { accountLinks, siteNavGroups, SITE_NAV_PRICING, SiteNavLink } from './siteNavLinks';
+import { useApiOrigin } from '@/lib/useApiOrigin';
 
 const SSR_DEFAULT_SITE_NAME = 'Stabledrop.me';
 
@@ -106,7 +107,8 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
   // StableDrop's own marketing (products, solutions, resources, pricing) isn't a partner's product:
   // their bar is their brand, the app's actions and the account menu. Their home is the dashboard.
   const marketing = !partnerBrand;
-  const groups = marketing ? siteNavGroups({ projectsLive: config?.projectsLive === true }) : [];
+  const apiOrigin = useApiOrigin();
+  const groups = marketing ? siteNavGroups({ projectsLive: config?.projectsLive === true, apiOrigin }) : [];
   const homeHref = marketing ? '/' : '/dashboard';
   const account = accountLinks({ emailVerificationLive: config?.emailVerificationLive === true, isAdmin });
 

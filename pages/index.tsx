@@ -8,6 +8,7 @@ import { financialServiceSchema, articleSchema } from '@/utils/structuredData';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { isr } from '@/utils/isr';
 import SiteNav from '@/components/layout/SiteNav';
+import { useApiDocsUrl } from '@/lib/apiDocs';
 import EscrowEstimator from '@/components/landing-test/EscrowEstimator';
 import EscrowTimeline from '@/components/landing-test/EscrowTimeline';
 import AudienceTabs from '@/components/landing-test/AudienceTabs';
@@ -21,7 +22,6 @@ import { Announcement, Chapter, CheckoutMock, HoverChapter, ScrollyHero, card, s
 import {
   AGENT_INTRO,
   AGENT_POINTS,
-  API_DOC_URL,
   BENEFITS,
   BOTH_SIDES_POINTS,
   BUYER_POINTS,
@@ -47,6 +47,7 @@ import {
 const ID = 'home';
 
 export default function Home() {
+  const apiDocsUrl = useApiDocsUrl();
   const [siteName, setSiteName] = useState('Stabledrop.me');
   useEffect(() => setSiteName(getSiteNameFromDomain()), []);
   const [pricing, setPricing] = useState<PricingKey>('card');
@@ -151,7 +152,7 @@ export default function Home() {
           actions={
             <>
               <Link href="/plugins#mcp" className={lt.btnPrimary}>Connect your agent</Link>
-              <a href={API_DOC_URL} target="_blank" rel="noopener noreferrer" className={lt.btnSecondary}>API reference</a>
+              <a href={apiDocsUrl} target="_blank" rel="noopener noreferrer" className={lt.btnSecondary}>API reference</a>
             </>
           }
         />

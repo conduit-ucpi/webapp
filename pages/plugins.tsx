@@ -6,7 +6,8 @@ import { useScrollTracking, useTimeTracking } from '@/hooks/usePageTracking';
 import { motion, AnimatePresence } from 'framer-motion';
 import Fade from '@/components/ui/Fade';
 import { btnOutline, btnPrimary } from '@/utils/landingStyles';
-import { API_DOCS_URL } from '@/lib/apiDocs';
+import { useApiDocsUrl } from '@/lib/apiDocs';
+import { useApiOrigin } from '@/lib/useApiOrigin';
 
 // ---------------------------------------------------------------------------
 // Collapsible section — eyebrow + heading always visible, content toggles
@@ -94,10 +95,10 @@ function Collapsible({
 // Page
 // ---------------------------------------------------------------------------
 
-// The same remote the server card (ap2service/server.json) and llms.txt advertise.
-const MCP_URL = 'https://api.stabledrop.me/api/ap2/mcp';
-
 export default function Plugins() {
+  // The MCP endpoint on this environment's own API host, never one written into the code.
+  const MCP_URL = `${useApiOrigin()}/api/ap2/mcp`;
+  const API_DOCS_URL = useApiDocsUrl();
   const pageTitle = "Protected Payments for WordPress, Shopify & AI Agents (MCP) | Non-Custodial Developer Tools";
   const pageDescription = "Non-custodial protected-payment infrastructure for e-commerce and AI agents. Open-source developer tools for WordPress and Shopify, plus an MCP server so Claude, ChatGPT or any agent can pay with buyer protection. Smart contract-based buyer protection without custody of funds.";
   const pageUrl = "https://conduit-ucpi.com/plugins";
@@ -351,7 +352,10 @@ export default function Plugins() {
                 <div className="py-6 last:pb-0">
                   <Collapsible eyebrow="AI agents (MCP)" id="mcp" defaultOpen={hash === '#mcp'}>
                     <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-6 max-w-md">
-                      Stabledrop is an MCP server. Connect it to Claude, ChatGPT, Cursor or any MCP client and the agent gets tools to prepare a protected payment, settle it, check what happened and verify the receipt. No API key, no sign-up: the server holds no key and can only act on a signature the payer provides.
+                      Stabledrop is an MCP server. Connect it to Claude, ChatGPT, Cursor or any MCP client and the agent gets tools to prepare a protected payment, settle it, check what happened and verify the receipt. The server holds no key and can only act on a signature the payer provides.
+                    </p>
+                    <p className="text-sm text-secondary-700 dark:text-secondary-300 mb-6 max-w-md">
+                      First, <Link href="/myAPIAccessCode" className="underline font-medium">get your free access code</Link>. It takes a minute, and you add it to the settings below.
                     </p>
 
                     <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-2">
@@ -368,7 +372,8 @@ export default function Plugins() {
                     </p>
                     <div className="mb-8">
                       <pre className="bg-secondary-900 dark:bg-secondary-800 text-green-400 p-6 rounded-lg overflow-x-auto text-xs sm:text-sm leading-relaxed">
-                        <code>{`claude mcp add --transport http stabledrop ${MCP_URL}`}</code>
+                        <code>{`claude mcp add --transport http stabledrop ${MCP_URL} \\
+  --header "Authorization: Bearer <your access code>"`}</code>
                       </pre>
                     </div>
 
@@ -380,7 +385,8 @@ export default function Plugins() {
                         <code>{`{
   "mcpServers": {
     "stabledrop": {
-      "url": "${MCP_URL}"
+      "url": "${MCP_URL}",
+      "headers": { "Authorization": "Bearer <your access code>" }
     }
   }
 }`}</code>
@@ -388,7 +394,7 @@ export default function Plugins() {
                     </div>
 
                     <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
-                      In Claude.ai or ChatGPT, add a custom connector and paste the endpoint URL. Then ask the agent to pay someone by email address with a dispute window, and it will do the rest.
+                      In Claude.ai or ChatGPT, add a custom connector with the endpoint address and your code on the end: <code className="break-all">{`${MCP_URL}?code=<your access code>`}</code>. Then ask the agent to pay someone by email address with a dispute window, and it will do the rest.
                     </p>
 
                     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-8 mb-10">

@@ -337,7 +337,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
             ...attribution,
             payer,
             ...(externalId ? { external_id: externalId } : {}),
-          });
+          }, { fetcher: authenticatedFetch });
       if (isAp2ToolError(result)) {
         // An amount ap2service will not escrow (below its minimum, or its fee floor) is said
         // against the amount, and the buyer stays on the form: they never get an address to
@@ -420,7 +420,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
         external_id: prepared.external_id,
         authorization: signing.authorization,
         signature,
-      });
+      }, { fetcher: authenticatedFetch });
       if (isAp2ToolError(result)) {
         updateStep('settle', 'error');
         if (result.error === 'sanctioned_party') refuse(result.message);
@@ -454,7 +454,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
       ...terms(),
       ...attribution,
       external_id: prepared.external_id,
-    });
+    }, { fetcher: authenticatedFetch });
     if (isAp2ToolError(result)) {
       // The money may well be there — this ran because the balance check saw it. Say why settle
       // turned it down, rather than letting the panel read it as "no payment found".
@@ -466,7 +466,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     return true;
     // terms() reads the same state these name.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prepared, seller, baseUnits, expiryTimestamp, payer, nominalBuyer, selectedTokenSymbol, description, brandId, arbiter]);
+  }, [prepared, seller, baseUnits, expiryTimestamp, payer, nominalBuyer, selectedTokenSymbol, description, brandId, arbiter, authenticatedFetch]);
 
   const qr = useQrPayment({
     authenticatedFetch,

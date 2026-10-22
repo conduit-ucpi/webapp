@@ -153,7 +153,7 @@ export const pagesEn = {
   'integrate.server.eyebrow': 'Server-side',
   'integrate.server.title': 'No script: prepare, fund, settle.',
   'integrate.server.intro':
-    'With a backend you can skip the checkout script. Call {prepare} with the terms; it answers with where the money goes, how to fund it, a link that opens the payment for your customer, and the exact request that creates the protected payment once paid. No sign-in or API key is needed.',
+    'With a backend you can skip the checkout script. Call {prepare} with the terms; it answers with where the money goes, how to fund it, a link that opens the payment for your customer, and the exact request that creates the protected payment once paid. Send your free access code with it (get yours at /myAPIAccessCode, it takes a minute).',
   'integrate.server.step1.title': 'Prepare the payment',
   'integrate.server.step1.body':
     "Amounts are in the token's base units (1 USDC = 1000000). The seller and buyer may be wallets or email addresses; the buyer is who can dispute.",
@@ -347,6 +347,45 @@ export const pagesEn = {
   'apiKeys.error.create': 'Could not create the key',
   'apiKeys.error.load': 'Could not load your API keys',
   'apiKeys.error.revoke': 'Could not revoke the key',
+  // /myAPIAccessCode — the free access code for the payment API and MCP server. ⚠️ Read by people
+  // who are not developers too (an AI assistant sends them here), so it is a free access code, not
+  // an "API key", and every step says what to do rather than what went wrong.
+  'accessCode.title': 'Your free access code',
+  'accessCode.intro':
+    "Your access code lets your own apps and AI assistants use Stabledrop for you. It's free, it lasts 90 days, and it shows you've agreed to our terms.",
+  'accessCode.signIn.eyebrow': 'Free access code',
+  'accessCode.signIn.title': 'Get your free access code',
+  'accessCode.signIn.body': "Sign in and it's yours. It's free and takes a minute.",
+  'accessCode.current.title': 'Your code',
+  'accessCode.current.meta': 'Starts {prefix}… · Works until {expires}',
+  'accessCode.current.none': "You don't have a code yet.",
+  'accessCode.get.first': 'Get my access code',
+  'accessCode.get.again': 'Get a new code',
+  'accessCode.get.replaces': 'Getting a new code stops your current one working.',
+  'accessCode.get.busy': 'Getting your code…',
+  'accessCode.new.title': 'Here is your access code',
+  'accessCode.new.warning': 'Copy it now: for your security, we only show it once.',
+  'accessCode.new.copy': 'Copy code',
+  'accessCode.new.dismiss': "I've copied it",
+  'accessCode.use.title': 'Using your code',
+  'accessCode.use.assistant': 'In an AI assistant',
+  'accessCode.use.assistantBody': 'Add Stabledrop to your assistant with your code. In Claude Code, run this:',
+  'accessCode.use.assistantOther': 'In other assistants, add the address {url} with the header {header}.',
+  'accessCode.use.connector': 'In Claude.ai or ChatGPT, add a custom connector with this address: {url}',
+  'accessCode.use.app': 'In your own app',
+  'accessCode.use.appBody': 'Send your code with every call as the header {header}.',
+  'accessCode.use.guide': 'Step-by-step guide',
+  'accessCode.stop.button': 'Stop this code working',
+  'accessCode.stop.confirm': 'Stop your code working?',
+  'accessCode.stop.yes': 'Yes, stop it',
+  'accessCode.stop.busy': 'Stopping…',
+  'accessCode.stop.cancel': 'Cancel',
+  'accessCode.error.terms': 'Our terms have been updated. Sign out, sign in again to see them, then get your code.',
+  'accessCode.error.noWallet': 'Finish setting up your account first: it needs a wallet before it can have a code.',
+  'accessCode.error.get': 'We could not get your code just now. Please try again.',
+  'accessCode.error.load': 'We could not load your code just now.',
+  'accessCode.error.stop': 'We could not stop your code just now. Please try again.',
+  'accessCode.retry': 'Try again',
 } as const;
 
 export type PagesMessageKey = keyof typeof pagesEn;

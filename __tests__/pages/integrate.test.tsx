@@ -21,7 +21,9 @@ jest.mock('@/components/ui/Fade', () => ({ children }: { children: React.ReactNo
 jest.mock('next/router', () => ({ useRouter: () => ({ pathname: '/integrate', query: {}, asPath: '/integrate' }) }));
 
 import IntegratePage from '@/pages/integrate';
-import { API_DOCS_URL } from '@/lib/apiDocs';
+import { API_DOCS_PATH } from '@/lib/apiDocs';
+// The API host in this environment: in jsdom, with no API_BASE, the page's own origin.
+const API_DOCS_URL = `${window.location.origin}${API_DOCS_PATH}`;
 
 const text = () => document.body.textContent || '';
 
@@ -55,7 +57,7 @@ describe('/integrate', () => {
     const references = Array.from(container.querySelectorAll('a')).filter((a) => a.textContent === 'API reference');
     expect(references.length).toBe(3);
     references.forEach((a) => expect(a.getAttribute('href')).toBe(API_DOCS_URL));
-    expect(API_DOCS_URL).toMatch(/^https:\/\/[^/]+\/api\/ap2\/settle\/doc$/);
+    expect(API_DOCS_URL).not.toContain('stabledrop.me');
   });
 
   /*
@@ -87,7 +89,7 @@ describe('/integrate', () => {
       const openapi = Array.from(container.querySelectorAll('a')).find((a) =>
         a.getAttribute('href')?.endsWith('/resultservice/v3/api-docs')
       );
-      expect(openapi?.parentElement?.textContent).toMatch(/^El esquema completo .*documento OpenAPI: https:\/\/\S+\/resultservice\/v3\/api-docs\. Apunta/);
+      expect(openapi?.parentElement?.textContent).toMatch(/^El esquema completo .*documento OpenAPI: https?:\/\/\S+\/resultservice\/v3\/api-docs\. Apunta/);
     });
 
     it('leaves the code samples exactly as they are in English', async () => {

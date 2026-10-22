@@ -1,10 +1,15 @@
-import { API_BASE } from '@/lib/apiFetch';
+import { useApiOrigin } from '@/lib/useApiOrigin';
+
+/** The escrow API's browsable reference — /prepare, /settle and the rest of ap2service — on the API host. */
+export const API_DOCS_PATH = '/api/ap2/settle/doc';
 
 /**
- * The escrow API's browsable reference: /prepare, /settle and the rest of ap2service.
+ * The reference's address in this environment.
  *
- * ⚠️ ON THE API HOST, NOT THE APP HOST. In production the app is static pages on stabledrop.me and
- *    the API is api.stabledrop.me, so a relative link would land on a page that does not exist.
- *    Falls back to the deployed API host where API_BASE is empty (the box build).
+ * ⚠️ ON THE API HOST, NOT THE APP HOST. The static site and the API are different hosts in
+ *    production, so a link relative to the page would land nowhere. useApiOrigin says which host
+ *    the API is on here; no host is written into the code.
  */
-export const API_DOCS_URL = `${API_BASE || 'https://api.stabledrop.me'}/api/ap2/settle/doc`;
+export function useApiDocsUrl(): string {
+  return `${useApiOrigin()}${API_DOCS_PATH}`;
+}

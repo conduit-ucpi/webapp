@@ -2,13 +2,13 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import Home from '../../pages/index';
 import {
   AGENT_POINTS,
-  API_DOC_URL,
   BENEFITS,
   BUYER_POINTS,
   ESCROW_COMPARISON,
   HOW_IT_WORKS,
   MAKE_PAYMENT_HREF,
-  MCP_URL,
+  MCP_PATH,
+  API_PLACEHOLDER,
   MERCHANT_POINTS,
   NAV_GROUPS,
   PRICING_ROWS,
@@ -85,7 +85,9 @@ describe('homepage', () => {
       for (const item of g.items) {
         // Name and target together: "Request payment" is also the bar's own button.
         const matches = within(nav).getAllByRole('link', { name: new RegExp(item.label) });
-        expect(matches.some((a) => a.getAttribute('href') === item.href)).toBe(true);
+        // The API reference's host is this environment's, filled in at render.
+        const href = item.href.split(API_PLACEHOLDER).join(window.location.origin);
+        expect(matches.some((a) => a.getAttribute('href') === href)).toBe(true);
       }
       fireEvent.click(btn);
     }
@@ -175,15 +177,17 @@ describe('homepage', () => {
     }
     expect(screen.getByRole('link', { name: 'View integrations' })).toHaveAttribute('href', '/plugins');
     expect(screen.getByRole('link', { name: 'Connect your agent' })).toHaveAttribute('href', '/plugins#mcp');
-    expect(screen.getByRole('link', { name: 'API reference' })).toHaveAttribute('href', API_DOC_URL);
+    expect(screen.getByRole('link', { name: 'API reference' })).toHaveAttribute('href', `${window.location.origin}/api/ap2/settle/doc`);
   });
 
-  it('F10: embed examples switch between surfaces and carry the real MCP URL', () => {
+  it('F10: embed examples switch between surfaces and carry this environment\'s MCP URL', () => {
     render(<Page />);
     const embed = screen.getByTestId('embed-examples');
     expect(within(embed).getByText(/ConduitCheckout.init/)).toBeInTheDocument();
     fireEvent.click(within(embed).getByRole('tab', { name: 'AI agents (MCP)' }));
-    expect(within(embed).getByText(new RegExp(MCP_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))).toBeInTheDocument();
+    const mcpUrl = `${window.location.origin}${MCP_PATH}`;
+    expect(within(embed).getByText(new RegExp(mcpUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))).toBeInTheDocument();
+    expect(within(embed).queryByText(/\{api\}/)).not.toBeInTheDocument();
     fireEvent.click(within(embed).getByRole('tab', { name: 'WordPress' }));
     expect(within(embed).getByRole('link', { name: /Get the plugin/ })).toHaveAttribute('href', expect.stringContaining('wordpress.org'));
   });

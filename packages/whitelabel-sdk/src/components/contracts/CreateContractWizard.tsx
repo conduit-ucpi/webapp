@@ -38,6 +38,7 @@ import { emailsEqual } from '@/utils/address';
 import { useT } from '../../i18n';
 import type { MessageKey } from '../../i18n';
 import { useBrandedHref, usePartnerBrand } from '../../theme';
+import { attachAnalyticsClientId } from '../../lib/analyticsClientId';
 
 interface CreateContractForm {
   buyerEmail: string;
@@ -388,6 +389,8 @@ export default function CreateContractWizard() {
 
       const responseData = await response.json();
       const contractId = responseData.request_id;
+      // The seller started this payment: the purchase event at funding is credited to their visit.
+      if (contractId) void attachAnalyticsClientId(contractId, authenticatedFetch);
 
       setCreatedContractId(contractId);
       setShowSuccessScreen(true);

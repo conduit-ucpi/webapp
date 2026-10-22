@@ -12,6 +12,7 @@ export * from './config';
 export * from './theme';
 export * from './i18n';
 export * from './pages';
+export { setAnalyticsClientIdSource } from './lib/analyticsClientId';
 
 // Building blocks for tenants that assemble their own screens around the product pages.
 export { default as CashOutPanel } from './components/wallet/CashOutPanel';

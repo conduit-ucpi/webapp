@@ -12,7 +12,8 @@ import { FarcasterDetectionProvider } from '@/components/farcaster/FarcasterDete
 import { NavigationProvider } from '@/components/navigation/NavigationProvider';
 import { EthersProvider } from '@/components/providers/EthersProvider';
 import { captureConsoleForMobile } from '@/utils/mobileLogger';
-import { BrandProvider, BrandI18nProvider } from '@conduit-ucpi/whitelabel-sdk';
+import { BrandProvider, BrandI18nProvider, setAnalyticsClientIdSource } from '@conduit-ucpi/whitelabel-sdk';
+import { analyticsClientId } from '@/lib/consent';
 import { BRANDS, DEFAULT_BRAND_ID, HOST_BRANDS, WHITE_LABEL_ROUTES } from '@/config/brands';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
@@ -37,6 +38,9 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
        runs, so a dependency's own console.error (notably AppKit's SIWX
        failures) is visible from a phone. No-op off mobile. */
     captureConsoleForMobile();
+    // Our GA client id for the payment pages' purchase attribution. Only our app registers one:
+    // on a partner's site the SDK sends none. Answers null without analytics consent.
+    setAnalyticsClientIdSource(() => analyticsClientId());
     setMounted(true);
   }, []);
 

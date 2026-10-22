@@ -21,6 +21,7 @@ import { isValidEmail, isValidWalletAddress, isValidDescription, addressesEqual,
 import { getNetworkName } from '@/utils/networkUtils';
 import { MIN_AMOUNT, TEST_AMOUNT, formatUsd, isAllowedAmount, parseAmount } from '@/utils/escrowFees';
 import { callAp2Tool, isAp2ToolError, type Ap2ToolError } from '../lib/ap2Mcp';
+import { attachAnalyticsClientId } from '../lib/analyticsClientId';
 import { verifyAuthorizationTarget, verifyQuotedEscrowAddress } from '../lib/escrow/verifyQuotedEscrow';
 import { decodePayResume, encodePayResume, withPayResume } from '../lib/payResume';
 import { useT } from '../i18n';
@@ -49,6 +50,8 @@ const PUSH_JOURNEY_STEPS: JourneyStep[] = [
 
 interface Prepared {
   escrow_address: string;
+  /** contractservice's record of the escrow, when it went on file: what funding is reported against. */
+  record_id?: string;
   external_id: string;
   /** The externalId (bytes32) the factory was asked with: what lets this page ask it too. */
   external_id_bytes32?: string;
@@ -357,6 +360,12 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
       preparedFor.current = JSON.stringify(terms());
       setPrepared(result);
       setStage('review');
+      // Attribution goes to whoever started the payment on our site. A request was started by its
+      // seller, whose id went on at creation; a checkout's buyer is the merchant's customer, not
+      // ours. Only a payment the buyer began here on /pay is theirs.
+      if (!request && !checkout && result.record_id && authenticatedFetch) {
+        void attachAnalyticsClientId(result.record_id, authenticatedFetch);
+      }
     } catch (error: any) {
       fail(error.message);
     } finally {

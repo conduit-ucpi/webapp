@@ -101,3 +101,24 @@ export function disableAnalytics(): void {
     }
   }
 }
+
+/**
+ * This visitor's GA client id, for the `purchase` event the backend sends when an escrow they
+ * paid is funded (registered with the SDK's payment pages in ClientOnlyApp). Null unless they
+ * accepted analytics and GA is running — so withdrawing consent stops it at once, even though
+ * `window.gtag` stays defined.
+ *
+ * gtag queues commands until gtag.js has loaded, so the answer can take a moment; a GA that
+ * never answers (blocked by an extension, say) gives up rather than hold anything up.
+ */
+export function analyticsClientId(timeoutMs = 2000): Promise<string | null> {
+  if (!analyticsEnabled() || !gaLoaded || readConsent() !== 'granted') return Promise.resolve(null);
+  if (window[`ga-disable-${GA_MEASUREMENT_ID}`] || !window.gtag) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), timeoutMs);
+    window.gtag!('get', GA_MEASUREMENT_ID, 'client_id', (id: unknown) => {
+      clearTimeout(timer);
+      resolve(typeof id === 'string' && id ? id : null);
+    });
+  });
+}

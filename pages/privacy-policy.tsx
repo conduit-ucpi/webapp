@@ -94,7 +94,11 @@ export default function PrivacyPolicy({ lastUpdated }: { lastUpdated: string }) 
               <li>
                 <strong>Analytics (optional)</strong> &mdash; Google Analytics (<code>_ga</code>,{' '}
                 <code>_ga_*</code>) measures how the site is used. These are set only if you accept them, and are
-                deleted if you later reject them.
+                deleted if you later reject them. If you have accepted them and you start a payment here &mdash; by
+                creating a payment request, or by paying from our Pay page &mdash; we store your Google Analytics
+                identifier with that payment. When it is funded, we tell Google Analytics that the payment came from
+                your visit, with its amount and our fee; no wallet address or transaction is shared. We delete the
+                identifier once that is sent, or if the payment expires without being funded.
               </li>
             </ul>
             <p className="text-secondary-700 dark:text-secondary-200">

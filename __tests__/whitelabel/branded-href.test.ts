@@ -8,7 +8,7 @@
  * one person who was never told our name.
  */
 
-import { withBrandParam } from '@conduit-ucpi/whitelabel-sdk';
+import { shareableUrl, withBrandParam } from '@conduit-ucpi/whitelabel-sdk';
 
 describe('withBrandParam', () => {
   it('appends the brand to a link that already has a query', () => {
@@ -72,5 +72,29 @@ describe('withBrandParam', () => {
         '/create?amount=40&b=cobro#terms'
       );
     });
+  });
+});
+
+describe('shareableUrl', () => {
+  const OWN = 'https://stabledrop.me';
+
+  it("puts a handed-out link on the partner's site, path and query whole", () => {
+    expect(shareableUrl('/contract-pay?contractId=6ada&b=cobro', 'https://cobro.com', OWN)).toBe(
+      'https://cobro.com/contract-pay?contractId=6ada&b=cobro'
+    );
+  });
+
+  it('keeps a path prefix on the base, without doubling slashes', () => {
+    expect(shareableUrl('/pay?resume=x', 'https://cobro.com/pagos/', OWN)).toBe('https://cobro.com/pagos/pay?resume=x');
+  });
+
+  it('stays on our own site without a base', () => {
+    expect(shareableUrl('/contract-pay?contractId=6ada', undefined, OWN)).toBe(`${OWN}/contract-pay?contractId=6ada`);
+  });
+
+  it('ignores a base that is not a plain https address', () => {
+    for (const bad of ['http://cobro.com', 'javascript:alert(1)//', 'https://cobro.com/?x=1', 'https://cobro.com/#f', '//cobro.com']) {
+      expect(shareableUrl('/pay', bad, OWN)).toBe(`${OWN}/pay`);
+    }
   });
 });

@@ -215,6 +215,13 @@ export interface BrandConfig {
   messages?: Partial<Record<string, Record<string, string>>>;
   /** https URLs a completed flow may send the visitor back to. */
   returnUrls?: string[];
+  /**
+   * Where the partner hosts the pages that frame ours (`https://cobro.com`, or with a path,
+   * `https://cobro.com/pagos`). Links we hand out — a payment link to copy, a QR code — are built
+   * on it with the same path and query, so they open on the partner's site. Absent = our own site.
+   * Validated by whitelabelservice: https, no query or fragment.
+   */
+  payPageBase?: string;
 }
 
 /** A config with every optional branch filled in, as the components consume it. */

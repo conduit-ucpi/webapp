@@ -8,7 +8,7 @@ import { useMemo, useState } from 'react';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { emailsEqual } from '@/utils/address';
 import { useT } from '../../i18n';
-import { useBrandedHref } from '../../theme';
+import { useBrandedHref, useShareableUrl } from '../../theme';
 import { payHref } from '../../utils/payHref';
 import Modal from '@/components/ui/Modal';
 import SendRequestScreen from '@/components/contracts/SendRequestScreen';
@@ -34,6 +34,7 @@ export default function EnhancedContractCard({
 }: EnhancedContractCardProps) {
   const t = useT();
   const brandedHref = useBrandedHref();
+  const shareable = useShareableUrl();
   const { user } = useAuth();
   
   // Calculate time remaining
@@ -99,7 +100,7 @@ export default function EnhancedContractCard({
 
   const paymentLink =
     typeof window !== 'undefined' && contract.id
-      ? `${window.location.origin}${payHref(contract, brandedHref)}`
+      ? shareable(payHref(contract, brandedHref) ?? '')
       : '';
 
   // Use backend-provided CTA information only

@@ -37,7 +37,7 @@ import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { emailsEqual } from '@/utils/address';
 import { useT } from '../../i18n';
 import type { MessageKey } from '../../i18n';
-import { useBrandedHref, usePartnerBrand } from '../../theme';
+import { useBrandedHref, usePartnerBrand, useShareableUrl } from '../../theme';
 import { attachAnalyticsClientId } from '../../lib/analyticsClientId';
 
 interface CreateContractForm {
@@ -79,6 +79,7 @@ const stepKeys: { id: string; title: MessageKey; description: MessageKey }[] = [
 export default function CreateContractWizard() {
   const t = useT();
   const brandedHref = useBrandedHref();
+  const shareable = useShareableUrl();
   // Recorded on the contract: the white-label partner it was created under.
   const brandId = usePartnerBrand()?.id;
 
@@ -182,8 +183,8 @@ export default function CreateContractWizard() {
   // Generate payment link for created contract
   const generateContractPaymentLink = (): string => {
     if (!createdContractId) return '';
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    return `${baseUrl}${brandedHref(`/contract-pay?contractId=${createdContractId}`)}`;
+    // On the partner's site when it frames ours, else this one.
+    return shareable(brandedHref(`/contract-pay?contractId=${createdContractId}`));
   };
 
   // Copy to clipboard. `kind` only affects wording — the send screen decides

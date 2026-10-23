@@ -134,8 +134,28 @@ export default function WhiteLabelGuide() {
     "terms": "/terms-of-service",
     "privacy": "/privacy-policy",
     "arbitration": "/dispute-policy"
-  }
+  },
+  "payPageBase": "https://your-site.example"
 }`;
+
+  // A page of the partner's that frames one of ours, passing its own query string through: the
+  // links we hand out for the partner's payments open these, with the payment in the query.
+  const passThroughPage = (path: string, title: string, height: string) => `<div id="stabledrop"></div>
+<script>
+  var BRAND = '${brand}';
+  var SITE = '${SITE}';
+
+  // Our link put the payment in this page's query string; pass it on, always under your brand.
+  var params = new URLSearchParams(window.location.search);
+  params.set('b', BRAND);
+
+  var frame = document.createElement('iframe');
+  frame.src = SITE + '${path}?' + params.toString();
+  frame.title = '${title}';
+  frame.allow = 'clipboard-write; payment';
+  frame.style.cssText = 'width:100%;height:${height};border:0';
+  document.getElementById('stabledrop').appendChild(frame);
+</script>`;
 
   const frame = (path: string, title: string, size: string, allow = 'clipboard-write; payment') =>
     `<iframe src="${SITE}${path}?b=${brand}"
@@ -224,6 +244,12 @@ export default function WhiteLabelGuide() {
               your brand and allow your domains (steps 2 and 3), then reply to confirm.
             </p>
             <BrandRequestForm example={exampleConfig} />
+            <p>
+              Set <C>payPageBase</C> to the address of your site where you host the pages in step 4 (it may include a
+              path, such as <C>https://your-site.example/payments</C>). Every link we hand out for a payment made under
+              your brand then opens on your site rather than ours. Leave it out and the links open on our site, in your
+              branding.
+            </p>
             <p>Nothing you send can change a payment&apos;s terms, fee, tiebreaker or verification. Branding only changes how the pages look and read.</p>
           </Step>
 
@@ -273,8 +299,43 @@ WHITELABEL_URL=${API} WHITELABEL_ADMIN_KEY=… node scripts/brands/push.mjs ${br
             <p>Our integration guide, shown with your brand. Its code samples already include your brand id, and its support contact is the one from your brand record.</p>
             <Snippet label="integrate.html">{frame('/integrate', 'Integration guide', 'width:100%;height:85vh;min-height:720px;border:0', 'clipboard-write')}</Snippet>
 
-            <H3>Optional: <C>your-site/dashboard</C></H3>
-            <Snippet label="dashboard.html">{frame('/dashboard', 'Payments dashboard', 'width:100%;height:85vh;min-height:720px;border:0')}</Snippet>
+            <H3>The pages our links open</H3>
+            <p>
+              With <C>payPageBase</C> set in your brand, the links we hand out for your payments open these four pages
+              on your site, at the same path and with the payment in the query string: payment links and QR codes,
+              request emails, the &quot;payment received&quot; email&apos;s link to the dashboard, and the tiebreaker&apos;s
+              link to disputes. For example <C>your-site/contract-pay?contractId=6ada…&amp;b={brand}</C>. Each page passes
+              its query string straight into our page. Host all four, or a link will lead to a missing page.
+            </p>
+            <div className="overflow-x-auto border border-secondary-200 dark:border-secondary-700 rounded-lg">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wider text-secondary-500 dark:text-secondary-400">
+                    <th className="px-3 py-2 font-semibold">Your page</th>
+                    <th className="px-3 py-2 font-semibold">What opens it</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-secondary-200 dark:divide-secondary-700">
+                  {(
+                    [
+                      ['/contract-pay', 'A payment request\'s link and QR code, from the request page or the API (pay_link).'],
+                      ['/pay', 'A payment prepared for a named buyer: the request email, and pay_link from the AI-agent tools.'],
+                      ['/dashboard', 'The "payment received" emails, opening the payment on the dashboard.'],
+                      ['/disputes', 'Emails to a payment\'s tiebreaker.'],
+                    ] as [string, string][]
+                  ).map(([page, opens]) => (
+                    <tr key={page}>
+                      <td className="px-3 py-2 whitespace-nowrap align-top"><C>{`your-site${page}`}</C></td>
+                      <td className="px-3 py-2">{opens}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Snippet label="contract-pay.html">{passThroughPage('/contract-pay', 'Pay a request', '820px')}</Snippet>
+            <Snippet label="pay.html">{passThroughPage('/pay', 'Pay', '820px')}</Snippet>
+            <Snippet label="dashboard.html">{passThroughPage('/dashboard', 'Payments dashboard', '85vh;min-height:720px')}</Snippet>
+            <Snippet label="disputes.html">{passThroughPage('/disputes', 'Disputes', '85vh;min-height:720px')}</Snippet>
             <p>For testing, use <C>{TEST}</C> in place of <C>{SITE}</C>.</p>
           </Step>
 
@@ -384,6 +445,7 @@ WHITELABEL_URL=${API} WHITELABEL_ADMIN_KEY=… node scripts/brands/push.mjs ${br
               <li><C>your-site/contract-create?seller=…&amp;amount=0.001&amp;description=Test</C> opens a checkout for the free test amount.</li>
               <li>Pay it; the payment appears in <C>/api/results</C> under your brand id.</li>
               <li>The developer guide&apos;s samples show your brand id and your support contact.</li>
+              <li>With <C>payPageBase</C> set, the link copied after making a request on <C>your-site/create</C> starts with your address and opens the payment on <C>your-site/contract-pay</C>.</li>
               <li>A merchant&apos;s checkout button opens the popup and calls <C>onSuccess</C> after paying.</li>
             </ul>
           </Step>
@@ -395,7 +457,7 @@ WHITELABEL_URL=${API} WHITELABEL_ADMIN_KEY=… node scripts/brands/push.mjs ${br
             </div>
             <ul className="list-disc pl-5 space-y-2 text-secondary-700 dark:text-secondary-300">
               <li><strong>Google sign-in cannot run inside a frame.</strong> Buyers inside your page get email sign-in and an &quot;open in a new tab&quot; option for Google. Some browsers, notably Safari, may not keep a sign-in inside a frame.</li>
-              <li><strong>Links we generate are on our domain.</strong> Payment links, request emails and dashboard links open <C>stabledrop.me/…?b={brand}</C>: your branding, our address.</li>
+              <li><strong>Links we generate open on your site only with <C>payPageBase</C>.</strong> Without it, payment links, request emails and dashboard links open <C>{`${SITE}/…?b=${brand}`}</C>: your branding, our address.</li>
               <li><strong>No webhooks to the partner.</strong> Partners follow their payments through the results service, filtered by brand id.</li>
               <li><strong>Calling our API from a browser page</strong> on your domain needs your origin allowed for cross-origin requests. Calls from a server do not.</li>
             </ul>

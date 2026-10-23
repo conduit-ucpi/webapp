@@ -26,7 +26,7 @@
           "fontFamily": "'Manrope', ui-sans-serif, system-ui, sans-serif"
         },
         "copy": {
-          "operatorNote": "Escrow contracts operated by Conduit UCPI on Base."
+          "operatorNote": "Protected payments operated by Stabledrop on Base"
         },
         "links": {
           "support": "mailto:support@cobro.example",

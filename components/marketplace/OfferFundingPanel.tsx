@@ -119,17 +119,21 @@ export default function OfferFundingPanel({
     setError(null);
     setIsFunding(true);
     setLoadingMessage(`Sending ${tokenSymbol} to your offer vault…`);
+    let depositLanded = false;
     try {
       await fundOffer(vaultAddress, tokenAddress, offerAmount, () => {
+        depositLanded = true;
         setDeposited(true);
         setLoadingMessage('Deposit received. Opening your offer…');
-        // Resolve the QR controller's destination even on the wallet route: if the open
-        // below fails, the recovery button drives it, and checkAndActivate is a no-op until
-        // this address is set.
-        void qr.createContract();
       });
       await onFunded();
     } catch (e: any) {
+      // ⚠️ Arm the QR controller only once the open has FAILED. Setting its destination starts
+      //    its balance poll, which sees the deposit and opens the offer itself — armed on
+      //    deposit, it raced fundOffer's own open and every wallet-funded offer was opened
+      //    twice, the second a guaranteed revert. Here it drives the recovery button, which is
+      //    a no-op until this address is set, and its poll retries the open once.
+      if (depositLanded) void qr.createContract();
       setError(e?.message || 'The deposit did not go through.');
     } finally {
       setIsFunding(false);

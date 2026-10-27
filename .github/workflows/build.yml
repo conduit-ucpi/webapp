@@ -290,7 +290,7 @@ jobs:
           retry 5 docker pull --platform "$PLATFORM" "$IMAGE"
 
           ship_image() {
-            docker save "$IMAGE" | gzip -1 | $SSH 'gunzip | docker load'
+            docker save --platform "$PLATFORM" "$IMAGE" | gzip -1 | $SSH 'gunzip | docker load'
           }
 
           if $SSH "docker image inspect '$IMAGE' >/dev/null 2>&1"; then

@@ -43,6 +43,7 @@ function payoutFrom(epochExpiry: string | undefined): number {
 }
 
 export default function ContractCreate() {
+  const t = useT();
   const router = useRouter();
   const brandedHref = useBrandedHref();
   const seller = str(router.query.seller);
@@ -64,7 +65,7 @@ export default function ContractCreate() {
     return (
       <CheckoutShell embedded={false}>
         <p className="max-w-md mx-auto p-6 text-center text-error-600 dark:text-error-400">
-          Configuration error: this WordPress checkout link is missing its {!str(q.webhook_url) ? 'webhook URL' : 'order ID'}.
+          {!str(q.webhook_url) ? t('checkout.missingWebhookUrl') : t('checkout.missingOrderId')}
         </p>
       </CheckoutShell>
     );

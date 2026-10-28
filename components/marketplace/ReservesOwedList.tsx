@@ -6,6 +6,7 @@ import ReserveDetailsModal from '@/components/marketplace/ReserveDetailsModal';
 import { useSellerReserves } from '@/hooks/useMarketplaceData';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { usePageT } from '@/config/locales';
 import { displayCurrency } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
 import { escrowTitle } from '@/utils/marketplace';
@@ -38,6 +39,7 @@ interface ReservesOwedListProps {
  */
 export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProps) {
   const { config } = useConfig();
+  const t = usePageT();
   const { data, loading, error, refetch } = useSellerReserves(sellerAddress);
   const { releaseHoldback } = useMarketplaceActions();
 
@@ -73,7 +75,7 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
       setViewing(null);
       await refetch();
     } catch (e: any) {
-      setActionError(e?.message || 'That did not go through.');
+      setActionError(e?.message || t('reserves.actionFailed'));
     } finally {
       setBusyVault(null);
     }
@@ -88,10 +90,7 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
    */
   if (error) {
     return (
-      <p className="text-xs text-gray-500 dark:text-secondary-400">
-        Couldn&apos;t check whether any reserve is owed to you on payments you sold. This does not
-        affect the money — try again shortly.
-      </p>
+      <p className="text-xs text-gray-500 dark:text-secondary-400">{t('reserves.loadError')}</p>
     );
   }
   if (loading && !data) return null;
@@ -127,25 +126,17 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
       >
         <div>
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Reserves on payments you sold
+            {t('reserves.title')}
             <span className="ml-2 text-sm font-normal text-gray-500 dark:text-secondary-400">
               ({ordered.length})
             </span>
           </h2>
           <p className="text-sm text-gray-500 dark:text-secondary-400">
-            {collectable > 0 ? (
-              <>
-                {collectable === 1
-                  ? '1 reserve is ready to collect'
-                  : `${collectable} reserves are ready to collect`}
-                . They return to you automatically — opening this only lets you take them sooner.
-              </>
-            ) : (
-              <>
-                When you sold these payments early, part of the price was held back until the
-                customer&apos;s contract completed. That money comes back to you.
-              </>
-            )}
+            {collectable > 0
+              ? collectable === 1
+                ? t('reserves.readyOne')
+                : t('reserves.readyMany', { count: collectable })
+              : t('reserves.heldIntro')}
           </p>
         </div>
         <svg
@@ -224,16 +215,17 @@ function ReserveRow({
   onRelease: () => void;
   onViewDetails: () => void;
 }) {
+  const t = usePageT();
   const held = `${displayCurrency(reserve.holdback, 'microUSDC')} ${tokenSymbol}`;
   const due = reserve.dueBack ? `${displayCurrency(reserve.dueBack, 'microUSDC')} ${tokenSymbol}` : null;
   const matures = reserve.maturity ? formatTimestamp(reserve.maturity).date : null;
 
   const headline =
     reserve.state === 'RELEASED'
-      ? `${due ?? held} returned to you`
+      ? t('reserves.headline.returned', { amount: due ?? held })
       : reserve.state === 'RESOLVED' || reserve.state === 'SETTLED'
-        ? `${due} due back to you`
-        : `${held} held back`;
+        ? t('reserves.headline.dueBack', { amount: due ?? '' })
+        : t('reserves.headline.held', { amount: held });
 
   return (
     <MarketplaceCard
@@ -247,22 +239,24 @@ function ReserveRow({
                two vault addresses to tell them apart — and the amounts can easily match.
           */}
           <div className="text-xs font-normal text-gray-500 dark:text-secondary-400 mt-0.5 truncate">
-            {escrowTitle(reserve, 'Payment you sold')}
+            {escrowTitle(reserve, t('reserves.paymentYouSold'))}
           </div>
         </>
       }
-      identifier={`contract ${reserve.escrowContract ?? 'unknown'}`}
+      identifier={t('reserves.contractIdentifier', {
+        address: reserve.escrowContract ?? t('reserves.unknownContract')
+      })}
       status={<ReserveStatus reserve={reserve} held={held} due={due} matures={matures} />}
       actions={
         <>
           {/* Offered on every row, including RELEASED ones: "what did I actually get, and
               why that much" is exactly the question a settled row raises. */}
           <Button type="button" size="sm" variant="ghost" onClick={onViewDetails} disabled={busy}>
-            View details
+            {t('reserves.viewDetails')}
           </Button>
           {reserve.releasable && (
             <Button type="button" size="sm" onClick={onRelease} disabled={busy}>
-              {busy ? <LoadingSpinner className="w-4 h-4" /> : 'Return my reserve'}
+              {busy ? <LoadingSpinner className="w-4 h-4" /> : t('reserves.returnMyReserve')}
             </Button>
           )}
         </>
@@ -270,19 +264,9 @@ function ReserveRow({
     >
       {reserve.releasable && (
         <p className="text-xs text-amber-700 dark:text-amber-300 mt-3">
-          {reserve.state === 'RESOLVED' ? (
-            <>
-              This contract was disputed and resolved. The customer&apos;s award came out of the
-              reserve first, so {due} of the {held} comes back to you. Nobody returns it
-              automatically — press the button. It costs you nothing and needs no signature.
-            </>
-          ) : (
-            <>
-              The contract completed without a dispute, so the whole reserve comes back to you.
-              Nobody returns it automatically — press the button. It costs you nothing and needs no
-              signature.
-            </>
-          )}
+          {reserve.state === 'RESOLVED'
+            ? t('reserves.collectResolved', { due: due ?? '', held })
+            : t('reserves.collectSettled')}
         </p>
       )}
     </MarketplaceCard>
@@ -300,45 +284,39 @@ function ReserveStatus({
   due: string | null;
   matures: string | null;
 }) {
+  const t = usePageT();
   switch (reserve.state) {
     case 'LIVE':
       return (
         <>
-          The contract is still running{matures ? `, and completes ${matures}` : ''}. You get the
-          full {held} back unless the customer disputes before then.
+          {matures
+            ? t('reserves.state.liveWithDate', { date: matures, held })
+            : t('reserves.state.live', { held })}
         </>
       );
     case 'DISPUTED':
-      return (
-        <>
-          This contract is under dispute. Anything awarded to the customer comes out of this
-          reserve first, so how much returns to you is not known until it resolves — up to {held}.
-        </>
-      );
+      return <>{t('reserves.state.disputed', { held })}</>;
     case 'SETTLED':
-      return <>The contract completed without a dispute. The full {held} is yours to collect.</>;
+      return <>{t('reserves.state.settled', { held })}</>;
     case 'RESOLVED':
       return (
         <>
-          Disputed and resolved
           {reserve.resolvedBuyerPercentage != null
-            ? ` — ${reserve.resolvedBuyerPercentage}% of the payment went to the customer`
-            : ''}
-          . That came out of the {held} reserve first, leaving {due} for you.
+            ? t('reserves.state.resolvedWithPct', {
+                pct: reserve.resolvedBuyerPercentage,
+                held,
+                due: due ?? ''
+              })
+            : t('reserves.state.resolved', { held, due: due ?? '' })}
         </>
       );
     case 'RELEASED':
-      return <>Settled and paid out. Nothing further to do.</>;
+      return <>{t('reserves.state.released')}</>;
     default:
       /*
        * ⚠️ NOT "nothing owed". The contract could not be read, so the reserve's state is
        *    genuinely unknown — saying anything definite here would be inventing it.
        */
-      return (
-        <>
-          {held} is held against this contract. Its current state could not be read, so what comes
-          back to you is not known right now.
-        </>
-      );
+      return <>{t('reserves.state.unknown', { held })}</>;
   }
 }

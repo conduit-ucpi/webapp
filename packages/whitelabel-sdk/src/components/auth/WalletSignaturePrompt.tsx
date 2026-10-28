@@ -38,7 +38,7 @@ export default function WalletSignaturePrompt({ prompt }: { prompt: WalletPrompt
         ) : (
           <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
             <span className="font-medium text-secondary-900 dark:text-white">{t('walletSignaturePrompt.thisOneMovesFunds')}</span>{' '}
-            You are {prompt.summary}. Approving is final.
+            {t('walletSignaturePrompt.approvingIsFinal', { summary: prompt.summary })}
           </p>
         )}
       </div>

@@ -7,7 +7,7 @@ import { useAuth } from '@/components/auth';
 import { useMemo, useState } from 'react';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { emailsEqual } from '@/utils/address';
-import { useT } from '../../i18n';
+import { useT, withNodes } from '../../i18n';
 import { useBrandedHref, useShareableUrl } from '../../theme';
 import { payHref } from '../../utils/payHref';
 import Modal from '@/components/ui/Modal';
@@ -43,7 +43,7 @@ export default function EnhancedContractCard({
     const expiry = contract.expiryTimestamp;
     const remaining = expiry - now;
     
-    if (remaining <= 0) return { text: 'Expired', percentage: 100, isExpired: true };
+    if (remaining <= 0) return { text: t('contractList.expired'), percentage: 100, isExpired: true };
     
     const totalTime = expiry - (isPendingContract(contract) ? now : contract.createdAt);
     const elapsed = now - (isPendingContract(contract) ? now : contract.createdAt);
@@ -55,15 +55,15 @@ export default function EnhancedContractCard({
     
     let text = '';
     if (days > 0) {
-      text = `${days}d ${hours}h remaining`;
+      text = t('contractCard.remainingDaysHours', { days, hours });
     } else if (hours > 0) {
-      text = `${hours}h ${minutes}m remaining`;
+      text = t('contractCard.remainingHoursMinutes', { hours, minutes });
     } else {
-      text = `${minutes}m remaining`;
+      text = t('contractCard.remainingMinutes', { minutes });
     }
-    
+
     return { text, percentage, isExpired: false };
-  }, [contract]);
+  }, [contract, t]);
 
   const isPending = isPendingContract(contract);
   const isBuyer = isPending
@@ -186,13 +186,13 @@ export default function EnhancedContractCard({
           </div>
           <div>
             <h3 className="text-lg font-semibold text-secondary-900 line-clamp-1">
-              {contract.description || 'Untitled Contract'}
+              {contract.description || t('contractCard.untitledContract')}
             </h3>
             <p className="text-sm text-secondary-600 mt-1">
               {isSeller ? (
-                <>To: <FarcasterNameDisplay identifier={contract.buyerEmail} fallbackToAddress={true} walletAddress="Unknown" /></>
+                withNodes(t('contractCard.to'), { name: <FarcasterNameDisplay identifier={contract.buyerEmail} fallbackToAddress={true} walletAddress={t('contractCard.unknown')} /> })
               ) : (
-                <>From: <FarcasterNameDisplay identifier={contract.sellerEmail} fallbackToAddress={true} walletAddress="Unknown" /></>
+                withNodes(t('contractCard.from'), { name: <FarcasterNameDisplay identifier={contract.sellerEmail} fallbackToAddress={true} walletAddress={t('contractCard.unknown')} /> })
               )}
             </p>
           </div>
@@ -202,7 +202,7 @@ export default function EnhancedContractCard({
             {displayCurrency(contract.amount, 'microUSDC')}
           </p>
           <p className="text-xs text-secondary-500 mt-1">
-            {isPending ? 'Pending' : `#${formatWalletAddress(contract.contractAddress)}`}
+            {isPending ? t('contractList.pending') : `#${formatWalletAddress(contract.contractAddress)}`}
           </p>
         </div>
       </div>
@@ -215,7 +215,7 @@ export default function EnhancedContractCard({
               {timeRemaining.text}
             </span>
             <span className="text-xs text-secondary-500">
-              Expires {formatDateTimeWithTZ(contract.expiryTimestamp)}
+              {t('contractCard.expiresOn', { date: formatDateTimeWithTZ(contract.expiryTimestamp) })}
             </span>
           </div>
           <div className="w-full bg-secondary-200 rounded-full h-2">
@@ -236,7 +236,7 @@ export default function EnhancedContractCard({
         <div>
           <p className="text-secondary-500">{t('enhancedContractCard.yourRole')}</p>
           <p className="font-medium text-secondary-900">
-            {isSeller ? 'Seller' : isBuyer ? 'Buyer' : 'Observer'}
+            {isSeller ? t('contractCard.roleSeller') : isBuyer ? t('contractCard.roleBuyer') : t('contractCard.roleObserver')}
           </p>
         </div>
         <div>
@@ -249,7 +249,7 @@ export default function EnhancedContractCard({
           <div>
             <p className="text-secondary-500">{t('enhancedContractCard.funded')}</p>
             <p className="font-medium text-secondary-900">
-              {contract.funded || status === 'CLAIMED' ? 'Yes ✓' : 'No ✗'}
+              {contract.funded || status === 'CLAIMED' ? t('contractCard.fundedYes') : t('contractCard.fundedNo')}
             </p>
           </div>
         )}

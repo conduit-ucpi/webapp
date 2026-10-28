@@ -56,7 +56,7 @@ export default function StandingFiguresPanel({
     return (
       <div className="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
         <div className="font-medium text-green-800 dark:text-green-200">
-          This dispute has settled at {state.resolvedBuyerPercentage}% to the buyer
+          {t('standingFiguresPanel.settledAtPct', { percent: state.resolvedBuyerPercentage })}
         </div>
         <div className="text-sm text-green-700 dark:text-green-300 mt-1">{t('standingFiguresPanel.twoFiguresMatchedAnd')}</div>
       </div>
@@ -67,10 +67,10 @@ export default function StandingFiguresPanel({
     !!address && !!walletAddress && address.toLowerCase() === walletAddress.toLowerCase();
 
   const figures: Figure[] = [
-    { role: 'Buyer', address: state.buyer, percent: state.buyerVote, isYou: isYou(state.buyer) },
-    { role: 'Recipient', address: state.recipient, percent: state.recipientVote, isYou: isYou(state.recipient) },
+    { role: t('standingFiguresPanel.roleBuyer'), address: state.buyer, percent: state.buyerVote, isYou: isYou(state.buyer) },
+    { role: t('standingFiguresPanel.roleRecipient'), address: state.recipient, percent: state.recipientVote, isYou: isYou(state.recipient) },
     ...(state.arbiter
-      ? [{ role: 'Tiebreaker', address: state.arbiter, percent: state.arbiterVote, isYou: isYou(state.arbiter) }]
+      ? [{ role: t('terms.arbiterAddress'), address: state.arbiter, percent: state.arbiterVote, isYou: isYou(state.arbiter) }]
       : [])
   ];
 
@@ -93,14 +93,14 @@ export default function StandingFiguresPanel({
               <span className="text-gray-700 dark:text-secondary-200">
                 {figure.role}
                 {figure.isYou && (
-                  <span className="ml-2 text-xs text-gray-500 dark:text-secondary-400">(you)</span>
+                  <span className="ml-2 text-xs text-gray-500 dark:text-secondary-400">{t('standingFiguresPanel.you')}</span>
                 )}
               </span>
               {figure.percent === null ? (
                 <span className="text-gray-400 dark:text-secondary-500">{t('standingFiguresPanel.noFigureSubmitted')}</span>
               ) : (
                 <span className="font-medium text-gray-900 dark:text-white">
-                  {figure.percent}% to buyer
+                  {t('standingFiguresPanel.pctToBuyer', { percent: figure.percent })}
                   <span className="ml-2 text-xs font-normal text-gray-500 dark:text-secondary-400">
                     ({displayCurrency((amount * figure.percent) / 100, 'microUSDC')} {tokenSymbol})
                   </span>

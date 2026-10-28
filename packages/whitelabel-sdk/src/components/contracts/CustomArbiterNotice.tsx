@@ -50,7 +50,7 @@ export default function CustomArbiterNotice({ arbiterAddress, arbiterEmail }: Cu
       <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">{t('customArbiterNotice.customDisputeResolver')}</p>
       <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-1">{t('customArbiterNotice.thisContractUsesA')}</p>
       <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-2">
-        Tiebreaker:{' '}
+        {t('customArbiterNotice.tiebreaker')}{' '}
         {arbiterEmail ? (
           <>
             <span data-testid="custom-arbiter-email">{arbiterEmail}</span>{' '}
@@ -70,7 +70,7 @@ export default function CustomArbiterNotice({ arbiterAddress, arbiterEmail }: Cu
           data-testid="custom-arbiter-copy-button"
           className="inline-flex items-center text-xs font-medium text-yellow-800 dark:text-yellow-300 underline decoration-dotted hover:decoration-solid focus:outline-none focus:ring-1 focus:ring-yellow-500 rounded"
         >
-          {isCopied ? 'Copied!' : 'Copy'}
+          {isCopied ? t('contractDetailsModal.copied') : t('contractDetailsModal.copy')}
         </button>
       </p>
     </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { isFarcasterEmail, parseFarcasterEmail, fetchFarcasterUserByFid } from '@/utils/farcasterUtils';
 import { useAuth } from '@/components/auth';
 import { emailsEqual } from '@/utils/address';
+import { useT } from '../../i18n';
 
 interface FarcasterNameDisplayProps {
   identifier: string | null | undefined;
@@ -22,6 +23,7 @@ export default function FarcasterNameDisplay({
   fallbackToAddress = false,
   walletAddress
 }: FarcasterNameDisplayProps) {
+  const t = useT();
   const { user } = useAuth();
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -106,7 +108,7 @@ export default function FarcasterNameDisplay({
   return (
     <span className={className}>
       {displayName || identifier}
-      {showYouLabel && isCurrentUser && <span className="ml-1">(You)</span>}
+      {showYouLabel && isCurrentUser && <span className="ml-1">{t('farcasterNameDisplay.you')}</span>}
     </span>
   );
 }

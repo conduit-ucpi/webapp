@@ -57,14 +57,14 @@ export default function AdvancedOptions({
               {t('terms.arbiterAddress')}
             </label>
             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary-100 dark:bg-secondary-700 text-secondary-700 dark:text-secondary-200">
-              Advanced &middot; Optional
+              {t('terms.advancedOptionalBadge')}
             </span>
           </div>
           <Input
             type="text"
             value={arbiterAddress}
             onChange={(e) => onArbiterChange(e.target.value)}
-            placeholder="0x... or name@example.com"
+            placeholder={t('terms.arbiterPlaceholder')}
             error={arbiterError}
             helpText={t('terms.arbiterHelp')}
           />

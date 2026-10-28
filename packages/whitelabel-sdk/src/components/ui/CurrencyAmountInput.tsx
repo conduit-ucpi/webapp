@@ -243,7 +243,7 @@ export default function CurrencyAmountInput({
         {error && <p className="mt-2 text-sm text-error-600 dark:text-error-400">{error}</p>}
         {rateError && (
           <p className="mt-2 text-xs text-warning-600 dark:text-warning-400">
-            Exchange rate unavailable for {tokenSymbol}. Enter the {tokenSymbol} amount directly.
+            {t('amount.rateUnavailableFor', { token: tokenSymbol })}
           </p>
         )}
         {helpText && !error && (
@@ -375,7 +375,7 @@ export default function CurrencyAmountInput({
       {/* Rate Error Message */}
       {rateError && (
         <p className="mt-2 text-xs text-warning-600 dark:text-warning-400">
-          Exchange rate unavailable for {tokenSymbol}. Enter the {tokenSymbol} amount directly.
+          {t('amount.rateUnavailableFor', { token: tokenSymbol })}
         </p>
       )}
 

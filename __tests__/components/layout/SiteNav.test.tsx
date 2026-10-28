@@ -16,6 +16,9 @@ jest.mock('@/components/navigation/NavigationProvider', () => ({
 jest.mock('@/components/theme/ThemeToggle', () => () => <button type="button">theme</button>);
 const mockPartner = jest.fn().mockReturnValue(null);
 jest.mock('@conduit-ucpi/whitelabel-sdk', () => ({
+  // SiteNav's usePageT is built by createTranslator at import time; the real one falls back to
+  // English outside an I18nProvider, which is what these assertions expect.
+  createTranslator: jest.requireActual('@conduit-ucpi/whitelabel-sdk/i18n/createTranslator').createTranslator,
   useOptionalBrand: () => mockPartner(),
   usePartnerBrand: () => mockPartner(),
 }));

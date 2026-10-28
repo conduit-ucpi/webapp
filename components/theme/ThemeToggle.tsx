@@ -1,6 +1,7 @@
 'use client';
 import { motion } from 'framer-motion';
 import { useTheme } from './ThemeProvider';
+import { usePageT } from '@/config/locales';
 
 const SunIcon = ({ className = "w-5 h-5" }) => (
   <svg className={className} fill="currentColor" viewBox="0 0 20 20">
@@ -20,6 +21,7 @@ interface ThemeToggleProps {
 }
 
 export default function ThemeToggle({ className = "", showLabel = false }: ThemeToggleProps) {
+  const t = usePageT();
   let theme = 'light';
   let toggleTheme = () => {};
 
@@ -38,7 +40,7 @@ export default function ThemeToggle({ className = "", showLabel = false }: Theme
       className={`relative inline-flex h-10 w-10 items-center justify-center rounded-lg border border-secondary-300 bg-white text-secondary-700 hover:bg-secondary-50 hover:text-secondary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:border-secondary-600 dark:bg-secondary-800 dark:text-secondary-300 dark:hover:bg-secondary-700 dark:hover:text-white dark:focus:ring-offset-secondary-800 ${className}`}
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
-      aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+      aria-label={theme === 'light' ? t('theme.switchToDark') : t('theme.switchToLight')}
     >
       <motion.div
         initial={false}
@@ -65,7 +67,7 @@ export default function ThemeToggle({ className = "", showLabel = false }: Theme
       
       {showLabel && (
         <span className="ml-2 text-sm font-medium">
-          {theme === 'light' ? 'Dark' : 'Light'}
+          {theme === 'light' ? t('theme.dark') : t('theme.light')}
         </span>
       )}
     </motion.button>

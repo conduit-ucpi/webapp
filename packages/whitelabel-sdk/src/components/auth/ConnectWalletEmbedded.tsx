@@ -4,7 +4,7 @@ import Button from '@/components/ui/Button';
 import { mLog } from '@/utils/mobileLogger';
 import { isMagicReachable } from '@/lib/auth/magicReachability';
 import { reportAuthFailure } from '@/lib/auth/reportAuthFailure';
-import { useT } from '../../i18n';
+import { useT, withNodes } from '../../i18n';
 
 interface ConnectWalletEmbeddedProps {
   buttonText?: string;
@@ -26,7 +26,7 @@ interface ConnectWalletEmbeddedProps {
 }
 
 export default function ConnectWalletEmbedded({
-  buttonText = "Get Started",
+  buttonText,
   useSmartRouting = true,
   showTwoOptionLayout = false,
   className = "",
@@ -39,6 +39,8 @@ export default function ConnectWalletEmbedded({
   legacyWallet = false
 }: ConnectWalletEmbeddedProps) {
   const t = useT();
+  // The default label is translated here rather than in the prop default, which cannot call a hook.
+  const label = buttonText ?? t('connectWalletEmbedded.getStarted');
   const { user, isLoading, connect, isConnected, address, requestAuthentication, setConnectionMode } = useAuth();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
@@ -242,7 +244,7 @@ export default function ConnectWalletEmbedded({
   if (user) {
     return (
       <div className="p-4 text-center">
-        <p className="text-green-600">✓ Wallet connected: {user.email || user.walletAddress}</p>
+        <p className="text-green-600">{t('connectWalletEmbedded.walletConnected', { account: user.email || user.walletAddress })}</p>
       </div>
     );
   }
@@ -365,7 +367,7 @@ export default function ConnectWalletEmbedded({
           className={buttonClassName}
           disabled={isBusy || !connect}
         >
-          {isBusy ? 'Connecting...' : buttonText}
+          {isBusy ? t('connectWalletEmbedded.connecting') : label}
         </button>
       ) : (
         <Button
@@ -373,14 +375,14 @@ export default function ConnectWalletEmbedded({
           className="px-6 py-2"
           disabled={isBusy || !connect}
         >
-          {isBusy ? 'Connecting...' : buttonText}
+          {isBusy ? t('connectWalletEmbedded.connecting') : label}
         </Button>
       )}
       {!compact && (
         <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-400">
           {magicBlocked
-            ? 'Connect your wallet to continue'
-            : 'Sign up with email or use your existing wallet'}
+            ? t('connectWalletEmbedded.connectToContinue')
+            : t('connectWalletEmbedded.signUpOrWallet')}
         </p>
       )}
       {magicBlocked && !compact && (
@@ -390,11 +392,14 @@ export default function ConnectWalletEmbedded({
         >
           <p className="font-semibold">{t('connectWalletEmbedded.emailSocialSignIn')}</p>
           <p className="mt-1">
-            Your network appears to be blocking{' '}
-            <span className="font-mono">magiclabs.com</span>{t('connectWalletEmbedded.whichOurEmailSocial')}</p>
+            {withNodes(t('connectWalletEmbedded.networkBlocking'), {
+              domain: <span className="font-mono">magiclabs.com</span>,
+            })}
+          </p>
           <p className="mt-1">
-            To restore email/social sign-in, try a different network, disable
-            ad blockers, or switch your DNS to <span className="font-mono">1.1.1.1</span>.
+            {withNodes(t('connectWalletEmbedded.restoreHint'), {
+              dns: <span className="font-mono">1.1.1.1</span>,
+            })}
           </p>
         </div>
       )}

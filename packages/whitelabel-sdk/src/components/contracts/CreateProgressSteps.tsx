@@ -77,7 +77,7 @@ export default function CreateProgressSteps({
                 ) : (
                   i + 1
                 )}
-                <span className="sr-only">{isComplete ? 'completed' : ''}</span>
+                <span className="sr-only">{isComplete ? t('steps.completed') : ''}</span>
               </span>
               <div
                 className="flex-1 h-px bg-secondary-200 dark:bg-secondary-700"

@@ -52,11 +52,11 @@ export default function WalletRegistrationPrereq() {
           style={{ fontFamily: 'var(--wl-font-accent)' }}
         >
           {registered
-            ? 'This wallet is going to receive your payments:'
-            : 'Set up your wallet to receive payments.'}
+            ? t('walletRegistrationPrereq.receivingWallet')
+            : t('walletRegistrationPrereq.setUpWallet')}
         </h2>
         <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-8 max-w-md">
-          One-time setup. Your wallet address establishes the settlement endpoint for all {currencyList} transactions.
+          {t('walletRegistrationPrereq.oneTimeSetup', { currencies: currencyList })}
         </p>
 
         {registered ? (
@@ -68,7 +68,7 @@ export default function WalletRegistrationPrereq() {
               <button
                 onClick={copyAddress}
                 className="text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors flex-shrink-0"
-                title={copied ? 'Copied!' : 'Copy address'}
+                title={copied ? t('contractDetailsModal.copied') : t('walletRegistrationPrereq.copyAddress')}
               >
                 {copied ? (
                   <svg className="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">

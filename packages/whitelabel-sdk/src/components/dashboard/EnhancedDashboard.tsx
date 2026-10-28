@@ -76,13 +76,13 @@ export default function EnhancedDashboard() {
         sellerAddress: user?.walletAddress || '0xseller456',
         amount: 500000000, // $500 in microUSDC
         expiryTimestamp: now + 7 * 24 * 60 * 60, // 7 days from now
-        description: 'Website design project - 5 page responsive site',
+        description: t('enhancedDashboard.demo1Description'),
         status: 'ACTIVE',
         createdAt: now - 24 * 60 * 60, // 1 day ago
         funded: true,
         buyerEmail: 'client@example.com',
         sellerEmail: user?.email || 'seller@example.com',
-        productName: 'Website Design',
+        productName: t('enhancedDashboard.demo1Product'),
         adminNotes: [],
         disputes: []
       } as Contract,
@@ -96,7 +96,7 @@ export default function EnhancedDashboard() {
         expiryTimestamp: now + 3 * 24 * 60 * 60, // 3 days from now
         chainId: '43113',
         chainAddress: undefined,
-        description: 'Logo design and brand identity package',
+        description: t('enhancedDashboard.demo2Description'),
         createdAt: now - 2 * 24 * 60 * 60, // 2 days ago
         createdBy: user?.walletAddress || '0xseller456',
         state: 'OK',
@@ -109,13 +109,13 @@ export default function EnhancedDashboard() {
         sellerAddress: user?.walletAddress || '0xseller456',
         amount: 250000000, // $250 in microUSDC
         expiryTimestamp: now - 24 * 60 * 60, // Expired (1 day ago)
-        description: 'Social media content creation - 10 posts',
+        description: t('enhancedDashboard.demo3Description'),
         status: 'CLAIMED',
         createdAt: now - 10 * 24 * 60 * 60, // 10 days ago
         funded: true,
         buyerEmail: 'marketing@startup.com',
         sellerEmail: user?.email || 'seller@example.com',
-        productName: 'Social Media Content',
+        productName: t('enhancedDashboard.demo3Product'),
         adminNotes: [],
         disputes: []
       } as Contract
@@ -158,11 +158,11 @@ export default function EnhancedDashboard() {
       if (error instanceof WalletSigningError) {
         showToast({
           type: 'error',
-          title: "Couldn't sign in with your wallet",
+          title: t('enhancedDashboard.walletSignInFailedTitle'),
           message: error.message,
           duration: 12000,
         });
-        setError('Wallet sign-in failed — see notification for details.');
+        setError(t('enhancedDashboard.walletSignInFailed'));
       } else {
         setError(error.message || 'Failed to load contracts');
       }
@@ -218,11 +218,11 @@ export default function EnhancedDashboard() {
       if (error instanceof WalletSigningError) {
         showToast({
           type: 'error',
-          title: "Couldn't sign in with your wallet",
+          title: t('enhancedDashboard.walletSignInFailedTitle'),
           message: error.message,
           duration: 12000,
         });
-        setError('Wallet sign-in failed — see notification for details.');
+        setError(t('enhancedDashboard.walletSignInFailed'));
       } else {
         setError(error.message || 'Failed to refresh contracts');
       }
@@ -233,13 +233,13 @@ export default function EnhancedDashboard() {
 
   const handleExportReport = async () => {
     if (!authenticatedFetch) {
-      showToast({ type: 'error', title: 'Export failed', message: 'Authentication not available' });
+      showToast({ type: 'error', title: t('enhancedDashboard.exportFailed'), message: t('enhancedDashboard.authNotAvailable') });
       return;
     }
 
     const wallet = user?.walletAddress?.toLowerCase();
     if (!wallet) {
-      showToast({ type: 'error', title: 'Export failed', message: 'Wallet address not available' });
+      showToast({ type: 'error', title: t('enhancedDashboard.exportFailed'), message: t('enhancedDashboard.walletNotAvailable') });
       return;
     }
 
@@ -252,7 +252,7 @@ export default function EnhancedDashboard() {
       });
 
       if (!response.ok) {
-        throw new Error(`Report request failed (${response.status})`);
+        throw new Error(t('enhancedDashboard.reportRequestFailed', { status: response.status }));
       }
 
       const data = await response.json();
@@ -278,8 +278,8 @@ export default function EnhancedDashboard() {
       console.error('Failed to export report:', err);
       showToast({
         type: 'error',
-        title: 'Export failed',
-        message: err?.message || 'Could not generate report'
+        title: t('enhancedDashboard.exportFailed'),
+        message: err?.message || t('enhancedDashboard.couldNotGenerateReport')
       });
     } finally {
       setIsExporting(false);
@@ -392,11 +392,11 @@ export default function EnhancedDashboard() {
 
   // Tab configuration
   const tabs: Tab[] = [
-    { id: 'ALL', label: 'All', count: allContracts.length },
-    { id: 'ACTION_NEEDED', label: 'Action Needed', count: stats.actionNeeded },
-    { id: 'ACTIVE', label: 'Active', count: stats.active },
-    { id: 'COMPLETED', label: 'Completed', count: stats.completed },
-    { id: 'DISPUTED', label: 'Disputed', count: allContracts.filter(c => 
+    { id: 'ALL', label: t('enhancedDashboard.all'), count: allContracts.length },
+    { id: 'ACTION_NEEDED', label: t('enhancedDashboard.actionNeeded'), count: stats.actionNeeded },
+    { id: 'ACTIVE', label: t('enhancedDashboard.active'), count: stats.active },
+    { id: 'COMPLETED', label: t('enhancedDashboard.completed'), count: stats.completed },
+    { id: 'DISPUTED', label: t('contractList.disputed'), count: allContracts.filter(c =>
       'contractAddress' in c && c.status === 'DISPUTED'
     ).length }
   ];

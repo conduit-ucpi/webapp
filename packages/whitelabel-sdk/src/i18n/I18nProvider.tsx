@@ -53,6 +53,10 @@ export function I18nProvider({ children, brandLocale, messageOverrides }: I18nPr
       brandLocale,
       navigatorLocales: navigator.languages ?? [navigator.language],
     });
+    // Before the re-render, not after it: date formatters read <html lang> during render
+    // (utils/datetime displayLocale), so it must already be right when the translated
+    // tree paints, or dates stay English for one render while the copy is Spanish.
+    document.documentElement.lang = next.locale;
     setResolution((prev) =>
       prev.locale === next.locale && prev.source === next.source ? prev : next
     );

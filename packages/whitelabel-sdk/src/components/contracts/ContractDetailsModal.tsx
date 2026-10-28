@@ -10,7 +10,7 @@ import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import ContractActions from './ContractActions';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
-import { useT } from '../../i18n';
+import { useT, withNodes } from '../../i18n';
 import { useBrandedHref, useShareableUrl } from '../../theme';
 import { payHref } from '../../utils/payHref';
 
@@ -73,19 +73,24 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
     const expiry = contract.expiryTimestamp;
     const remaining = expiry - now;
     
-    if (remaining <= 0) return { text: 'Expired', isExpired: true };
-    
+    if (remaining <= 0) return { text: t('contractList.expired'), isExpired: true };
+
     const days = Math.floor(remaining / 86400);
     const hours = Math.floor((remaining % 86400) / 3600);
     const minutes = Math.floor((remaining % 3600) / 60);
-    
+
+    // Same plural rule as before: only a count above one takes the plural form.
+    const dayText = t(days > 1 ? 'contractDetailsModal.days' : 'contractDetailsModal.day', { count: days });
+    const hourText = t(hours > 1 ? 'contractDetailsModal.hours' : 'contractDetailsModal.hour', { count: hours });
+    const minuteText = t(minutes > 1 ? 'contractDetailsModal.minutes' : 'contractDetailsModal.minute', { count: minutes });
+
     let text = '';
     if (days > 0) {
-      text = `${days} day${days > 1 ? 's' : ''}, ${hours} hour${hours > 1 ? 's' : ''}`;
+      text = t('contractDetailsModal.timePair', { first: dayText, second: hourText });
     } else if (hours > 0) {
-      text = `${hours} hour${hours > 1 ? 's' : ''}, ${minutes} minute${minutes > 1 ? 's' : ''}`;
+      text = t('contractDetailsModal.timePair', { first: hourText, second: minuteText });
     } else {
-      text = `${minutes} minute${minutes > 1 ? 's' : ''}`;
+      text = minuteText;
     }
     
     return { text, isExpired: false };
@@ -111,10 +116,10 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
             />
             <div>
               <h3 className="text-xl font-semibold text-secondary-900">
-                {contract.description || 'Untitled Contract'}
+                {contract.description || t('contractCard.untitledContract')}
               </h3>
               <p className="text-sm text-secondary-600 mt-1">
-                Contract ID: {contract.id}
+                {t('contractDetailsModal.contractId', { id: contract.id ?? '' })}
               </p>
             </div>
           </div>
@@ -134,7 +139,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-semibold text-blue-900">{t('contractDetailsModal.timeRemaining')}</h4>
-                <p className="text-blue-800">{timeInfo.text} remaining until expiry</p>
+                <p className="text-blue-800">{t('contractDetailsModal.remainingUntilExpiry', { time: timeInfo.text })}</p>
               </div>
               <div className="text-right">
                 <p className="text-sm text-blue-600">{t('contractDetailsModal.expires')}</p>
@@ -154,13 +159,13 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
             
             <div className="space-y-3">
               <div>
-                <p className="text-sm font-medium text-secondary-700">Seller {isSeller && '(You)'}</p>
+                <p className="text-sm font-medium text-secondary-700">{isSeller ? t('contractDetailsModal.sellerYou') : t('contractCard.roleSeller')}</p>
                 <p className="text-secondary-900">
-                  <FarcasterNameDisplay 
-                    identifier={contract.sellerEmail} 
+                  <FarcasterNameDisplay
+                    identifier={contract.sellerEmail}
                     showYouLabel={false}
                     fallbackToAddress={true}
-                    walletAddress="Unknown"
+                    walletAddress={t('contractCard.unknown')}
                   />
                 </p>
                 <div className="mt-1">
@@ -170,13 +175,13 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
               
               {!isPending && contract.buyerAddress && (
                 <div>
-                  <p className="text-sm font-medium text-secondary-700">Buyer {isBuyer && '(You)'}</p>
+                  <p className="text-sm font-medium text-secondary-700">{isBuyer ? t('contractDetailsModal.buyerYou') : t('contractCard.roleBuyer')}</p>
                   <p className="text-secondary-900">
-                    <FarcasterNameDisplay 
-                      identifier={contract.buyerEmail} 
+                    <FarcasterNameDisplay
+                      identifier={contract.buyerEmail}
                       showYouLabel={false}
                       fallbackToAddress={true}
-                      walletAddress="Unknown"
+                      walletAddress={t('contractCard.unknown')}
                     />
                   </p>
                   <div className="mt-1">
@@ -187,10 +192,10 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
               
               {isPending && contract.buyerEmail && (
                 <div>
-                  <p className="text-sm font-medium text-secondary-700">Buyer {isBuyer && '(You)'}</p>
+                  <p className="text-sm font-medium text-secondary-700">{isBuyer ? t('contractDetailsModal.buyerYou') : t('contractCard.roleBuyer')}</p>
                   <p className="text-secondary-900">
-                    <FarcasterNameDisplay 
-                      identifier={contract.buyerEmail} 
+                    <FarcasterNameDisplay
+                      identifier={contract.buyerEmail}
                       showYouLabel={false}
                     />
                   </p>
@@ -211,7 +216,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                   {formatDateTimeWithTZ(contract.createdAt)}
                 </p>
                 {isPending && (contract as PendingContract).createdBy && (
-                  <p className="text-sm text-secondary-500">by <FarcasterNameDisplay identifier={(contract as PendingContract).createdBy} showYouLabel={false} /></p>
+                  <p className="text-sm text-secondary-500">{withNodes(t('contractDetailsModal.by'), { name: <FarcasterNameDisplay identifier={(contract as PendingContract).createdBy} showYouLabel={false} /> })}</p>
                 )}
               </div>
               
@@ -289,10 +294,10 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
               {(contract as Contract).disputes!.map((dispute, index) => (
                 <div key={index} className="bg-white rounded p-3 border border-error-200">
                   <p className="text-error-800 mb-2">
-                    <span className="font-medium">Dispute #{index + 1}:</span> {dispute.reason || 'No reason provided'}
+                    <span className="font-medium">{t('contractDetailsModal.disputeNumber', { n: index + 1 })}</span> {dispute.reason || t('contractDetailsModal.noReasonProvided')}
                   </p>
                   <p className="text-error-600 text-sm mb-2">
-                    Raised on {formatDateTimeWithTZ(dispute.timestamp)}
+                    {t('contractDetailsModal.raisedOn', { date: formatDateTimeWithTZ(dispute.timestamp) })}
                   </p>
                   
                   {/* Show refund information if available */}
@@ -300,13 +305,15 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                     <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
                       <p className="font-medium text-blue-900 mb-1">{t('contractDetailsModal.refundDetails')}</p>
                       <div className="text-xs text-blue-800">
-                        <div>Refund Percentage: {dispute.refundPercent}%</div>
+                        <div>{t('contractDetailsModal.refundPercentage', { percent: dispute.refundPercent })}</div>
                         {/* Calculate refund amount from contract total */}
                         <div>
-                          Refund Amount: {displayCurrency(
-                            Math.round((contract.amount * dispute.refundPercent) / 100), 
-                            isPending ? ((contract as PendingContract).currency || 'microUSDC') : 'microUSDC'
-                          )}
+                          {t('contractDetailsModal.refundAmount', {
+                            amount: displayCurrency(
+                              Math.round((contract.amount * dispute.refundPercent) / 100),
+                              isPending ? ((contract as PendingContract).currency || 'microUSDC') : 'microUSDC'
+                            ),
+                          })}
                         </div>
                       </div>
                     </div>
@@ -334,8 +341,8 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                 const noteData = note as any; // Type assertion for flexibility
                 console.log('Admin note data structure:', noteData); // Debug all properties
                 
-                const noteText = noteData.note || noteData.content || 'No content';
-                const createdBy = noteData.createdBy || noteData.addedBy || 'Unknown';
+                const noteText = noteData.note || noteData.content || t('contractDetailsModal.noContent');
+                const createdBy = noteData.createdBy || noteData.addedBy || t('contractCard.unknown');
                 const timestamp = noteData.timestamp || noteData.addedAt || noteData.createdAt;
                 
                 // Extract refund/payout information - check multiple possible property names
@@ -361,10 +368,10 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                           {(buyerPercentage !== undefined || sellerPercentage !== undefined) && (
                             <div className="grid grid-cols-2 gap-2">
                               {buyerPercentage !== undefined && (
-                                <div>Buyer: {buyerPercentage}% ({buyerActualAmount ? displayCurrency(parseInt(buyerActualAmount), 'microUSDC') : 'N/A'})</div>
+                                <div>{t('contractDetailsModal.buyerShare', { percent: buyerPercentage, amount: buyerActualAmount ? displayCurrency(parseInt(buyerActualAmount), 'microUSDC') : t('contractDetailsModal.notAvailable') })}</div>
                               )}
                               {sellerPercentage !== undefined && (
-                                <div>Seller: {sellerPercentage}% ({sellerActualAmount ? displayCurrency(parseInt(sellerActualAmount), 'microUSDC') : 'N/A'})</div>
+                                <div>{t('contractDetailsModal.sellerShare', { percent: sellerPercentage, amount: sellerActualAmount ? displayCurrency(parseInt(sellerActualAmount), 'microUSDC') : t('contractDetailsModal.notAvailable') })}</div>
                               )}
                             </div>
                           )}
@@ -373,10 +380,10 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                           {(refundAmount || refundPercent !== undefined) && (
                             <div className="pt-1 border-t border-blue-200">
                               {refundPercent !== undefined && (
-                                <div>Refund Percentage: {refundPercent}%</div>
+                                <div>{t('contractDetailsModal.refundPercentage', { percent: refundPercent })}</div>
                               )}
                               {refundAmount && (
-                                <div>Refund Amount: {displayCurrency(parseInt(refundAmount), 'microUSDC')}</div>
+                                <div>{t('contractDetailsModal.refundAmount', { amount: displayCurrency(parseInt(refundAmount), 'microUSDC') })}</div>
                               )}
                             </div>
                           )}
@@ -385,9 +392,9 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                     )}
                     
                     <div className="flex justify-between items-center text-xs text-secondary-500">
-                      <span>by {createdBy}</span>
+                      <span>{t('contractDetailsModal.by', { name: createdBy })}</span>
                       <span>
-                        {timestamp ? formatDateTimeWithTZ(timestamp) : 'Invalid date'}
+                        {timestamp ? formatDateTimeWithTZ(timestamp) : t('contractDetailsModal.invalidDate')}
                       </span>
                     </div>
                   </div>

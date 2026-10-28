@@ -5,7 +5,7 @@ import Button from '@/components/ui/Button';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/SimpleAuthProvider';
 import { ONRAMP_RETURN_MESSAGE, openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
-import { useT } from '../../i18n';
+import { useT, withNodes } from '../../i18n';
 
 /**
  * Coinbase's on-ramp enforces a fiat minimum, so presetting the literal
@@ -114,7 +114,7 @@ export default function AddFundsModal({
       });
       if (result?.status === 'completed') onClose();
     } catch (e) {
-      setOnrampError(e instanceof Error ? e.message : 'Could not open funding');
+      setOnrampError(e instanceof Error ? e.message : t('addFunds.couldNotOpenFunding'));
     } finally {
       setProviderFundingBusy(false);
     }
@@ -136,7 +136,7 @@ export default function AddFundsModal({
         returnPath,
       });
     } catch (e) {
-      setOnrampError(e instanceof Error ? e.message : 'Could not open Coinbase');
+      setOnrampError(e instanceof Error ? e.message : t('addFunds.couldNotOpenCoinbase'));
     } finally {
       setOnrampLoading(false);
     }
@@ -164,10 +164,10 @@ export default function AddFundsModal({
           {showProviderFunding && (
             <button type="button" onClick={handleProviderFunding} disabled={providerFundingBusy} className={choiceBox}>
               <p className="font-semibold text-secondary-900">
-                {providerFundingBusy ? 'Opening…' : 'Add funds with a card'}
+                {providerFundingBusy ? t('addFunds.opening') : t('addFunds.addWithCard')}
               </p>
               <p className="mt-1 text-sm text-secondary-500">
-                Buy {tokenSymbol} with a card, Apple Pay or Google Pay
+                {t('addFunds.buyWithCard', { token: tokenSymbol })}
               </p>
             </button>
           )}
@@ -175,10 +175,10 @@ export default function AddFundsModal({
           {showCoinbase && (
             <button type="button" onClick={handleOnramp} disabled={onrampLoading} className={choiceBox}>
               <p className="font-semibold text-secondary-900">
-                {onrampLoading ? 'Opening Coinbase…' : 'Add from Coinbase'}
+                {onrampLoading ? t('paymentActionPanel.openingCoinbase') : t('addFunds.addFromCoinbase')}
               </p>
               <p className="mt-1 text-sm text-secondary-500">
-                Buy {tokenSymbol} with a card or bank transfer
+                {t('addFunds.buyWithCardOrBank', { token: tokenSymbol })}
               </p>
             </button>
           )}
@@ -186,7 +186,7 @@ export default function AddFundsModal({
           <button type="button" onClick={() => setShowTransfer(true)} className={choiceBox}>
             <p className="font-semibold text-secondary-900">{t('addFundsModal.transferFromAnotherWallet')}</p>
             <p className="mt-1 text-sm text-secondary-500">
-              Scan a QR code or use a link to send {tokenSymbol} you already hold
+              {t('addFunds.scanOrLink', { token: tokenSymbol })}
             </p>
           </button>
 
@@ -195,11 +195,13 @@ export default function AddFundsModal({
       ) : (
         <div>
           <p className="text-sm text-secondary-600">
-            Scan with your wallet app to send{' '}
-            <span className="font-semibold text-secondary-900">
-              {shortfall.toFixed(4)} {tokenSymbol}
-            </span>{' '}
-            on {networkName} to this wallet. The amount and network are already filled in.
+            {withNodes(t('addFunds.scanToSend', { network: networkName }), {
+              amount: (
+                <span className="font-semibold text-secondary-900">
+                  {shortfall.toFixed(4)} {tokenSymbol}
+                </span>
+              ),
+            })}
           </p>
 
           <div className="mt-4 flex justify-center">
@@ -217,19 +219,19 @@ export default function AddFundsModal({
               className="flex-1 min-w-0 rounded-md border border-secondary-300 bg-secondary-50 px-3 py-2 font-mono text-xs"
             />
             <Button variant="outline" onClick={() => copy(walletAddress, 'address')} className="flex-shrink-0">
-              {copied === 'address' ? 'Copied' : 'Copy'}
+              {copied === 'address' ? t('paymentActionPanel.copied') : t('qrPaymentPanel.copy')}
             </Button>
           </div>
 
           <div className="mt-3 flex gap-2">
             <Button variant="outline" onClick={() => copy(transferUri, 'link')} className="flex-1">
-              {copied === 'link' ? 'Link copied' : 'Copy payment link'}
+              {copied === 'link' ? t('addFunds.linkCopied') : t('addFunds.copyPaymentLink')}
             </Button>
             <Button variant="outline" onClick={() => setShowTransfer(false)} className="flex-1">{t('addFundsModal.back')}</Button>
           </div>
 
           <p className="mt-4 text-xs text-secondary-500">
-            Send only {tokenSymbol} on {networkName}. Funds sent on another network may be lost.
+            {t('addFunds.sendOnly', { token: tokenSymbol, network: networkName })}
           </p>
         </div>
       )}

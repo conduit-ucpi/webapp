@@ -1,6 +1,6 @@
 import { MIN_AMOUNT, TEST_AMOUNT, formatUsd, isTestAmount, parseAmount } from '@/utils/escrowFees';
 import { useFeeQuote } from '../../hooks/useFeeQuote';
-import { useT } from '../../i18n';
+import { useT, withNodes } from '../../i18n';
 
 interface AmountGuidanceProps {
   amount: string;
@@ -46,8 +46,7 @@ export default function AmountGuidance({
           {t('amount.testWaived')}
         </p>
         <p className="mt-1 text-xs text-primary-700 dark:text-primary-300 leading-relaxed">
-          A real {tokenSymbol} transaction for {TEST_AMOUNT} {tokenSymbol}, so you can
-          see the whole flow end to end before committing to a real amount.
+          {t('amount.testExplainer', { token: tokenSymbol, amount: TEST_AMOUNT })}
         </p>
       </div>
     );
@@ -60,10 +59,10 @@ export default function AmountGuidance({
     return (
       <div className="mt-2 rounded-xl border border-warning-500/30 bg-warning-50 dark:bg-warning-500/10 px-4 py-3">
         <p className="text-sm font-medium text-warning-600 dark:text-warning-500">
-          Payment requests start at {formatUsd(MIN_AMOUNT)}.
+          {t('amount.startsAt', { min: formatUsd(MIN_AMOUNT) })}
         </p>
         <p className="mt-1 text-xs text-warning-600/90 dark:text-warning-500/90">
-          Just trying things out? {testButton}
+          {withNodes(t('amount.justTrying'), { button: testButton })}
         </p>
       </div>
     );

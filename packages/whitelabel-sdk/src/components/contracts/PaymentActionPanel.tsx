@@ -114,7 +114,7 @@ export default function PaymentActionPanel({
     try {
       // The escrow has to exist before Coinbase can send to it.
       const escrowAddress = await resolveEscrowAddress();
-      if (!escrowAddress) throw new Error('Could not prepare the payment contract');
+      if (!escrowAddress) throw new Error(t('paymentActionPanel.couldNotPrepare'));
 
       await openCoinbaseOnramp({
         destinationAddress: escrowAddress,
@@ -131,7 +131,7 @@ export default function PaymentActionPanel({
         onPopupClosed: onPayFromExternalWallet,
       });
     } catch (e) {
-      setCbPayError(e instanceof Error ? e.message : 'Could not open Coinbase');
+      setCbPayError(e instanceof Error ? e.message : t('addFunds.couldNotOpenCoinbase'));
     } finally {
       setCbPayLoading(false);
     }
@@ -209,7 +209,7 @@ export default function PaymentActionPanel({
           </p>
           {!isLoadingBalance && hasInsufficientBalance && (
             <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-              {shortfall.toFixed(4)} {tokenSymbol} short
+              {t('paymentActionPanel.short', { amount: shortfall.toFixed(4), token: tokenSymbol })}
             </p>
           )}
         </div>

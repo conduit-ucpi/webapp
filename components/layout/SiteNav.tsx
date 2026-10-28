@@ -13,6 +13,7 @@ import { getSiteNameFromDomain } from '@/utils/siteName';
 import { useBarFit } from './useBarFit';
 import { accountLinks, siteNavGroups, SITE_NAV_PRICING, SiteNavLink } from './siteNavLinks';
 import { useApiOrigin } from '@/lib/useApiOrigin';
+import { usePageT } from '@/config/locales';
 
 const SSR_DEFAULT_SITE_NAME = 'Stabledrop.me';
 
@@ -68,6 +69,7 @@ function NavItemLink({ item, onClick }: { item: SiteNavLink; onClick?: () => voi
  */
 export default function SiteNav({ className = '', forceDark = false }: Props) {
   const router = useRouter();
+  const t = usePageT();
   const [open, setOpen] = useState<string | null>(null);
   const [mobile, setMobile] = useState(false);
   const barRef = useRef<HTMLDivElement>(null);
@@ -98,7 +100,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
   const wallet = user?.walletAddress;
   const userLabel = (user as any)?.username
     ? `@${(user as any).username}`
-    : user?.email || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Signed in');
+    : user?.email || (wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : t('nav.signedIn'));
   const clientVersion = formatVersion(CLIENT_GIT_TAG, CLIENT_GIT_SHA);
   const apiVersion = formatVersion(config?.gitTag, config?.gitSha);
 
@@ -152,7 +154,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
     <div className="space-y-3">
       <div className="px-3">
         <p className="text-sm font-medium text-secondary-900 dark:text-white truncate">{userLabel}</p>
-        <p className="text-xs text-secondary-500 dark:text-secondary-400">Connected</p>
+        <p className="text-xs text-secondary-500 dark:text-secondary-400">{t('nav.connected')}</p>
       </div>
       <div>
         {account.map((link) => (
@@ -162,13 +164,13 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
         ))}
       </div>
       <div className="flex items-center justify-between px-3">
-        <span className="text-sm text-secondary-600 dark:text-secondary-300">Dark mode</span>
+        <span className="text-sm text-secondary-600 dark:text-secondary-300">{t('nav.darkMode')}</span>
         <ThemeToggle />
       </div>
       <div className="px-3 space-y-2">
         {canSwitchWallet && (
           <button type="button" onClick={handleSwitchWallet} className={`${itemClass} w-full text-left !px-0`}>
-            Switch wallet
+            {t('nav.switchWallet')}
           </button>
         )}
         <button
@@ -176,7 +178,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
           onClick={handleLogout}
           className="w-full px-4 py-2 text-sm font-medium rounded-lg bg-secondary-100 dark:bg-secondary-800 text-secondary-700 dark:text-secondary-200 hover:bg-secondary-200 dark:hover:bg-secondary-700 transition-colors"
         >
-          Logout
+          {t('nav.logout')}
         </button>
       </div>
       <VersionBox clientVersion={clientVersion} apiVersion={apiVersion} />
@@ -187,7 +189,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
     <div className={`${forceDark ? 'dark ' : ''}${className}`}>
       <nav
         className="w-full bg-white dark:bg-secondary-900 border-b border-secondary-200 dark:border-secondary-800 transition-colors"
-        aria-label="Primary"
+        aria-label={t('nav.primaryAria')}
         ref={barRef}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -199,7 +201,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
                     type="button"
                     onClick={goBack}
                     className="mr-3 p-2 rounded-lg hover:bg-secondary-100 dark:hover:bg-secondary-800 transition-colors"
-                    aria-label="Go back"
+                    aria-label={t('nav.goBack')}
                   >
                     <ArrowLeftIcon className="w-5 h-5 text-secondary-600 dark:text-secondary-300" />
                   </button>
@@ -255,7 +257,7 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
                     type="button"
                     aria-expanded={open === 'account'}
                     aria-haspopup="true"
-                    aria-label="Account menu"
+                    aria-label={t('nav.accountMenu')}
                     onClick={() => setOpen(open === 'account' ? null : 'account')}
                     className={`${barItemClass} max-w-[14rem]`}
                   >
@@ -273,22 +275,22 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
                 // API keys likewise signs them in, so a merchant can reach it before they have an account.
                 <>
                   <Link href="/api-keys" className="px-3 py-2 text-sm text-secondary-900 dark:text-white hover:opacity-80">
-                    API keys
+                    {t('nav.apiKeys')}
                   </Link>
                   <Link href="/dashboard" className="px-3 py-2 text-sm text-secondary-900 dark:text-white hover:opacity-80">
-                    Dashboard
+                    {t('nav.dashboard')}
                   </Link>
                 </>
               )}
               <Link href="/create" className={`${btnPrimary} !px-4 !py-2 !text-sm`}>
-                Request payment
+                {t('nav.requestPayment')}
               </Link>
             </div>
 
             <button
               type="button"
               className={`${menuPart} p-2 rounded-lg text-secondary-700 dark:text-secondary-200 hover:bg-secondary-100 dark:hover:bg-secondary-800`}
-              aria-label={mobile ? 'Close menu' : 'Open menu'}
+              aria-label={mobile ? t('nav.closeMenu') : t('nav.openMenu')}
               aria-expanded={mobile}
               onClick={() => setMobile((m) => !m)}
             >
@@ -320,17 +322,17 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
               {marketing && <a href={pricingHref} className={itemClass} onClick={closeAll}>{SITE_NAV_PRICING.label}</a>}
               {!signedIn && (
                 <Link href="/api-keys" className={itemClass} onClick={closeAll}>
-                  <span className="block font-medium">API keys</span>
+                  <span className="block font-medium">{t('nav.apiKeys')}</span>
                 </Link>
               )}
               <div className="flex gap-3 pt-2">
                 {!signedIn && (
                   <Link href="/dashboard" className="flex-1 inline-flex items-center justify-center px-4 py-3 text-sm font-medium border border-secondary-300 dark:border-secondary-600 rounded-[var(--wl-button-radius)] text-secondary-900 dark:text-white" onClick={closeAll}>
-                    Dashboard
+                    {t('nav.dashboard')}
                   </Link>
                 )}
                 <Link href="/create" className={`${btnPrimary} flex-1 !px-4`} onClick={closeAll}>
-                  Request payment
+                  {t('nav.requestPayment')}
                 </Link>
               </div>
               {!signedIn && <VersionBox clientVersion={clientVersion} apiVersion={apiVersion} />}
@@ -347,15 +349,16 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
  * even when they agree: the point is reading off which half is which.
  */
 function VersionBox({ clientVersion, apiVersion }: { clientVersion: string; apiVersion: string }) {
+  const t = usePageT();
   return (
-    <div className="mx-3 px-2 py-1.5 bg-secondary-50 dark:bg-secondary-800 rounded text-xs text-secondary-500 dark:text-secondary-400" aria-label="Version">
+    <div className="mx-3 px-2 py-1.5 bg-secondary-50 dark:bg-secondary-800 rounded text-xs text-secondary-500 dark:text-secondary-400" aria-label={t('nav.versionAria')}>
       <div className="flex items-center justify-between">
-        <span className="font-medium">Client</span>
-        <span className="font-mono">{clientVersion || 'unknown'}</span>
+        <span className="font-medium">{t('nav.client')}</span>
+        <span className="font-mono">{clientVersion || t('nav.unknownVersion')}</span>
       </div>
       <div className="flex items-center justify-between mt-0.5">
         <span className="font-medium">API</span>
-        <span className="font-mono">{apiVersion || 'unknown'}</span>
+        <span className="font-mono">{apiVersion || t('nav.unknownVersion')}</span>
       </div>
     </div>
   );

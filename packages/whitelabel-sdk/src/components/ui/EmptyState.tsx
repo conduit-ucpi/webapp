@@ -146,18 +146,19 @@ export function NoContractsEmptyState({
   userRole: 'buyer' | 'seller' | 'any';
   onShowDemo?: () => void;
 }) {
+  const t = useT();
   const messages = {
     buyer: {
-      title: "Ready to receive payments",
-      description: "When someone sends you a payment request, it will appear here. You'll get an email notification and can accept or decline the request safely."
+      title: t('emptyState.buyerTitle'),
+      description: t('emptyState.buyerDescription')
     },
     seller: {
-      title: "Start getting paid securely",
-      description: "Create your first payment request to start receiving protected payments. Your buyers will get an email notification and can pay with confidence knowing funds are secured."
+      title: t('emptyState.sellerTitle'),
+      description: t('emptyState.sellerDescription')
     },
     any: {
-      title: "Your payment agreements await",
-      description: "This is where all your secure payment contracts will appear. Create a payment request or wait for someone to send you one - either way, your funds are protected."
+      title: t('emptyState.anyTitle'),
+      description: t('emptyState.anyDescription')
     }
   };
 
@@ -170,16 +171,16 @@ export function NoContractsEmptyState({
       description={message.description}
       action={
         userRole === 'seller' || userRole === 'any' ? {
-          label: "Create Payment Request",
+          label: t('wizard.submit'),
           href: "/create"
         } : undefined
       }
       secondaryAction={
         onShowDemo ? {
-          label: "View Demo Data",
+          label: t('emptyState.viewDemoData'),
           onClick: onShowDemo
         } : {
-          label: "See How It Works",
+          label: t('emptyState.seeHowItWorks'),
           href: "/#how-it-works"
         }
       }
@@ -193,9 +194,9 @@ export function SearchEmptyState({ searchTerm }: { searchTerm: string }) {
     <EmptyState
       illustration={<SearchIllustration />}
       title={t('emptyState.noMatchesFound')}
-      description={`We couldn't find any contracts matching "${searchTerm}". Try adjusting your search terms or browse all contracts instead.`}
+      description={t('emptyState.noMatchesDescription', { searchTerm })}
       secondaryAction={{
-        label: "Clear Search",
+        label: t('emptyState.clearSearch'),
         onClick: () => {
           const searchInput = document.querySelector('input[type="text"]') as HTMLInputElement;
           if (searchInput) {
@@ -214,13 +215,13 @@ export function ErrorEmptyState({ onRetry }: { onRetry: () => void }) {
     <EmptyState
       illustration={<ErrorIllustration />}
       title={t('emptyState.connectionTrouble')}
-      description="We're having trouble loading your contracts right now. This could be due to a temporary network issue or server maintenance."
+      description={t('emptyState.connectionTroubleDescription')}
       action={{
-        label: "Try Again",
+        label: t('contractList.tryAgain'),
         onClick: onRetry
       }}
       secondaryAction={{
-        label: "Check Status",
+        label: t('emptyState.checkStatus'),
         href: "mailto:support@conduit.example.com?subject=Connection Issues"
       }}
     />
@@ -234,13 +235,13 @@ export function ActiveContractsEmptyState() {
     <EmptyState
       illustration={<FilterEmptyIllustration />}
       title={t('emptyState.noActiveContracts')}
-      description="You don't have any active payment contracts right now. Active contracts are those where funds have been deposited and are awaiting completion or dispute."
+      description={t('emptyState.noActiveContractsDescription')}
       action={{
-        label: "Create Payment Request",
+        label: t('wizard.submit'),
         href: "/create"
       }}
       secondaryAction={{
-        label: "View All Contracts",
+        label: t('emptyState.viewAllContracts'),
         onClick: () => {
           const allTab = document.querySelector('[data-tab="ALL"]') as HTMLElement;
           if (allTab) allTab.click();
@@ -256,9 +257,9 @@ export function ActionNeededEmptyState() {
     <EmptyState
       illustration={<FilterEmptyIllustration />}
       title={t('emptyState.allCaughtUp')}
-      description="Great news! You don't have any contracts requiring immediate action. No expired contracts to claim, no active contracts to dispute."
+      description={t('emptyState.allCaughtUpDescription')}
       secondaryAction={{
-        label: "View All Contracts",
+        label: t('emptyState.viewAllContracts'),
         onClick: () => {
           const allTab = document.querySelector('[data-tab="ALL"]') as HTMLElement;
           if (allTab) allTab.click();
@@ -274,13 +275,13 @@ export function CompletedContractsEmptyState() {
     <EmptyState
       illustration={<FilterEmptyIllustration />}
       title={t('emptyState.noCompletedContractsYet')}
-      description="Once your payment contracts are successfully fulfilled (either claimed by sellers or resolved through disputes), they'll appear here."
+      description={t('emptyState.noCompletedDescription')}
       action={{
-        label: "Create Payment Request",
+        label: t('wizard.submit'),
         href: "/create"
       }}
       secondaryAction={{
-        label: "View Active Contracts",
+        label: t('emptyState.viewActiveContracts'),
         onClick: () => {
           const activeTab = document.querySelector('[data-tab="ACTIVE"]') as HTMLElement;
           if (activeTab) activeTab.click();
@@ -296,9 +297,9 @@ export function DisputedContractsEmptyState() {
     <EmptyState
       illustration={<FilterEmptyIllustration />}
       title={t('emptyState.noDisputedContracts')}
-      description="That's a good thing! None of your contracts are currently in dispute. This means all parties are satisfied with their transactions."
+      description={t('emptyState.noDisputedDescription')}
       secondaryAction={{
-        label: "Learn About Disputes",
+        label: t('emptyState.learnAboutDisputes'),
         href: "/dispute-policy"
       }}
     />

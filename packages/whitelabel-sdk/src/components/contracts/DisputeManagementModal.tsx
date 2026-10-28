@@ -16,7 +16,7 @@ export const ARBITER_RESIGNED_REASON = 'Resigned as tiebreaker';
 import { useArbiterState, useSettlementState } from '@/hooks/useDisputeState';
 import StandingFiguresPanel from '@/components/contracts/StandingFiguresPanel';
 import ArbiterPanel from '@/components/contracts/ArbiterPanel';
-import { useT } from '../../i18n';
+import { useT, withNodes } from '../../i18n';
 import { explainTransactionFailure } from '@/lib/explainTransactionFailure';
 
 interface DisputeManagementModalProps {
@@ -70,9 +70,9 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
     if (!state) return [] as Array<{ role: string; percent: number }>;
     const me = user?.walletAddress?.toLowerCase();
     return [
-      { role: 'the buyer', address: state.buyer, percent: state.buyerVote },
-      { role: 'the recipient', address: state.recipient, percent: state.recipientVote },
-      { role: 'the tiebreaker', address: state.arbiter, percent: state.arbiterVote }
+      { role: t('disputeManagementModal.roleBuyer'), address: state.buyer, percent: state.buyerVote },
+      { role: t('disputeManagementModal.roleRecipient'), address: state.recipient, percent: state.recipientVote },
+      { role: t('disputeManagementModal.roleTiebreaker'), address: state.arbiter, percent: state.arbiterVote }
     ]
       .filter((f) => f.percent !== null && f.address && f.address.toLowerCase() !== me)
       .map((f) => ({ role: f.role, percent: f.percent as number }));
@@ -157,7 +157,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
 
     try {
       if (!contract.contractAddress) {
-        throw new Error('This contract has not been deployed to the blockchain yet.');
+        throw new Error(t('disputeManagementModal.notDeployed'));
       }
 
       // 1. The figure goes on-chain first. If this throws — a declined signature, a revert, an
@@ -200,7 +200,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
       onRefresh();
     } catch (e: any) {
       console.error('Settlement vote failed:', e);
-      setError(explainTransactionFailure(e, t) || e?.message || 'The transaction was not sent. Nothing has been recorded.');
+      setError(explainTransactionFailure(e, t) || e?.message || t('disputeManagementModal.notSent'));
       setConfirming(false);
     } finally {
       setIsSubmitting(false);
@@ -333,11 +333,11 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                               <div className="flex items-center space-x-2">
                                 <span className="font-medium text-sm text-gray-900 dark:text-white">{dispute.userEmail}</span>
                                 <span className="text-xs text-gray-500 dark:text-secondary-400">
-                                  {formatTimestamp(dispute.timestamp).date} at {formatTimestamp(dispute.timestamp).time}
+                                  {t('disputeManagementModal.dateAtTime', { date: formatTimestamp(dispute.timestamp).date, time: formatTimestamp(dispute.timestamp).time })}
                                 </span>
                               </div>
                               <span className="text-sm font-medium text-primary-600 dark:text-primary-400">
-                                {dispute.refundPercent !== null ? `submitted ${dispute.refundPercent}% to buyer` : 'No figure submitted'}
+                                {dispute.refundPercent !== null ? t('disputeManagementModal.submittedPctToBuyer', { percent: dispute.refundPercent }) : t('standingFiguresPanel.noFigureSubmitted')}
                               </span>
                             </div>
                             <p className="text-sm text-gray-700 dark:text-secondary-200">{dispute.reason}</p>
@@ -357,7 +357,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                             <div className="flex justify-between items-start mb-1">
                               <span className="text-xs font-medium text-yellow-800 dark:text-yellow-300">{note.createdBy}</span>
                               <span className="text-xs text-yellow-600 dark:text-yellow-400">
-                                {formatTimestamp(note.timestamp).date} at {formatTimestamp(note.timestamp).time}
+                                {t('disputeManagementModal.dateAtTime', { date: formatTimestamp(note.timestamp).date, time: formatTimestamp(note.timestamp).time })}
                               </span>
                             </div>
                             <p className="text-sm text-yellow-700 dark:text-yellow-200">{note.note}</p>
@@ -402,10 +402,8 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                         they are the same transaction.
                       */}
                       <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 mb-4 text-sm text-amber-800 dark:text-amber-200">
-                        <strong>{t('disputeManagementModal.whateverYouSubmitIs')}</strong> It
-                        goes on-chain immediately. If it matches a figure another party is already
-                        holding, the payment contract pays out at that number in the same transaction, and it
-                        cannot be undone.
+                        <strong>{t('disputeManagementModal.whateverYouSubmitIs')}</strong>{' '}
+                        {t('disputeManagementModal.bindingOfferBody')}
                         <div className="mt-2">{t('disputeManagementModal.youCanReviseYour')}</div>
                       </div>
 
@@ -425,7 +423,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                             placeholder={t('disputeManagementModal.explainYourPositionIn')}
                           />
                           <div className="text-xs text-gray-500 dark:text-secondary-400 mt-1">
-                            {reason.length}/160 characters — kept off-chain, alongside the figure
+                            {t('disputeManagementModal.charactersOffChain', { count: reason.length })}
                           </div>
                         </div>
 
@@ -455,15 +453,17 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                             </div>
                           </div>
                           <div className="text-xs text-gray-500 dark:text-secondary-400 mt-1">
-                            Buyer gets: {displayCurrency((contract.amount * figure) / 100, 'microUSDC')} {tokenSymbol},
-                            Seller gets: {displayCurrency((contract.amount * (100 - figure)) / 100, 'microUSDC')} {tokenSymbol}
+                            {t('dispute.buyerGets', {
+                              buyer: displayCurrency((contract.amount * figure) / 100, 'microUSDC'),
+                              seller: displayCurrency((contract.amount * (100 - figure)) / 100, 'microUSDC'),
+                              token: tokenSymbol
+                            })}
                           </div>
 
                           {/* Match is exact: two different percentages are two standing offers. */}
                           {wouldSettleWith && (
                             <div className="mt-2 text-sm font-medium text-amber-700 dark:text-amber-300">
-                              This matches the figure {wouldSettleWith.role} is holding — submitting
-                              it settles the dispute and pays out immediately.
+                              {t('disputeManagementModal.matchesHeldFigure', { role: wouldSettleWith.role })}
                             </div>
                           )}
                         </div>
@@ -478,7 +478,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                             disabled={isSubmitting || confirming || !reason.trim()}
                             className="bg-primary-600 hover:bg-primary-700"
                           >
-                            Submit {figure}% to buyer
+                            {t('disputeManagementModal.submitPctToBuyer', { percent: figure })}
                           </Button>
                         </div>
                       </form>
@@ -487,22 +487,21 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
                       {confirming && (
                         <div className="mt-4 rounded-lg border border-gray-300 dark:border-secondary-600 bg-gray-50 dark:bg-secondary-900/60 p-4">
                           <h4 className="font-medium text-gray-900 dark:text-white mb-2">
-                            Send {figure}% to the buyer on-chain?
+                            {t('disputeManagementModal.sendPctOnChainQuestion', { percent: figure })}
                           </h4>
                           <p className="text-sm text-gray-700 dark:text-secondary-200">
                             {wouldSettleWith ? (
-                              <>
-                                <strong>{t('disputeManagementModal.thisSettlesTheDispute')}</strong> {wouldSettleWith.role} is
-                                already holding {figure}%, so the payment contract pays out{' '}
-                                {displayCurrency((contract.amount * figure) / 100, 'microUSDC')} {tokenSymbol} to
-                                the buyer and the remainder to the seller, in this transaction.
-                              </>
+                              withNodes(
+                                t('disputeManagementModal.settlesBody', {
+                                  role: wouldSettleWith.role,
+                                  percent: figure,
+                                  amount: displayCurrency((contract.amount * figure) / 100, 'microUSDC'),
+                                  token: tokenSymbol
+                                }),
+                                { lead: <strong>{t('disputeManagementModal.thisSettlesTheDispute')}</strong> }
+                              )
                             ) : (
-                              <>
-                                No one is currently holding {figure}%, so this will stand as your
-                                binding offer. Anyone who submits the same number settles the dispute
-                                at it.
-                              </>
+                              t('disputeManagementModal.standsAsOffer', { percent: figure })
                             )}
                           </p>
                           <div className="flex justify-end space-x-3 mt-4">

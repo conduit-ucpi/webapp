@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import Head from 'next/head';
 import toast from 'react-hot-toast';
@@ -11,24 +11,12 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import WalletRegistrationPrereq from '@/components/ui/WalletRegistrationPrereq';
 import { API_DOCS_PATH } from '@/lib/apiDocs';
 import { useApiOrigin } from '@/lib/useApiOrigin';
-import { useOptionalBrand, usePartnerBrand } from '@conduit-ucpi/whitelabel-sdk';
+import { useOptionalBrand, usePartnerBrand, withNodes } from '@conduit-ucpi/whitelabel-sdk';
 import { usePageT } from '@/config/locales';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Fills `{name}` placeholders in a translated sentence with JSX — inline code, a link — so the
- * sentence stays one key and each language puts the elements where its own word order wants them.
- * Placeholders with no node given are left as written.
- */
-function withNodes(template: string, nodes: Record<string, ReactNode>): ReactNode {
-  return template.split(/(\{\w+\})/g).map((part, i) => {
-    const name = /^\{(\w+)\}$/.exec(part)?.[1];
-    return name && name in nodes ? <Fragment key={i}>{nodes[name]}</Fragment> : part;
-  });
-}
 
 function CodeBlock({ id, children, language = 'javascript' }: { id: string; children: string; language?: string }) {
   const t = usePageT();

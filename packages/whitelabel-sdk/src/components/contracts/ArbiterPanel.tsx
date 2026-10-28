@@ -6,7 +6,7 @@ import { useMarketplaceActions, type ContractRefusedError } from '@/hooks/useMar
 import { explainTransactionFailure } from '@/lib/explainTransactionFailure';
 import { formatTimestamp } from '@/utils/validation';
 import type { ArbiterState } from '@/types/marketplace';
-import { useT } from '../../i18n';
+import { useT, withNodes } from '../../i18n';
 
 // Fast feedback only; userservice decides what an email is.
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -126,10 +126,20 @@ export default function ArbiterPanel({
   if (!state || (!isArbiter && !state.canNominate && !state.canSeatDefaultArbiter && !state.canEvictArbiter && state.seated)) {
     return state?.seated ? (
       <div className="text-sm text-gray-600 dark:text-secondary-300">
-        Tiebreaker seated: <span className="font-mono text-xs">{state.arbiter}</span>
+        {withNodes(t('arbiterPanel.tiebreakerSeated'), {
+          address: <span className="font-mono text-xs">{state.arbiter}</span>
+        })}
       </div>
     ) : null;
   }
+
+  /** The `run` labels are ids for the busy state; this is what the user reads when one fails. */
+  const actionNames: Record<string, string> = {
+    Resignation: t('arbiterPanel.actionResignation'),
+    Nomination: t('arbiterPanel.actionNomination'),
+    Seating: t('arbiterPanel.actionSeating'),
+    Eviction: t('arbiterPanel.actionEviction')
+  };
 
   /** `success` may be worked out from what the action returned, e.g. the wallet an email named. */
   const run = async <T,>(label: string, action: () => Promise<T>, success: string | ((result: T) => string)) => {
@@ -143,7 +153,7 @@ export default function ArbiterPanel({
     } catch (e: any) {
       // A nomination racing a seat-default is an ordinary race, not a fault: a late match still
       // wins right up until the fallback transaction actually executes.
-      setError(explainRefusal(e) || e?.message || t('arbiterPanel.actionFailed', { action: label }));
+      setError(explainRefusal(e) || e?.message || t('arbiterPanel.actionFailed', { action: actionNames[label] ?? label }));
       await onChanged();
     } finally {
       setBusy(null);
@@ -358,10 +368,10 @@ export default function ArbiterPanel({
             <div className="text-sm text-gray-700 dark:text-secondary-200">
               {t('arbiterPanel.alreadyNominated')}{' '}
               {state.nominatedByBuyer && (
-                <>buyer: <span className="font-mono text-xs">{state.nominatedByBuyer}</span>{' '}</>
+                <>{t('arbiterPanel.byBuyer')} <span className="font-mono text-xs">{state.nominatedByBuyer}</span>{' '}</>
               )}
               {state.nominatedByRecipient && (
-                <>recipient: <span className="font-mono text-xs">{state.nominatedByRecipient}</span></>
+                <>{t('arbiterPanel.byRecipient')} <span className="font-mono text-xs">{state.nominatedByRecipient}</span></>
               )}
             </div>
           )}
@@ -390,14 +400,14 @@ export default function ArbiterPanel({
                   // nomination announces a seating that did not happen.
                   (wallet) =>
                     theirs && wallet.toLowerCase() === theirs.toLowerCase()
-                      ? 'Nominations matched — that tiebreaker is now seated.'
+                      ? t('arbiterPanel.nominationsMatched')
                       : candidateIsEmail
-                        ? `Nomination recorded for ${candidate} (wallet ${wallet}). It seats them the moment the other party names the same email or address.`
-                        : 'Nomination recorded. It seats them the moment the other party names the same address.'
+                        ? t('arbiterPanel.nominationRecordedEmail', { email: candidate, wallet })
+                        : t('arbiterPanel.nominationRecorded')
                 )
               }
             >
-              {busy === 'Nomination' ? <LoadingSpinner className="w-4 h-4" /> : 'Nominate'}
+              {busy === 'Nomination' ? <LoadingSpinner className="w-4 h-4" /> : t('arbiterPanel.nominate')}
             </Button>
           </div>
 
@@ -451,8 +461,7 @@ export default function ArbiterPanel({
       {state.canSeatDefaultArbiter && (
         <div className="space-y-2">
           <p className="text-sm text-gray-700 dark:text-secondary-200">
-            The 72-hour nomination window has passed without agreement. Anyone may now seat the
-            platform&apos;s default tiebreaker — a multisig that acts only as a third voter.
+            {t('arbiterPanel.defaultSeatable')}
           </p>
           <Button
             type="button"
@@ -463,13 +472,13 @@ export default function ArbiterPanel({
                 'Seating',
                 async () => {
                   const result = await seatDefaultArbiter(contractAddress);
-                  if (!result.success) throw new Error(result.error || 'Seating failed');
+                  if (!result.success) throw new Error(result.error || t('arbiterPanel.seatingFailed'));
                 },
-                'The default tiebreaker is seated and can now vote.'
+                t('arbiterPanel.defaultSeated')
               )
             }
           >
-            {busy === 'Seating' ? <LoadingSpinner className="w-4 h-4" /> : 'Seat the default tiebreaker'}
+            {busy === 'Seating' ? <LoadingSpinner className="w-4 h-4" /> : t('arbiterPanel.seatDefault')}
           </Button>
         </div>
       )}
@@ -478,12 +487,9 @@ export default function ArbiterPanel({
       {state.canEvictArbiter && !isArbiter && (
         <div className="space-y-2">
           <p className="text-sm text-gray-700 dark:text-secondary-200">
-            This tiebreaker has been silent for 30 days
             {state.lastArbiterActionAt
-              ? ` (last active ${formatTimestamp(state.lastArbiterActionAt).date})`
-              : ''}
-            . You can clear the seat and reopen nominations. This moves no funds and settles
-            nothing — it only replaces the third voter.
+              ? t('arbiterPanel.silentLastActive', { date: formatTimestamp(state.lastArbiterActionAt).date })
+              : t('arbiterPanel.silent')}
           </p>
           <Button
             type="button"
@@ -493,20 +499,21 @@ export default function ArbiterPanel({
               run(
                 'Eviction',
                 () => evictArbiter(contractAddress),
-                'The seat is clear and nominations have reopened.'
+                t('arbiterPanel.evicted')
               )
             }
           >
-            {busy === 'Eviction' ? <LoadingSpinner className="w-4 h-4" /> : 'Request a new tiebreaker'}
+            {busy === 'Eviction' ? <LoadingSpinner className="w-4 h-4" /> : t('arbiterPanel.requestNew')}
           </Button>
         </div>
       )}
 
       {!state.seated && state.nominationDeadline && !state.canSeatDefaultArbiter && (
         <p className="text-xs text-gray-500 dark:text-secondary-400">
-          If no one agrees, the default tiebreaker becomes seatable after{' '}
-          {formatTimestamp(state.nominationDeadline).date} at{' '}
-          {formatTimestamp(state.nominationDeadline).time}.
+          {t('arbiterPanel.defaultSeatableAfter', {
+            date: formatTimestamp(state.nominationDeadline).date,
+            time: formatTimestamp(state.nominationDeadline).time
+          })}
         </p>
       )}
 

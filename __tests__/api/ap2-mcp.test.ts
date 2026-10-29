@@ -45,6 +45,27 @@ describe('POST /api/ap2/mcp', () => {
     const headers = fetchMock.mock.calls[0][1].headers;
     expect(headers.Authorization).toBeUndefined();
     expect(headers.Cookie).toBeUndefined();
+    expect(headers.Origin).toBeUndefined();
+  });
+
+  /**
+   * The MCP spec has the SERVER validate a browser's Origin. It can only do that if the proxy
+   * passes the header on; stripped, every request looks like a non-browser client and a page
+   * on any site could drive the endpoint through a signed-in visitor's cookies.
+   */
+  it("passes a browser's Origin on for the server to judge, and relays its refusal", async () => {
+    fetchMock.mockResolvedValue({ status: 403, text: async () => 'Forbidden Origin', headers: new Map([['content-type', 'text/plain; charset=utf-8']]) });
+    const { req, res } = createMocks({
+      method: 'POST',
+      headers: { host: 'api.example.test', origin: 'https://evil.example' },
+      body: { jsonrpc: '2.0', id: 1, method: 'tools/list' }
+    });
+
+    await handler(req as any, res as any);
+
+    expect(fetchMock.mock.calls[0][1].headers.Origin).toBe('https://evil.example');
+    expect(res._getStatusCode()).toBe(403);
+    expect(res._getData()).toBe('Forbidden Origin');
   });
 
   const CODE = 'sd_access_' + 'A'.repeat(43);

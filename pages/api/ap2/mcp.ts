@@ -59,6 +59,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         Accept: req.headers.accept ?? 'application/json, text/event-stream',
         ...(authorization(req) ? { Authorization: authorization(req) } : {}),
         ...(req.headers.cookie ? { Cookie: req.headers.cookie } : {}),
+        // ⚠️ ORIGIN IS PASSED ON, NOT DECIDED HERE. The MCP spec has the server validate a browser's
+        //    Origin (ap2service keeps the allowlist, MCP_ALLOWED_ORIGINS); strip it and the server
+        //    sees every request as a non-browser client and the check never runs. A foreign page's
+        //    403 comes back through this proxy like any other answer. Real MCP clients send none.
+        ...(req.headers.origin ? { Origin: req.headers.origin } : {}),
         // So the tools' answers link the host this client called, not the server's inside one.
         ...publicOriginHeaders(req)
       },

@@ -78,7 +78,7 @@ it("passes on emailservice's reason when it refuses the message", async () => {
   fetchMock.mockResolvedValue({ ok: false, status: 400, text: async () => '{"message":"message: write a message"}' });
   const res = await call(BODY);
   expect(res._getStatusCode()).toBe(400);
-  expect(res._getJSONData().error).toBe('message: write a message');
+  expect(JSON.parse(res._getData()).error).toBe('message: write a message');
 });
 
 it('refuses a body without an email and a message', async () => {

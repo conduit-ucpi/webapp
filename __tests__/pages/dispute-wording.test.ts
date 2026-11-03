@@ -9,12 +9,15 @@ import { join } from 'path';
  * Identifiers that mirror the contract or a service's API (arbiterAddress, the brand record's
  * `arbitration` link) are code, not wording, and these pages carry none of them.
  */
-const PAGES = ['pages/dispute-policy.tsx', 'pages/faq.tsx'];
+// The policy's words live in components/legal/DisputePolicyText.tsx and the FAQ's in config/faq/
+// (one file per language); /plugin shows both. The pages are layout around them.
+const PAGES = ['pages/dispute-policy.tsx', 'components/legal/DisputePolicyText.tsx', 'pages/plugin.tsx', 'pages/faq.tsx', 'config/faq/en.ts', 'config/faq/es.ts'];
 
 describe('dispute wording', () => {
   it.each(PAGES)('%s never says arbitration, arbitrator or arbiter', (page) => {
     const source = readFileSync(join(process.cwd(), page), 'utf8');
-    expect(source.match(/arbit\w*/gi) ?? []).toEqual([]);
+    // "árbitro" (Spanish) does not start with the ASCII letters, so it is matched on its own.
+    expect(source.match(/arbit\w*|árbitr\w*/gi) ?? []).toEqual([]);
   });
 
   it.each(PAGES)('%s never offers to execute a resolution for the parties', (page) => {

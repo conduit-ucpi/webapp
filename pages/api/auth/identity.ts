@@ -22,7 +22,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       headers
     });
 
-    if (!response.ok) {
+    // 401 is a signed-out visitor, which every page load checks for: expected, so debug only.
+    if (response.status === 401) {
+      console.debug('User service: no session (401)');
+    } else if (!response.ok) {
       console.error('🔴 User service returned error:', {
         status: response.status,
         statusText: response.statusText,

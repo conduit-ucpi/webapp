@@ -482,6 +482,22 @@ export const pagesEn = {
   'feedback.sent': 'Thanks: your message is on its way. We will reply to {email}.',
   'feedback.close': 'Close',
   'feedback.failed': 'Your message could not be sent. Try again in a minute.',
+
+  // Legal pages (/terms-of-service, /privacy-policy, and their tabs on /plugin).
+  'legal.termsTitle': 'Terms of Service',
+  'legal.privacyTitle': 'Privacy Policy',
+  'legal.lastUpdated': 'Last Updated:',
+  'legal.version': 'Version:',
+  'legal.translationNotice': 'This is a translation provided for convenience. The English version is the one that applies, and it prevails over this translation.',
+  'legal.readEnglish': 'Read the English version',
+
+  // /plugin — information for plugin users.
+  'plugin.title': 'Plugin Information',
+  'plugin.tabFaq': 'FAQ',
+  'plugin.tabTerms': 'Terms & Conditions',
+  'plugin.tabPrivacy': 'Privacy Policy',
+  'plugin.tabDisputes': 'Dispute policy',
+  'plugin.disputesEnglishOnly': 'The dispute policy is only available in English for now.',
   'theme.switchToDark': 'Switch to dark mode',
   'theme.switchToLight': 'Switch to light mode',
   'theme.dark': 'Dark',

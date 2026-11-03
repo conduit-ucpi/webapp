@@ -41,7 +41,7 @@ export default function ConnectWalletEmbedded({
   const t = useT();
   // The default label is translated here rather than in the prop default, which cannot call a hook.
   const label = buttonText ?? t('connectWalletEmbedded.getStarted');
-  const { user, isLoading, connect, isConnected, address, requestAuthentication, setConnectionMode } = useAuth();
+  const { user, isLoading, connect, isConnected, address, requestAuthentication, setConnectionMode, signInUsesMagic } = useAuth();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Pre-flight: is magiclabs.com reachable? Reown's social-login embedded
@@ -49,8 +49,19 @@ export default function ConnectWalletEmbedded({
   // NextDNS, ad-blockers, corporate firewalls), social/email login fails
   // silently. Probe on mount and, if blocked, hide social options upfront
   // and show the user a banner explaining what's happening.
+  //
+  // ⚠️ ONLY WHEN THIS SIGN-IN GOES THROUGH MAGIC. Privy never touches it. Probing regardless
+  //    reported Magic outages for Privy users and, worse, cut their sign-in to wallet-only:
+  //    hiding Privy's email and Google login, which would have worked, behind a banner about a
+  //    service they were never going to use. With Privy live, only the "old wallet" tick (Reown)
+  //    needs Magic.
+  const usesMagic = signInUsesMagic?.(legacyWallet) === true;
   const [magicBlocked, setMagicBlocked] = useState(false);
   useEffect(() => {
+    if (!usesMagic) {
+      setMagicBlocked(false);
+      return;
+    }
     let cancelled = false;
     isMagicReachable().then((ok) => {
       if (cancelled) return;
@@ -71,7 +82,7 @@ export default function ConnectWalletEmbedded({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [usesMagic]);
 
   // Effective connection mode: if magic is blocked, force wallet-only so
   // the user isn't shown a Google/Apple/email button that will silently fail.

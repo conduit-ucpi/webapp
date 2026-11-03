@@ -125,6 +125,17 @@ export class ProviderRegistry {
     return best ? this.providers.get(best.type)! : null;
   }
 
+  /**
+   * Whether the provider a sign-in would use depends on Magic: the legacy one when `legacyWallet`
+   * (the "old wallet" tick), otherwise the one that wins selection. From the config, not from what
+   * has finished registering, so the card can ask before anything has loaded. False without config.
+   */
+  signInUsesMagic(legacyWallet: boolean): boolean {
+    if (!this.config) return false;
+    const candidates = this.applicable(this.config).filter((d) => this.isLegacy(d) === legacyWallet);
+    return candidates[0]?.usesMagic === true;
+  }
+
   /** Whether this config has a legacy provider to offer at all — what shows the tick box. */
   hasLegacyProvider(): boolean {
     return this.config !== null && this.applicable(this.config).some((d) => this.isLegacy(d));

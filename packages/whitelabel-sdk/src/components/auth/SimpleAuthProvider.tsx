@@ -34,6 +34,7 @@ const defaultAuthValue = {
   },
   connect: () => Promise.resolve(),
   canConnectLegacyWallet: () => false,
+  signInUsesMagic: () => false,
   authenticateBackend: () => Promise.resolve(false),
   requestAuthentication: () => Promise.resolve(false), // Manual SIWX authentication trigger
   getLastAuthFailure: () => null,
@@ -219,6 +220,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     connect: newAuth.connect,
     setConnectionMode: newAuth.setConnectionMode,
     canConnectLegacyWallet: newAuth.canConnectLegacyWallet,
+    signInUsesMagic: newAuth.signInUsesMagic,
     authenticateBackend: newAuth.authenticateBackend,
     requestAuthentication: newAuth.requestAuthentication, // Manually trigger SIWX authentication
     disconnect: newAuth.disconnect,

@@ -153,6 +153,11 @@ export class AuthManager {
     await provider?.setConnectionMode?.(mode);
   }
 
+  /** Whether signing in now (or with the "old wallet" tick) goes through Magic. See the registry. */
+  signInUsesMagic(legacyWallet: boolean): boolean {
+    return this.providerRegistry.signInUsesMagic(legacyWallet);
+  }
+
   /** Whether the sign-in card should offer the "old wallet" route at all. */
   canConnectLegacyWallet(): boolean {
     return this.providerRegistry.hasLegacyProvider();

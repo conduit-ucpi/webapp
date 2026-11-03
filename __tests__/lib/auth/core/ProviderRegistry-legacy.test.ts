@@ -129,3 +129,37 @@ describe('the real manifest', () => {
     }
   });
 });
+
+describe('whether a sign-in goes through Magic', () => {
+  function magicSetup() {
+    const loads = { old: jest.fn(async () => fakeProvider('old')), new: jest.fn(async () => fakeProvider('new')) };
+    const descriptors = manifest(loads).map((d) => (d.type === ('old' as any) ? { ...d, usesMagic: true as const } : d));
+    return new ProviderRegistry(descriptors);
+  }
+
+  it('is no for the provider that wins, when that one does not use Magic', async () => {
+    const registry = magicSetup();
+    await registry.initialize(both);
+    expect(registry.signInUsesMagic(false)).toBe(false);
+  });
+
+  it('is yes for the "old wallet" route, when the legacy provider uses Magic', async () => {
+    const registry = magicSetup();
+    await registry.initialize(both);
+    expect(registry.signInUsesMagic(true)).toBe(true);
+  });
+
+  it('is yes when the Magic provider is the main one', async () => {
+    const registry = magicSetup();
+    await registry.initialize(oldOnly);
+    expect(registry.signInUsesMagic(false)).toBe(true);
+  });
+
+  it('is no before there is any config', () => {
+    expect(magicSetup().signInUsesMagic(false)).toBe(false);
+  });
+
+  it('marks Reown, and only Reown, in the real manifest', () => {
+    expect(PROVIDERS.filter((d) => d.usesMagic).map((d) => d.type)).toEqual(['walletconnect']);
+  });
+});

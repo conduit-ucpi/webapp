@@ -55,6 +55,13 @@ export interface ProviderDescriptor {
    */
   readonly legacy?: (config: AuthConfig) => boolean;
 
+  /**
+   * Whether signing in through this provider depends on Magic (tee.express.magiclabs.com), which
+   * some networks block. Only then does the sign-in card check Magic is reachable, and report and
+   * work around it when it is not. Omit for a provider that never touches Magic.
+   */
+  readonly usesMagic?: true;
+
   /** Imported only when it applies. */
   readonly load: (config: AuthConfig) => Promise<UnifiedProvider>;
 
@@ -92,6 +99,8 @@ export const PROVIDERS: readonly ProviderDescriptor[] = [
     legacy: (config) => Boolean(config.privyAppId),
     priority: 10,
     required: true,
+    // AppKit's email and social accounts sign through Magic's TEE.
+    usesMagic: true,
     load: async (config) => {
       const { WalletConnectProvider } = await import('@/lib/auth/providers/WalletConnectProvider');
       return new WalletConnectProvider(config) as unknown as UnifiedProvider;

@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { methodGuard } from '@/lib/server/serviceProxy';
+import { clientAddress, rateLimiter } from '@/lib/server/publicFormLimit';
 
 /**
  * A white-label partner's request from the /white-label form, sent to us through emailservice.
@@ -18,27 +19,8 @@ export const config = {
   api: { bodyParser: { sizeLimit: '8mb' } },
 };
 
-const WINDOW_MS = 60 * 60 * 1000;
-const PER_WINDOW = 5;
-const recent = new Map<string, number[]>();
-
-/** Up to PER_WINDOW requests per address per hour. In memory: per instance, which is enough here. */
-export function allow(address: string, now = Date.now()): boolean {
-  const times = (recent.get(address) ?? []).filter((t) => now - t < WINDOW_MS);
-  if (times.length >= PER_WINDOW) {
-    recent.set(address, times);
-    return false;
-  }
-  times.push(now);
-  recent.set(address, times);
-  return true;
-}
-
-function clientAddress(req: NextApiRequest): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  const first = (Array.isArray(forwarded) ? forwarded[0] : forwarded)?.split(',')[0]?.trim();
-  return first || req.socket?.remoteAddress || 'unknown';
-}
+/** Up to 5 requests per address per hour. */
+export const allow = rateLimiter(5, 60 * 60 * 1000);
 
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : [];

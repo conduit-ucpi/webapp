@@ -8,6 +8,7 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { TourProvider } from '@/components/onboarding/TourProvider';
 import FarcasterReady from '@/components/farcaster/FarcasterReady';
 import CookieConsent from '@/components/consent/CookieConsent';
+import FeedbackButton from '@/components/feedback/FeedbackButton';
 import { FarcasterDetectionProvider } from '@/components/farcaster/FarcasterDetectionProvider';
 import { NavigationProvider } from '@/components/navigation/NavigationProvider';
 import { EthersProvider } from '@/components/providers/EthersProvider';
@@ -72,9 +73,13 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
                     <NavigationProvider children={
                       <ToastProvider children={
                         <TourProvider children={
-                          <Layout children={
-                            <Component {...pageProps} />
-                          } />
+                          <>
+                            <Layout children={
+                              <Component {...pageProps} />
+                            } />
+                            {/* Outside Layout on purpose: every page has it, whichever layout branch it takes. */}
+                            <FeedbackButton />
+                          </>
                         } />
                       } />
                     } />

@@ -31,7 +31,19 @@ function colorFor(status: string): string {
   }
 }
 
-export function contractStatusDisplay(status: string | undefined, isPending: boolean): ContractStatusDisplay {
+/**
+ * Zero is EscrowContract's instant-transfer sentinel, not a date in 1970: the seller is paid in the
+ * transaction that funds the contract, nothing is held, and it cannot be disputed or expire.
+ */
+export function isInstantPayment(expiryTimestamp: number | undefined): boolean {
+  return expiryTimestamp === 0;
+}
+
+export function contractStatusDisplay(
+  status: string | undefined,
+  isPending: boolean,
+  instant: boolean = false
+): ContractStatusDisplay {
   // A pending contract without a status of its own is awaiting the buyer's funding.
   const displayStatus = status || (isPending ? 'PENDING' : '');
   const label =
@@ -41,6 +53,9 @@ export function contractStatusDisplay(status: string | undefined, isPending: boo
         ? 'REFUSED: SANCTIONS CHECK'
         : displayStatus.toUpperCase() === 'REFUNDED'
           ? 'RETURNED TO BUYER'
-          : displayStatus || 'Unknown';
+          : // Nobody claimed an instant payment: it reached the seller when the buyer paid.
+            instant && displayStatus.toUpperCase() === 'CLAIMED'
+            ? 'PAID'
+            : displayStatus || 'Unknown';
   return { label, color: colorFor(displayStatus || 'UNKNOWN') };
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { contractStatusDisplay } from '@/utils/contractStatusDisplay';
+import { contractStatusDisplay, isInstantPayment } from '@/utils/contractStatusDisplay';
 import { Contract, PendingContract } from '@/types';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
@@ -40,6 +40,8 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
     contract.sellerAddress?.toLowerCase();
 
   const status = isPending ? 'PENDING' : (contract as Contract).status;
+  const instant = isInstantPayment(contract.expiryTimestamp);
+  const instantPaid = instant && status === 'CLAIMED';
 
   // Generate payment link for pending contracts
   const generatePaymentLink = (): string => {
@@ -63,12 +65,12 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
   };
   
   // The same status label and colours as the dashboard card — the status, never the CTA.
-  const statusDisplay = contractStatusDisplay(status, isPending);
-  
-  // Calculate time remaining for active contracts
+  const statusDisplay = contractStatusDisplay(status, isPending, instant);
+
+  // Calculate time remaining for active contracts. An instant payment has no time to run out.
   const timeRemaining = () => {
-    if (isPending) return null;
-    
+    if (isPending || instant) return null;
+
     const now = Date.now() / 1000;
     const expiry = contract.expiryTimestamp;
     const remaining = expiry - now;
@@ -220,16 +222,26 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                 )}
               </div>
               
-              <div>
-                <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.expiryDate')}</p>
-                <p className="text-secondary-900">
-                  {formatDateTimeWithTZ(contract.expiryTimestamp)}
-                </p>
-                {timeInfo?.isExpired && (
-                  <p className="text-sm text-error-600 font-medium">{t('contractDetailsModal.expired')}</p>
-                )}
-              </div>
-              
+              {instant ? (
+                <div>
+                  <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.paymentType')}</p>
+                  <p className="text-secondary-900">{t('contractDetailsModal.instantPayment')}</p>
+                  <p className="text-sm text-secondary-500">
+                    {t(instantPaid ? 'contractDetailsModal.instantPaidNote' : 'contractDetailsModal.instantUnpaidNote')}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.expiryDate')}</p>
+                  <p className="text-secondary-900">
+                    {formatDateTimeWithTZ(contract.expiryTimestamp)}
+                  </p>
+                  {timeInfo?.isExpired && (
+                    <p className="text-sm text-error-600 font-medium">{t('contractDetailsModal.expired')}</p>
+                  )}
+                </div>
+              )}
+
               {!isPending && (
                 <>
                   <div>
@@ -246,18 +258,20 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                     )}
                   </div>
 
-                  <div>
-                    <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.fundingStatus')}</p>
-                    <p className="text-secondary-900">
-                      {contract.funded || status === 'CLAIMED' ? (
-                        <span className="text-success-600 font-medium">{t('contractDetailsModal.funded')}</span>
-                      ) : contract.funded === false ? (
-                        <span className="text-warning-600 font-medium">{t('contractDetailsModal.notFunded')}</span>
-                      ) : (
-                        <span className="text-secondary-500 font-medium">{t('contractDetailsModal.statusUnknown')}</span>
-                      )}
-                    </p>
-                  </div>
+                  {!instantPaid && (
+                    <div>
+                      <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.fundingStatus')}</p>
+                      <p className="text-secondary-900">
+                        {contract.funded || status === 'CLAIMED' ? (
+                          <span className="text-success-600 font-medium">{t('contractDetailsModal.funded')}</span>
+                        ) : contract.funded === false ? (
+                          <span className="text-warning-600 font-medium">{t('contractDetailsModal.notFunded')}</span>
+                        ) : (
+                          <span className="text-secondary-500 font-medium">{t('contractDetailsModal.statusUnknown')}</span>
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { contractStatusDisplay } from '@/utils/contractStatusDisplay';
+import { contractStatusDisplay, isInstantPayment } from '@/utils/contractStatusDisplay';
 import { Contract, PendingContract } from '@/types';
 import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
 import Button from '@/components/ui/Button';
@@ -166,7 +166,8 @@ export default function EnhancedContractCard({
     !!contract.id &&
     ['PENDING', 'PENDING_ACCEPTANCE', 'CREATED', 'AWAITING_FUNDING'].includes(status ?? '');
 
-  const statusDisplay = useMemo(() => contractStatusDisplay(status, isPending), [status, isPending]);
+  const instant = isInstantPayment(contract.expiryTimestamp);
+  const statusDisplay = useMemo(() => contractStatusDisplay(status, isPending, instant), [status, isPending, instant]);
   
   return (
     <div 
@@ -357,6 +358,7 @@ function SendPaymentLinkModal({
           payoutLabel={
             contract.expiryTimestamp ? formatDateTimeWithTZ(contract.expiryTimestamp) : undefined
           }
+          instant={isInstantPayment(contract.expiryTimestamp)}
           copied={copied}
           onCopy={(text) => onCopy(text)}
           onDone={onClose}

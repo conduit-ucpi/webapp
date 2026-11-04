@@ -22,6 +22,7 @@ function colorFor(status: string): string {
       return 'bg-warning-50 text-warning-600 border-warning-200';
     case 'CLAIMED':
     case 'RESOLVED':
+    case 'REFUNDED':
       return 'bg-secondary-50 text-secondary-600 border-secondary-200';
     case 'PENDING':
       return 'bg-primary-50 text-primary-600 border-primary-200';
@@ -38,6 +39,8 @@ export function contractStatusDisplay(status: string | undefined, isPending: boo
       ? 'PENDING FUNDING'
       : displayStatus.toUpperCase() === 'SANCTIONS_REFUSED'
         ? 'REFUSED: SANCTIONS CHECK'
-        : displayStatus || 'Unknown';
+        : displayStatus.toUpperCase() === 'REFUNDED'
+          ? 'RETURNED TO BUYER'
+          : displayStatus || 'Unknown';
   return { label, color: colorFor(displayStatus || 'UNKNOWN') };
 }

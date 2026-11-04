@@ -552,6 +552,7 @@ export const en = {
   'dashboardPage.wallet': 'Wallet',
   'dashboardPage.contracts': 'Contracts',
   'qrPaymentPanel.paymentDetected': 'Payment detected! Press "I have paid" to complete.',
+  'qrPaymentPanel.refunded': 'This payment arrived after the payout date, so it could not go ahead. It has been returned to the buyer\'s wallet.',
   'qrPaymentPanel.noPaymentFound':
     'No payment found yet. Once your transfer has gone through, press "I have paid" again.',
   'paymentActionPanel.sameAddress':
@@ -694,6 +695,8 @@ export const en = {
   'push.addressUnverified': "We couldn't confirm this payment with the payment contract, so we've stopped. Don't send money to the address shown.",
   'push.refusedTitle': 'Payment refused',
   'push.refusedBody': "This payment failed a sanctions check, so it can't go ahead. Don't send any more money to its address: anything already sent is held there and can't be released.",
+  // A payment that arrived after its payout date: never started, returned to the buyer.
+  'contractActions.refunded': 'Returned to buyer: the payment arrived after the payout date, so it was sent back.',
   'push.doneTitle': 'Payment protected',
   'push.doneBody': '{amount} {token} is held in the payment contract for {seller}. It releases to them on {date} unless you dispute it before then.',
   'push.viewPayment': 'View this payment',

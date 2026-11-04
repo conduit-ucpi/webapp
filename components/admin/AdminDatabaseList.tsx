@@ -42,6 +42,11 @@ const STATUSES: Array<{ value: string; label: string; meaning: string }> = [
     meaning: 'A payment address has been issued for a buyer, but no money has arrived in it yet.'
   },
   {
+    value: 'REFUNDED',
+    label: 'Refunded (paid late)',
+    meaning: 'The payment arrived only after the payout date, so the escrow never started and the money was returned to the buyer.'
+  },
+  {
     value: 'SANCTIONS_REFUSED',
     label: 'Refused: sanctions',
     meaning: 'chainservice refused to deploy it because a party carries sanctions risk. Any money sent is frozen at the address; nothing more should be sent.'

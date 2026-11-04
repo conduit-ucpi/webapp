@@ -12,3 +12,11 @@ describe('contractStatusDisplay', () => {
     expect(contractStatusDisplay(undefined, true).label).toBe('PENDING FUNDING');
   });
 });
+
+describe('a payment returned to the buyer', () => {
+  it('reads as returned to the buyer, in the finished colours, not as unknown', () => {
+    const shown = contractStatusDisplay('REFUNDED', false);
+    expect(shown.label).toBe('RETURNED TO BUYER');
+    expect(shown.color).toBe(contractStatusDisplay('CLAIMED', false).color);
+  });
+});

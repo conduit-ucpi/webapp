@@ -79,6 +79,13 @@ describe('QrPaymentPanel', () => {
       expect(screen.getByText(/checking for your payment/i)).toBeInTheDocument();
     });
 
+    it('says a late payment was returned to the buyer, with no QR or "I have paid" left', () => {
+      const qr = makeQr({ qrContractAddress: '0xEscrow', qrActivationStatus: 'refunded', qrPaymentDetected: true });
+      render(<QrPaymentPanel {...baseProps(qr)} />);
+      expect(screen.getByRole('status')).toHaveTextContent(/returned to the buyer/i);
+      expect(screen.queryByText(/Payment detected/i)).toBeNull();
+    });
+
     it('does not hold back before an escrow exists', () => {
       // Nothing to check yet — this is the create step, not a payment screen.
       const qr = makeQr({ qrContractAddress: null, hasCheckedBalance: false });

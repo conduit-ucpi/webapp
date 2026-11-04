@@ -585,4 +585,34 @@ describe('useQrPayment', () => {
       clearSpy.mockRestore();
     });
   });
+
+  /**
+   * Paid after the payout date: the escrow cannot start, so the backend returns the money to the
+   * buyer and answers refunded. The page says so and stops, instead of polling "detected" for ever.
+   */
+  describe('a late payment returned to the buyer', () => {
+    it('ends in refunded, does not report an activation, and stops polling', async () => {
+      mockGetTokenBalance.mockResolvedValue('10');
+      mockAuthenticatedFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: false, refunded: true, refundedAmount: '10000000' }),
+      });
+      const { result } = renderHook(() => useQrPayment(baseParams()));
+      await act(async () => {
+        await result.current.createContract();
+      });
+      await act(async () => {
+        await result.current.checkAndActivate();
+      });
+
+      expect(result.current.qrActivationStatus).toBe('refunded');
+      expect(mockOnActivated).not.toHaveBeenCalled();
+
+      const reads = mockGetTokenBalance.mock.calls.length;
+      await act(async () => {
+        jest.advanceTimersByTime(10 * 60_000);
+      });
+      expect(mockGetTokenBalance.mock.calls.length).toBe(reads);
+    });
+  });
 });

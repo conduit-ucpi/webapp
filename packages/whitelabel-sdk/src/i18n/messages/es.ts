@@ -652,6 +652,7 @@ export const es: Catalogue = {
   'dashboardPage.wallet': 'Billetera',
   'dashboardPage.contracts': 'Contratos',
   'qrPaymentPanel.paymentDetected': 'Pago detectado. Presiona "Ya pagué" para completar.',
+  'qrPaymentPanel.refunded': 'Este pago llegó después de la fecha de pago, así que no pudo continuar. Se devolvió a la billetera del comprador.',
   'qrPaymentPanel.noPaymentFound':
     'Todavía no encontramos el pago. Cuando tu transferencia se haya procesado, vuelve a presionar "Ya pagué".',
   'paymentActionPanel.sameAddress':
@@ -795,6 +796,7 @@ export const es: Catalogue = {
   'push.addressUnverified': 'No pudimos confirmar este pago con el contrato de pago, así que nos hemos detenido. No envíes dinero a la dirección mostrada.',
   'push.refusedTitle': 'Pago rechazado',
   'push.refusedBody': 'Este pago no superó una verificación de sanciones, así que no puede continuar. No envíes más dinero a su dirección: lo ya enviado queda retenido allí y no se puede liberar.',
+  'contractActions.refunded': 'Devuelto al comprador: el pago llegó después de la fecha de pago, así que se le devolvió.',
   'push.doneTitle': 'Pago protegido',
   'push.doneBody': '{amount} {token} quedan retenidos en el contrato de pago para {seller}. Se liberan en {date} salvo que lo disputes antes.',
   'push.viewPayment': 'Ver este pago',

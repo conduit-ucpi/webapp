@@ -7,7 +7,7 @@ import { useT } from '../../i18n';
 interface QrController {
   qrContractAddress: string | null;
   qrPaymentDetected: boolean;
-  qrActivationStatus: 'idle' | 'checking' | 'success' | 'waiting';
+  qrActivationStatus: 'idle' | 'checking' | 'success' | 'waiting' | 'refunded';
   isCreatingContract: boolean;
   hasCheckedBalance: boolean;
   createContract: () => void;
@@ -108,8 +108,15 @@ export default function QrPaymentPanel({
         </div>
       )}
 
+      {/* Paid after the payout date: returned to the buyer. Final, so no QR and no "I have paid". */}
+      {qr.qrContractAddress && qr.qrActivationStatus === 'refunded' && (
+        <div role="status" className="bg-secondary-50 dark:bg-secondary-800 border border-secondary-200 dark:border-secondary-700 rounded-md p-3">
+          <p className="text-sm text-secondary-700 dark:text-secondary-200">{t('qrPaymentPanel.refunded')}</p>
+        </div>
+      )}
+
       {/* Step 2: Show QR code and payment instructions */}
-      {qr.qrContractAddress && qr.qrActivationStatus !== 'success' && (
+      {qr.qrContractAddress && qr.qrActivationStatus !== 'success' && qr.qrActivationStatus !== 'refunded' && (
         <div>
           {/* Payment detected banner */}
           {qr.qrPaymentDetected && (

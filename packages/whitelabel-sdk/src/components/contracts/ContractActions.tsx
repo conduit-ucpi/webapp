@@ -408,6 +408,13 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         </p>
       );
 
+    // Paid only after the payout date, so it never started and the money went back to the buyer.
+    // A status, never a button: there is nothing left to pay or do.
+    case 'REFUNDED':
+      return (
+        <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('contractActions.refunded')}</p>
+      );
+
     case 'NONE':
     default:
       return null;

@@ -24,7 +24,11 @@ import { useState, useEffect, useCallback, useRef } from 'react';
  * anything — see the comment on the call itself. Both callers (the "I have
  * paid" button and the balance poll's automatic sweep) get that gate.
  */
-export type QrActivationStatus = 'idle' | 'checking' | 'success' | 'waiting';
+/**
+ * `refunded`: the payment arrived after the payout date, so the escrow could not start and the
+ * backend returned the money to the buyer. Final: nothing more to pay, poll or press.
+ */
+export type QrActivationStatus = 'idle' | 'checking' | 'success' | 'waiting' | 'refunded';
 
 /** Poll every `everyMs` until `untilMs` after the run started. */
 interface PollPhase {
@@ -224,17 +228,28 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
       }
 
       const target = activationRef.current;
+      let refunded = false;
       const activated = target.run
         ? await target.run(qrContractAddress)
-        : (
-            await (
+        : await (async () => {
+            const body = await (
               await authenticatedFetch!(target.endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(target.buildBody?.(qrContractAddress) ?? {}),
               })
-            ).json()
-          ).success;
+            ).json();
+            // Paid after the payout date: the escrow refuses to start, so the backend returned
+            // the money to the buyer instead. Not "not yet": nothing will ever activate here.
+            refunded = body?.refunded === true;
+            return body?.success === true;
+          })();
+
+      if (refunded) {
+        setQrActivationStatus('refunded');
+        if (qrPollingRef.current) clearTimeout(qrPollingRef.current);
+        return false;
+      }
 
       if (activated) {
         setQrActivationStatus('success');
@@ -298,8 +313,10 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
    *    moment the money lands, which is all the countdown was ever for.
    */
   const isActivated = qrActivationStatus === 'success';
+  // Returned to the buyer: final, so the poll stops as it does once activated.
+  const isRefunded = qrActivationStatus === 'refunded';
   useEffect(() => {
-    if (!qrContractAddress || !selectedTokenAddress || isActivated) return;
+    if (!qrContractAddress || !selectedTokenAddress || isActivated || isRefunded) return;
 
     let cancelled = false;
     const startedAt = Date.now();
@@ -354,7 +371,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     // polling interval (and immediately re-polls) on every render — a loop.
     // The primitive deps capture every input that should restart polling.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [qrContractAddress, selectedTokenAddress, requiredAmount, isActivated, pollRun]);
+  }, [qrContractAddress, selectedTokenAddress, requiredAmount, isActivated, isRefunded, pollRun]);
 
   const buildEip681Uri = useCallback((): string => {
     if (!qrContractAddress || !selectedTokenAddress || chainId === undefined) return '';

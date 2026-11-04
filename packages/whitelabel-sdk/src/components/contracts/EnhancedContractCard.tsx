@@ -167,6 +167,9 @@ export default function EnhancedContractCard({
     ['PENDING', 'PENDING_ACCEPTANCE', 'CREATED', 'AWAITING_FUNDING'].includes(status ?? '');
 
   const instant = isInstantPayment(contract.expiryTimestamp);
+  // Who a party with no email is: their wallet. "Unknown" only when there is no wallet yet either,
+  // as on a request nobody has paid.
+  const walletLabel = (address?: string | null) => (address ? formatWalletAddress(address) : t('contractCard.unknown'));
   const statusDisplay = useMemo(() => contractStatusDisplay(status, isPending, instant), [status, isPending, instant]);
   
   return (
@@ -191,9 +194,9 @@ export default function EnhancedContractCard({
             </h3>
             <p className="text-sm text-secondary-600 mt-1">
               {isSeller ? (
-                withNodes(t('contractCard.to'), { name: <FarcasterNameDisplay identifier={contract.buyerEmail} fallbackToAddress={true} walletAddress={t('contractCard.unknown')} /> })
+                withNodes(t('contractCard.to'), { name: <FarcasterNameDisplay identifier={contract.buyerEmail} fallbackToAddress={true} walletAddress={walletLabel(contract.buyerAddress)} /> })
               ) : (
-                withNodes(t('contractCard.from'), { name: <FarcasterNameDisplay identifier={contract.sellerEmail} fallbackToAddress={true} walletAddress={t('contractCard.unknown')} /> })
+                withNodes(t('contractCard.from'), { name: <FarcasterNameDisplay identifier={contract.sellerEmail} fallbackToAddress={true} walletAddress={walletLabel(contract.sellerAddress)} /> })
               )}
             </p>
           </div>

@@ -162,14 +162,12 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
             <div className="space-y-3">
               <div>
                 <p className="text-sm font-medium text-secondary-700">{isSeller ? t('contractDetailsModal.sellerYou') : t('contractCard.roleSeller')}</p>
-                <p className="text-secondary-900">
-                  <FarcasterNameDisplay
-                    identifier={contract.sellerEmail}
-                    showYouLabel={false}
-                    fallbackToAddress={true}
-                    walletAddress={t('contractCard.unknown')}
-                  />
-                </p>
+                {/* No email, no name line: the wallet below is who they are. */}
+                {contract.sellerEmail && (
+                  <p className="text-secondary-900">
+                    <FarcasterNameDisplay identifier={contract.sellerEmail} showYouLabel={false} />
+                  </p>
+                )}
                 <div className="mt-1">
                   <ExpandableHash hash={contract.sellerAddress} />
                 </div>
@@ -178,14 +176,11 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
               {!isPending && contract.buyerAddress && (
                 <div>
                   <p className="text-sm font-medium text-secondary-700">{isBuyer ? t('contractDetailsModal.buyerYou') : t('contractCard.roleBuyer')}</p>
-                  <p className="text-secondary-900">
-                    <FarcasterNameDisplay
-                      identifier={contract.buyerEmail}
-                      showYouLabel={false}
-                      fallbackToAddress={true}
-                      walletAddress={t('contractCard.unknown')}
-                    />
-                  </p>
+                  {contract.buyerEmail && (
+                    <p className="text-secondary-900">
+                      <FarcasterNameDisplay identifier={contract.buyerEmail} showYouLabel={false} />
+                    </p>
+                  )}
                   <div className="mt-1">
                     <ExpandableHash hash={contract.buyerAddress} />
                   </div>

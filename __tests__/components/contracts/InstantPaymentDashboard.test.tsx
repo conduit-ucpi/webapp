@@ -17,7 +17,9 @@ jest.mock('@/components/auth/ConfigProvider', () => ({
   useConfig: () => ({ config: { chainId: 8453, explorerBaseUrl: 'https://base.blockscout.com' } }),
 }));
 jest.mock('@/components/contracts/ContractActions', () => () => <div data-testid="actions" />);
-jest.mock('@/components/ui/FarcasterNameDisplay', () => () => null);
+jest.mock('@/components/ui/FarcasterNameDisplay', () => ({ identifier, walletAddress }: any) => (
+  <span>{identifier || walletAddress || '-'}</span>
+));
 jest.mock('@/components/ui/Modal', () => ({ isOpen, title, children }: any) =>
   isOpen ? (
     <div role="dialog" aria-label={title}>
@@ -87,6 +89,36 @@ describe('an instant payment on the dashboard', () => {
     await userEvent.click(screen.getByRole('button', { name: /send payment link/i }));
 
     expect(screen.getByTestId('send-screen')).toHaveTextContent('instant');
+  });
+});
+
+describe('a party with no email', () => {
+  const FULL_BUYER = '0x78a6000000000000000000000000000000afbd';
+
+  it('is not called Unknown in the details window', () => {
+    details({ buyerAddress: FULL_BUYER, buyerEmail: undefined, sellerEmail: undefined });
+
+    expect(screen.queryByText('Unknown')).toBeNull();
+  });
+
+  it('keeps the name line when there is an email', () => {
+    details({ buyerAddress: FULL_BUYER, buyerEmail: 'buyer@example.com', sellerEmail: 'seller@example.com' });
+
+    expect(screen.getByText('buyer@example.com')).toBeInTheDocument();
+    expect(screen.getByText('seller@example.com')).toBeInTheDocument();
+  });
+
+  it('is named by wallet on the card', () => {
+    render(<EnhancedContractCard contract={contract({ buyerAddress: FULL_BUYER, buyerEmail: undefined })} />);
+
+    expect(screen.queryByText('Unknown')).toBeNull();
+    expect(screen.getByText(/0x78a6/)).toBeInTheDocument();
+  });
+
+  it('reads as Unknown on the card only when there is no wallet either', () => {
+    render(<EnhancedContractCard contract={contract({ buyerAddress: undefined, buyerEmail: undefined })} />);
+
+    expect(screen.getByText('Unknown')).toBeInTheDocument();
   });
 });
 

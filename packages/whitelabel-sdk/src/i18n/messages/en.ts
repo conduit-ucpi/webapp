@@ -435,11 +435,11 @@ export const en = {
   'paymentMethodChoice.sendFromAnyWallet': 'Send from any wallet -- no wallet connection needed',
   'paymentProgress.paymentProgress': 'Payment Progress',
   'paymentRequestIntro.paymentRequest': 'Payment request',
-  'paymentRequestIntro.howThisWorks': 'How this works',
+  'paymentRequestIntro.howThisWorks': 'What happens next',
   'paymentRequestIntro.youveReceived': "You've received a",
   'paymentRequestIntro.continueToSee':
     "Continue to see who sent it, how much they've asked for, and what it's for.",
-  'paymentRequestIntro.step1': 'Continue with your email or a wallet to see the request',
+  'paymentRequestIntro.step1': 'Use your email or a wallet to see the request',
   'paymentRequestIntro.step1FirstTime':
     "First time? You don't need an account or a wallet. We'll set them up for you, with nothing to download.",
   'paymentRequestIntro.step2':

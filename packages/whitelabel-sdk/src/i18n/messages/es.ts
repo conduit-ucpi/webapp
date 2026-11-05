@@ -501,11 +501,11 @@ export const es: Catalogue = {
   'paymentProgress.paymentProgress': 'Progreso del pago',
 
   'paymentRequestIntro.paymentRequest': 'Solicitud de pago',
-  'paymentRequestIntro.howThisWorks': 'Cómo funciona',
+  'paymentRequestIntro.howThisWorks': 'Qué sucede después',
   'paymentRequestIntro.youveReceived': 'Recibiste una',
   'paymentRequestIntro.continueToSee':
     'Continúa para ver quién la envió, cuánto te pide y para qué es.',
-  'paymentRequestIntro.step1': 'Continúa con tu correo o una billetera para ver la solicitud',
+  'paymentRequestIntro.step1': 'Usa tu correo o una billetera para ver la solicitud',
   'paymentRequestIntro.step1FirstTime':
     '¿Es tu primera vez? No necesitas una cuenta ni una billetera: las creamos por ti, sin descargar nada.',
   'paymentRequestIntro.step2':

@@ -58,7 +58,14 @@ export default function PaymentRequestIntro({ onContinue }: PaymentRequestIntroP
               <span className="flex-shrink-0 grid place-items-center w-7 h-7 rounded-full bg-secondary-100 dark:bg-secondary-700 text-xs font-semibold text-secondary-700 dark:text-secondary-200">
                 {i + 1}
               </span>
-              <span className="text-sm text-secondary-600 dark:text-secondary-300 leading-6">{step}</span>
+              <div className="text-sm text-secondary-600 dark:text-secondary-300 leading-6">
+                {step}
+                {i === 0 && (
+                  <p className="mt-1 text-secondary-500 dark:text-secondary-400">
+                    {t('paymentRequestIntro.step1FirstTime')}
+                  </p>
+                )}
+              </div>
             </li>
           ))}
         </ol>
@@ -67,10 +74,6 @@ export default function PaymentRequestIntro({ onContinue }: PaymentRequestIntroP
       <Button type="button" onClick={onContinue} size="lg" className="mt-6 w-full rounded-lg">
         {t('paymentRequestIntro.seeDetails')}
       </Button>
-
-      <p className="mt-4 text-xs text-secondary-400 dark:text-secondary-500">
-        {t('paymentRequestIntro.noWallet')}
-      </p>
     </div>
   );
 }

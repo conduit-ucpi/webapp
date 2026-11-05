@@ -42,7 +42,7 @@ export const es: Catalogue = {
   'steps.completePayment.title': 'Completar el pago',
   'steps.completePayment.detail':
     'Los fondos retenidos se liberan al vendedor una vez confirmado tu pago',
-  'wallet.signInTitle': 'Inicia sesión para configurar tu billetera',
+  'wallet.signInTitle': 'Continúa para configurar tu billetera',
   'wallet.signInBlurb':
     'Crearemos una billetera segura que solo tú controlas, o reconectaremos la que ya tienes. No hay nada que instalar.',
   'wallet.continueSocial': 'Continuar con correo o redes sociales',
@@ -505,15 +505,14 @@ export const es: Catalogue = {
   'paymentRequestIntro.youveReceived': 'Recibiste una',
   'paymentRequestIntro.continueToSee':
     'Continúa para ver quién la envió, cuánto te pide y para qué es.',
-  'paymentRequestIntro.step1':
-    'Agrega stablecoins a tu billetera, o conecta una que ya tengas',
+  'paymentRequestIntro.step1': 'Continúa con tu correo o una billetera para ver la solicitud',
+  'paymentRequestIntro.step1FirstTime':
+    '¿Es tu primera vez? No necesitas una cuenta ni una billetera: las creamos por ti, sin descargar nada.',
   'paymentRequestIntro.step2':
-    'Confirma el pago: queda retenido de forma segura en el contrato de pago, no se envía directamente',
+    'Agrega fondos si hace falta y confirma. Tu pago queda retenido de forma segura en el contrato de pago, no se envía directamente',
   'paymentRequestIntro.step3':
     'Los fondos se liberan al vendedor automáticamente; no necesitas hacer nada más',
-  'paymentRequestIntro.seeDetails': 'Ver detalles y pagar',
-  'paymentRequestIntro.noWallet':
-    '¿No tienes una billetera cripto? Creamos una por ti, sin descargar nada.',
+  'paymentRequestIntro.seeDetails': 'Continuar con correo o billetera',
 
   'pendingContractCard.makePayment': 'Realizar el pago',
 

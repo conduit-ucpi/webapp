@@ -26,7 +26,7 @@ export const en = {
   'steps.completePayment.title': 'Complete Payment',
   'steps.completePayment.detail':
     'Funds in the payment contract release to the seller once your payment is confirmed',
-  'wallet.signInTitle': 'Sign in to set up your wallet',
+  'wallet.signInTitle': 'Continue to set up your wallet',
   'wallet.signInBlurb':
     "We'll create a secure wallet that only you control, or reconnect the one you already have. Nothing to install.",
   'wallet.continueSocial': 'Continue with email or social login',
@@ -439,14 +439,14 @@ export const en = {
   'paymentRequestIntro.youveReceived': "You've received a",
   'paymentRequestIntro.continueToSee':
     "Continue to see who sent it, how much they've asked for, and what it's for.",
-  'paymentRequestIntro.step1': 'Add stablecoin to your wallet, or connect one you already have',
+  'paymentRequestIntro.step1': 'Continue with your email or a wallet to see the request',
+  'paymentRequestIntro.step1FirstTime':
+    "First time? You don't need an account or a wallet. We'll set them up for you, with nothing to download.",
   'paymentRequestIntro.step2':
-    "Confirm the payment — it's held securely in the payment contract, not sent directly",
+    'Add funds if you need to, then confirm. Your payment is held securely in the payment contract, not sent directly',
   'paymentRequestIntro.step3':
     'Funds release to the seller automatically — nothing else needed from you',
-  'paymentRequestIntro.seeDetails': 'See details & pay',
-  'paymentRequestIntro.noWallet':
-    "Don't have a crypto wallet? We'll create one for you — no download needed.",
+  'paymentRequestIntro.seeDetails': 'Continue with email or wallet',
   'pendingContractCard.makePayment': 'Make Payment',
   'qrPaymentPanel.checkingForYourPayment': 'Checking for your payment…',
   'qrPaymentPanel.creatingContract': 'Creating contract...',

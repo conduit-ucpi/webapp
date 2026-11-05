@@ -1,6 +1,7 @@
 import { QRCodeSVG } from 'qrcode.react';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import QrPlaceholder from '@/components/contracts/QrPlaceholder';
 import { useT } from '../../i18n';
 
 /** The subset of useQrPayment's return that this panel renders. */
@@ -36,6 +37,8 @@ interface QrPaymentPanelProps {
    */
   onCancel?: () => void;
   successMessage: string;
+  /** A seller's preview of their own request: a picture in place of the code, which would pay nothing. */
+  preview?: boolean;
 }
 
 /**
@@ -57,6 +60,7 @@ export default function QrPaymentPanel({
   createNote,
   onCancel,
   successMessage,
+  preview = false,
 }: QrPaymentPanelProps) {
   const t = useT();
   /**
@@ -139,12 +143,16 @@ export default function QrPaymentPanel({
           ) : (
             <div className="flex justify-center mb-4">
               <div className="bg-white p-4 rounded-lg border-2 border-secondary-200 shadow-sm">
-                <QRCodeSVG
-                  value={qr.buildEip681Uri()}
-                  size={200}
-                  level="M"
-                  includeMargin={true}
-                />
+                {preview ? (
+                  <QrPlaceholder />
+                ) : (
+                  <QRCodeSVG
+                    value={qr.buildEip681Uri()}
+                    size={200}
+                    level="M"
+                    includeMargin={true}
+                  />
+                )}
               </div>
             </div>
           )}

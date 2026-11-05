@@ -15,6 +15,7 @@ import CreateProgressSteps, { JourneyStep } from '@/components/contracts/CreateP
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { useTokenBalance } from '@/hooks/useTokenBalance';
 import { useTokenSelection } from '@/hooks/useTokenSelection';
+import { useFeeQuote } from '@/hooks/useFeeQuote';
 import { useQrPayment } from '@/hooks/useQrPayment';
 import { usePaymentSteps } from '@/hooks/usePaymentSteps';
 import { isValidEmail, isValidWalletAddress, isValidDescription, addressesEqual, getDefaultTimestamp, formatDateTimeWithTZ } from '@/utils/validation';
@@ -201,6 +202,24 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
 
   const networkLabel = config ? getNetworkName(config.chainId) : undefined;
   const payer = user?.walletAddress || address;
+
+  /**
+   * The seller opening their own request: shown what their customer will see, with nothing live.
+   *
+   * ⚠️ PREPARE IS NEVER CALLED FOR IT. Prepare claims the request for its buyer, and the factory
+   *    refuses a buyer who is also the seller, so ap2service would refuse it anyway. That leaves
+   *    no escrow address, so the real QR panel is shown with a picture and a label in place of
+   *    the code and the address: the address depends on the buyer, and money sent to one nothing
+   *    is watching can be stranded. The fee comes from the factory through useFeeQuote instead.
+   */
+  const ownRequest = !!request && !!payer && addressesEqual(request.terms.seller, payer);
+  const previewFee = useFeeQuote(ownRequest ? parseFloat(amount) || 0 : null, selectedTokenSymbol);
+  const previewFigure = (figure: (fee: number) => number) => {
+    if (previewFee.state === 'quoted') {
+      return `${figure(previewFee.fee).toFixed(selectedToken?.decimals ?? 6)} ${selectedTokenSymbol}`;
+    }
+    return previewFee.state === 'loading' || previewFee.state === 'idle' ? '…' : '—';
+  };
 
   const { steps: paymentSteps, updateStep, setSteps } = usePaymentSteps([]);
   const signing = prepared && typeof prepared.fund_by_signature === 'object' ? prepared.fund_by_signature : null;
@@ -572,7 +591,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
    */
   const checkoutPrepared = useRef(false);
   useEffect(() => {
-    if (!locked || checkoutPrepared.current || !router.isReady) return;
+    if (!locked || ownRequest || checkoutPrepared.current || !router.isReady) return;
     // The resume effect prepares this one, with its external id; a second, id-less prepare
     // would quote a different escrow. (A request's id is fixed, so it never resumes.)
     if (checkout && decodePayResume(router.query.resume)) {
@@ -586,7 +605,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     void handlePrepare();
     // handlePrepare reads the locked terms from this same render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [locked, router.isReady, router.query.resume, payer, config, busy, stage, selectedTokenSymbol]);
+  }, [locked, ownRequest, router.isReady, router.query.resume, payer, config, busy, stage, selectedTokenSymbol]);
 
   // Handed to the checkout once, when the escrow exists: the receipt says which one it is.
   const handedOff = useRef(false);
@@ -654,11 +673,11 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     <div className="py-10">
       <div className="w-full max-w-2xl mx-auto px-4">
         <CreateProgressSteps
-          current={stage === 'details' ? 0 : stage === 'done' ? 2 : 1}
+          current={stage === 'details' && !ownRequest ? 0 : stage === 'done' ? 2 : 1}
           steps={PUSH_JOURNEY_STEPS}
         />
 
-        {stage === 'details' && locked && (
+        {stage === 'details' && locked && !ownRequest && (
           <div className="rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-6 sm:p-8 text-center">
             {checkoutError ? (
               <>
@@ -724,8 +743,14 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
           </>
         )}
 
-        {stage === 'review' && prepared && (
+        {((stage === 'review' && prepared) || ownRequest) && (
           <>
+            {ownRequest && (
+              <div role="status" className="mb-6 rounded-lg border border-secondary-300 dark:border-secondary-600 bg-secondary-50 dark:bg-secondary-800/50 p-4">
+                <p className="text-sm font-semibold text-secondary-900 dark:text-white">{t('push.previewTitle')}</p>
+                <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">{t('push.previewBody')}</p>
+              </div>
+            )}
             <ReviewRequest
               title={t('push.review')}
               amount={amount}
@@ -741,8 +766,8 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
                 ...(nominalBuyer && !(payer && addressesEqual(nominalBuyer, payer))
                   ? [{ label: t('push.disputer'), value: nominalBuyer }]
                   : []),
-                { label: t('push.sellerReceives'), value: prepared.seller_receives_estimate },
-                { label: t('push.fee'), value: prepared.platform_fee_estimate },
+                { label: t('push.sellerReceives'), value: prepared?.seller_receives_estimate ?? previewFigure((fee) => amountInTokens - fee) },
+                { label: t('push.fee'), value: prepared?.platform_fee_estimate ?? previewFigure((fee) => fee) },
               ]}
               // PaymentOptions states what happens, once, over every way of paying.
               nextBody={null}
@@ -750,49 +775,60 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
             {/* No typed data means ap2service could not build the authorization (the token has
                 no EIP-712 domain, or the chain was unreadable). Said, not left as a dead button;
                 the transfer routes below still work. */}
-            {request?.notice && <div className="mt-5">{request.notice}</div>}
-            {!signing?.typed_data && (
-              <p className="mt-5 text-sm text-error-600 dark:text-error-400 text-center">{t('push.cannotSign')}</p>
-            )}
-            <div className="mt-8">
-              <PaymentOptions
-                paymentSteps={paymentSteps}
-                reassurance={t(instant ? 'pay.escrowInstant' : 'pay.escrowHeld', { amount: `${amount} ${selectedTokenSymbol}` })}
-                amountLabel={`${amount} ${selectedTokenSymbol}`}
-                amountInTokens={amountInTokens}
-                balanceFloat={balanceFloat}
-                tokenSymbol={selectedTokenSymbol}
-                tokenAddress={selectedToken?.address ?? ''}
-                tokenDecimals={selectedToken?.decimals ?? 6}
-                chainId={config?.chainId}
-                walletAddress={address}
-                networkName={networkLabel ?? ''}
-                isLoadingBalance={isLoadingBalance}
-                hasInsufficientBalance={balanceFloat < amountInTokens}
-                isSameAddress={false}
-                isPaymentInProgress={busy === 'pay'}
-                onPay={handleWalletPay}
-                onPayFromExternalWallet={() => {
-                  document.getElementById('pay-from-elsewhere')?.scrollIntoView({ behavior: 'smooth' });
-                }}
-                // Back onto this payment, not a blank form: after adding funds the wallet can now
-                // pay; after a card payment the balance check finds the escrow funded and
-                // settles it. (The escrow is on file either way, so a buyer who never comes back
-                // still has a card payment completed by the sweep.)
-                addFundsReturnPath={resumeHref}
-                resolveEscrowAddress={transferOffered ? async () => prepared.escrow_address : undefined}
-                elsewhere={
-                  transferOffered
-                    ? {
-                        qr,
-                        createButtonLabel: t('pay.payButton'),
-                        createDisabled: false,
-                        successMessage: t('push.doneTitle'),
-                      }
-                    : undefined
-                }
-              />
-            </div>
+            {/* A disabled fieldset turns off every control inside it, styled as disabled too. */}
+            <fieldset disabled={ownRequest} className="min-w-0 border-0 p-0">
+              {request?.notice && <div className="mt-5">{request.notice}</div>}
+              {!signing?.typed_data && !ownRequest && (
+                <p className="mt-5 text-sm text-error-600 dark:text-error-400 text-center">{t('push.cannotSign')}</p>
+              )}
+              <div className="mt-8">
+                <PaymentOptions
+                  paymentSteps={paymentSteps}
+                  reassurance={t(instant ? 'pay.escrowInstant' : 'pay.escrowHeld', { amount: `${amount} ${selectedTokenSymbol}` })}
+                  amountLabel={`${amount} ${selectedTokenSymbol}`}
+                  amountInTokens={amountInTokens}
+                  balanceFloat={balanceFloat}
+                  tokenSymbol={selectedTokenSymbol}
+                  tokenAddress={selectedToken?.address ?? ''}
+                  tokenDecimals={selectedToken?.decimals ?? 6}
+                  chainId={config?.chainId}
+                  walletAddress={address}
+                  networkName={networkLabel ?? ''}
+                  isLoadingBalance={isLoadingBalance}
+                  hasInsufficientBalance={balanceFloat < amountInTokens}
+                  isSameAddress={false}
+                  isPaymentInProgress={busy === 'pay'}
+                  onPay={handleWalletPay}
+                  onPayFromExternalWallet={() => {
+                    document.getElementById('pay-from-elsewhere')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  // Back onto this payment, not a blank form: after adding funds the wallet can now
+                  // pay; after a card payment the balance check finds the escrow funded and
+                  // settles it. (The escrow is on file either way, so a buyer who never comes back
+                  // still has a card payment completed by the sweep.)
+                  addFundsReturnPath={resumeHref}
+                  resolveEscrowAddress={transferOffered || ownRequest ? async () => prepared?.escrow_address ?? null : undefined}
+                  elsewhere={
+                    transferOffered || ownRequest
+                      ? {
+                          qr: ownRequest
+                            ? {
+                                ...qr,
+                                qrContractAddress: t('push.previewAddress'),
+                                hasCheckedBalance: true,
+                                qrActivationStatus: 'idle',
+                              }
+                            : qr,
+                          preview: ownRequest,
+                          createButtonLabel: t('pay.payButton'),
+                          createDisabled: false,
+                          successMessage: t('push.doneTitle'),
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+            </fieldset>
             {checkout && (
               <div className="mt-6 flex justify-center">
                 <Button variant="outline" onClick={checkout.onCancel} disabled={busy === 'pay'}>{t('common.cancel')}</Button>

@@ -66,6 +66,7 @@ jest.mock('@/lib/escrow/verificationRpc', () => ({
 process.env.NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS = PINNED_FACTORY;
 
 import PayPage from '@/pages/pay';
+import CustomArbiterNotice from '@/components/contracts/CustomArbiterNotice';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
 import { callAp2Tool } from '@/lib/ap2Mcp';
@@ -1004,10 +1005,68 @@ describe('/pay for a payment request (/contract-pay)', () => {
     expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
   });
 
-  it('refuses a request that pays the signed-in wallet itself, before asking anything', async () => {
-    render(<PayPage request={request({ seller: PAYER })} />);
-    expect(await screen.findByText(/cannot make a payment to yourself/)).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+  describe('opened by the seller who made it', () => {
+    // The fee is a public chain fact, asked without the session; anything else would go through it.
+    const realFetch = global.fetch;
+    let publicFetch: jest.Mock;
+    beforeEach(() => {
+      publicFetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, creatorFee: '300000', amountTooSmall: false }),
+      });
+      global.fetch = publicFetch;
+    });
+    afterEach(() => {
+      global.fetch = realFetch;
+    });
+
+    it('shows the payment screen as a preview, with the factory fee', async () => {
+      render(<PayPage request={request({ seller: PAYER })} />);
+
+      expect(await screen.findByText('This is a preview')).toBeInTheDocument();
+      expect(screen.getByText('Confirm payment')).toBeInTheDocument();
+      expect(await screen.findByText('0.300000 USDC')).toBeInTheDocument();
+      expect(screen.getByTestId('qr-placeholder')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /I have paid/i })).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Protected payment address')).toBeDisabled();
+      expect(screen.queryByText(/cannot make a payment to yourself/)).toBeNull();
+    });
+
+    it('leaves nothing they can press', async () => {
+      render(<PayPage request={request({ seller: PAYER })} />);
+      await screen.findByText('0.300000 USDC');
+
+      const buttons = screen.getByRole('group').querySelectorAll('button');
+      expect(buttons.length).toBeGreaterThan(0);
+      buttons.forEach((button) => expect(button).toBeDisabled());
+    });
+
+    it('never prepares, so the request is not claimed and no address exists to pay', async () => {
+      render(<PayPage request={request({ seller: PAYER })} />);
+      await screen.findByText('0.300000 USDC');
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(publicFetch.mock.calls.map(([url]) => String(url)).filter((url) => /ap2|prepare|settle|mcp/.test(url))).toEqual([]);
+      expect(mockCall).not.toHaveBeenCalled();
+      expect(screen.queryByRole('img', { name: /qr/i })).toBeNull();
+      expect(screen.queryByText(ESCROW)).toBeNull();
+    });
+
+    it("shows a custom arbiter as the customer would see it, with its copy button off too", async () => {
+      const notice = <CustomArbiterNotice arbiterAddress={ARBITER} />;
+      render(<PayPage request={{ ...request({ seller: PAYER }), notice }} />);
+
+      expect(await screen.findByTestId('custom-arbiter-address')).toHaveTextContent(ARBITER);
+      expect(screen.getByTestId('custom-arbiter-copy-button')).toBeDisabled();
+    });
+
+    it('says so when the fee cannot be read, rather than showing a figure', async () => {
+      publicFetch.mockResolvedValue({ ok: false, status: 503, json: async () => ({}) });
+      render(<PayPage request={request({ seller: PAYER })} />);
+
+      await waitFor(() => expect(screen.getAllByText('—')).toHaveLength(2));
+    });
   });
 });
 

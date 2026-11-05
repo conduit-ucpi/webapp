@@ -188,3 +188,31 @@ describe('QrPaymentPanel', () => {
     });
   });
 });
+
+describe("a seller's preview", () => {
+  const previewQr = () => makeQr({ qrContractAddress: 'Protected payment address' });
+
+  it('shows a picture in place of the code, and never builds a payment link', () => {
+    const qr = previewQr();
+    render(<QrPaymentPanel {...baseProps(qr)} preview />);
+
+    expect(screen.getByTestId('qr-placeholder')).toBeInTheDocument();
+    expect(screen.queryByTestId('qr-code')).toBeNull();
+    expect(qr.buildEip681Uri).not.toHaveBeenCalled();
+  });
+
+  it('keeps the rest of the panel a customer sees', () => {
+    render(<QrPaymentPanel {...baseProps(previewQr())} preview />);
+
+    expect(screen.getByDisplayValue('Protected payment address')).toBeInTheDocument();
+    expect(screen.getByText('Payment Instructions')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /I have paid/i })).toBeInTheDocument();
+  });
+
+  it('shows the wallet button on a phone, as a customer on a phone sees', () => {
+    render(<QrPaymentPanel {...baseProps(previewQr())} preview isMobileDevice />);
+
+    expect(screen.getByRole('button', { name: /wallet app/i })).toBeInTheDocument();
+    expect(screen.queryByTestId('qr-placeholder')).toBeNull();
+  });
+});

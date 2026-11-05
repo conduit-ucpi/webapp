@@ -473,6 +473,12 @@ Frontend API routes proxy to backend services:
 - `/api/contracts/*` → Contract Service (contract management)
 - `/api/config` → Runtime configuration endpoint
 
+One route under `/api/contracts/` goes to no backend service: `POST /api/contracts/{id}/link-opened`.
+`/contract-pay` calls it on arrival, signed in or not, and it writes `PAYMENT LINK OPENED: contract <id>`
+to this app's log. It is public, has no cookies and no visitor identifier, and writes at most 120 lines
+per address per hour, so a line means the link was opened or the route was called, not that anyone tried
+to pay. To look up a link in Grafana: `{container="webapp-prod"} |= "PAYMENT LINK OPENED" |= "<id>"`.
+
 See backend service repositories for detailed API documentation.
 
 ## Contributing

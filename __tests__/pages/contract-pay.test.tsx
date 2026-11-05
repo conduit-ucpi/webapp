@@ -10,6 +10,7 @@ jest.mock('next/head', () => ({ __esModule: true, default: () => null }));
 jest.mock('@/components/auth/ConfigProvider');
 jest.mock('@/components/auth');
 jest.mock('@/hooks/usePayableContract');
+jest.mock('@/lib/reportPaymentLinkOpened');
 jest.mock('@/components/contracts/PaymentRequestIntro', () => function PaymentRequestIntro() {
   return <div data-testid="intro" />;
 });
@@ -20,6 +21,7 @@ import ContractPay from '@/pages/ContractPayPage';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
 import { usePayableContract } from '@/hooks/usePayableContract';
+import { reportPaymentLinkOpened } from '@/lib/reportPaymentLinkOpened';
 
 const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const contract = (overrides: Record<string, unknown> = {}) => ({
@@ -42,6 +44,46 @@ beforeEach(() => {
     config: { chainId: 8453, supportedTokens: [{ symbol: 'USDC', address: USDC, decimals: 6 }] },
   });
   (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isConnected: true, address: '0xb', authenticatedFetch: jest.fn() });
+});
+
+describe('recording that the link was opened', () => {
+  const realQuery = mockRouter.query;
+  afterEach(() => {
+    mockRouter.query = realQuery;
+    mockRouter.isReady = true;
+  });
+
+  it('records it for a visitor who has not signed in, once across re-renders', () => {
+    (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isConnected: false, address: null, authenticatedFetch: jest.fn() });
+    loaded(null);
+
+    const { rerender } = render(<ContractPay />);
+    rerender(<ContractPay />);
+
+    expect(reportPaymentLinkOpened).toHaveBeenCalledTimes(1);
+    expect(reportPaymentLinkOpened).toHaveBeenCalledWith('req-1');
+  });
+
+  it('records it for a signed-in visitor', () => {
+    loaded(contract());
+    render(<ContractPay />);
+    expect(reportPaymentLinkOpened).toHaveBeenCalledWith('req-1');
+  });
+
+  it('waits for the router, which has no query on the first render of a static page', () => {
+    mockRouter.isReady = false;
+    mockRouter.query = {};
+    loaded(null);
+    render(<ContractPay />);
+    expect(reportPaymentLinkOpened).not.toHaveBeenCalled();
+  });
+
+  it.each<Record<string, string>>([{ resuming: '1' }, { method: 'qr' }])('does not count coming back from the onramp (%j)', (extra) => {
+    mockRouter.query = { contractId: 'req-1', ...extra };
+    loaded(contract());
+    render(<ContractPay />);
+    expect(reportPaymentLinkOpened).not.toHaveBeenCalled();
+  });
 });
 
 it('hands PayPage the stored terms, the amount exactly as stored', () => {

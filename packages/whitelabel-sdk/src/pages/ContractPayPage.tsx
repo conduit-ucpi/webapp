@@ -9,6 +9,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import PaymentRequestIntro from '@/components/contracts/PaymentRequestIntro';
 import CustomArbiterNotice from '@/components/contracts/CustomArbiterNotice';
 import { usePayableContract } from '@/hooks/usePayableContract';
+import { reportPaymentLinkOpened } from '@/lib/reportPaymentLinkOpened';
 import type { PendingContract } from '@/types';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import PayPage, { type PayRequest } from './PayPage';
@@ -86,6 +87,14 @@ export default function ContractPay() {
   const signedIn = isConnected || !!address;
   // Coming back from the onramp: the wallet reconnects a moment after the session does.
   const returning = router.query.resuming === '1' || router.query.method === 'qr';
+
+  // Recorded on arrival, signed in or not, because a visitor who leaves at the sign-in screen
+  // leaves no other trace. Coming back from the onramp is the same visit, not another opening.
+  useEffect(() => {
+    if (router.isReady && typeof contractId === 'string' && !returning) {
+      void reportPaymentLinkOpened(contractId);
+    }
+  }, [router.isReady, contractId, returning]);
 
   const screen = (body: React.ReactNode) => (
     <div className="min-h-screen bg-white dark:bg-secondary-900 transition-colors">

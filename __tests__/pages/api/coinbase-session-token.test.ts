@@ -126,8 +126,8 @@ describe('/api/coinbase/session-token', () => {
     };
 
     it('logs the way in, and shortens the address', async () => {
-      const { line } = await mint({ contractId: 'req-1', purpose: 'pay-by-card', currency: 'USD', locale: 'es-US' });
-      expect(line).toContain('contract req-1 purpose pay-by-card currency USD locale es-US destination 0x1234…5678');
+      const { line } = await mint({ contractId: 'req-1', purpose: 'pay-by-card', currency: 'USD', locale: 'es-US', country: 'VE' });
+      expect(line).toContain('contract req-1 purpose pay-by-card currency USD locale es-US country VE destination 0x1234…5678');
     });
 
     it('logs nothing it cannot vouch for the shape of', async () => {

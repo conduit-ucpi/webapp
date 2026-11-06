@@ -19,6 +19,7 @@ interface SessionTokenRequest {
   contractId?: unknown;
   currency?: unknown;
   locale?: unknown;
+  country?: unknown;
 }
 
 /** The browser's word, so only its shape is trusted: nothing else reaches the log. */
@@ -62,6 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     contractId,
     currency,
     locale,
+    country,
   } = (req.body || {}) as SessionTokenRequest;
 
   if (!isValidEvmAddress(address)) {
@@ -115,11 +117,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const partnerUserRef = partnerUserRefFor(identity);
 
     // Started means the token was minted, so the widget is about to open. How it ended is
-    // Coinbase's to say. The locale is the browser's setting, not where the buyer is.
+    // Coinbase's to say. The locale is the browser's setting; the country is Cloudflare's reading of
+    // the buyer's IP. Neither is proof of where they are.
     console.log(
       `COINBASE ONRAMP STARTED: user ${loggable(partnerUserRef, 'unknown')} ` +
         `contract ${loggable(contractId, 'none')} purpose ${loggable(purpose, 'unknown')} ` +
-        `currency ${loggable(currency, 'unknown')} locale ${loggable(locale, 'unknown')} ` +
+        `currency ${loggable(currency, 'unknown')} locale ${loggable(locale, 'unknown')} country ${loggable(country, 'unknown')} ` +
         `destination ${address.slice(0, 6)}…${address.slice(-4)}`
     );
 

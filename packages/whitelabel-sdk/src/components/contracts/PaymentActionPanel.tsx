@@ -4,6 +4,9 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import AddFundsModal from '@/components/contracts/AddFundsModal';
 import { openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
 import { useConfig } from '@/components/auth/ConfigProvider';
+import { reportFundingEvent } from '@/lib/reportFundingEvent';
+import { useOnrampMinimum } from '@/hooks/useOnrampMinimum';
+import { useCoinbaseAvailability } from '@/hooks/useCoinbaseAvailability';
 import { useT } from '../../i18n';
 
 interface PaymentActionPanelProps {
@@ -44,6 +47,8 @@ interface PaymentActionPanelProps {
    * "Pay by card or bank transfer" option is not offered.
    */
   resolveEscrowAddress?: () => Promise<string | null>;
+  /** A seller's preview: everything is off, and the preview says so, so no reasons are given. */
+  preview?: boolean;
 }
 
 /**
@@ -83,6 +88,7 @@ export default function PaymentActionPanel({
   onPayFromExternalWallet,
   addFundsReturnPath,
   resolveEscrowAddress,
+  preview = false,
 }: PaymentActionPanelProps) {
   const t = useT();
   const { config } = useConfig();
@@ -140,6 +146,15 @@ export default function PaymentActionPanel({
   const [copied, setCopied] = useState(false);
 
   const shortfall = Math.max(amountInTokens - balanceFloat, 0);
+
+  // The exchange refuses less than its minimum. Into the contract that rules the route out, since
+  // the escrow takes the exact amount; into the wallet they buy the minimum and pay from it.
+  const minimum = useOnrampMinimum(tokenSymbol, showCoinbasePay);
+  const minimumLabel = minimum ? `${minimum.amount} ${minimum.currency}` : '';
+  const coinbase = useCoinbaseAvailability(showCoinbasePay);
+  const belowMinimumForContract = !!minimum && amountInTokens < minimum.inTokens;
+  // Coinbase's minimum says nothing to a buyer it cannot serve.
+  const belowMinimumForWallet = !!minimum && !coinbase.unavailable && shortfall > 0 && shortfall < minimum.inTokens;
   const shortAddress = walletAddress
     ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
     : '';
@@ -162,6 +177,13 @@ export default function PaymentActionPanel({
   const canAddFunds = hasInsufficientBalance && !isLoadingBalance;
 
   const actionButton = 'w-full rounded-lg justify-center';
+
+  const coinbaseUnavailableReason = t('paymentActionPanel.whyNoCoinbase', { country: coinbase.countryName ?? '' });
+
+  const reason = (text: string) =>
+    !preview && !isLoadingBalance && !isPaymentInProgress ? (
+      <p className="-mt-2 text-xs text-secondary-500 dark:text-secondary-400">{text}</p>
+    ) : null;
 
   return (
     <div className="rounded-xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 p-5">
@@ -246,6 +268,8 @@ export default function PaymentActionPanel({
             t('pay.payFromThisWallet', { amount: amountLabel })
           )}
         </Button>
+        {hasInsufficientBalance && !isSameAddress &&
+          reason(t('paymentActionPanel.whyNoPay', { amount: shortfall.toFixed(4), token: tokenSymbol }))}
 
         <Button
           type="button"
@@ -254,14 +278,22 @@ export default function PaymentActionPanel({
           onClick={() => setShowAddFunds(true)}
           disabled={!canAddFunds || isPaymentInProgress}
           className={actionButton}
-        >{t('paymentActionPanel.addFundsToThis')}</Button>
+        >
+          {belowMinimumForWallet
+            ? t('paymentActionPanel.addFundsBelowMinimum', { minimum: minimumLabel })
+            : t('paymentActionPanel.addFundsToThis')}
+        </Button>
+        {!hasInsufficientBalance && !isSameAddress && reason(t('paymentActionPanel.whyNoAddFunds'))}
 
         {/* Never gated on balance: this route bypasses the connected wallet. */}
         <Button
           type="button"
           variant="outline"
           size="lg"
-          onClick={onPayFromExternalWallet}
+          onClick={() => {
+            void reportFundingEvent('other-wallet-opened', { wallet: walletAddress });
+            onPayFromExternalWallet();
+          }}
           disabled={isPaymentInProgress || isSameAddress}
           className={actionButton}
         >{t('paymentActionPanel.payFromExternalWallet')}</Button>
@@ -277,7 +309,7 @@ export default function PaymentActionPanel({
           <Button
             variant="outline"
             onClick={handlePayWithCoinbase}
-            disabled={isPaymentInProgress || cbPayLoading}
+            disabled={isPaymentInProgress || cbPayLoading || belowMinimumForContract || coinbase.unavailable}
             className={`${actionButton} h-auto flex-col gap-1 py-3 text-center`}
           >
             <span className="font-medium">
@@ -288,6 +320,16 @@ export default function PaymentActionPanel({
             </span>
           </Button>
         )}
+        {resolveEscrowAddress && showCoinbasePay && coinbase.unavailable && !preview && (
+          <p className="-mt-2 text-xs text-secondary-500 dark:text-secondary-400">
+            {coinbaseUnavailableReason}{' '}
+            <button type="button" onClick={coinbase.overrule} className="underline hover:text-secondary-900 dark:hover:text-white">
+              {t('paymentActionPanel.notInCountry', { country: coinbase.countryName ?? '' })}
+            </button>
+          </p>
+        )}
+        {resolveEscrowAddress && showCoinbasePay && !coinbase.unavailable && belowMinimumForContract &&
+          reason(t('paymentActionPanel.whyNoCard', { minimum: minimumLabel }))}
       </div>
 
       {cbPayError && <p className="mt-2 text-sm text-red-600">{cbPayError}</p>}
@@ -302,6 +344,8 @@ export default function PaymentActionPanel({
         chainId={chainId}
         networkName={networkName}
         shortfall={shortfall}
+        minimumPurchase={minimum?.inTokens}
+        coinbaseUnavailable={coinbase.unavailable ? coinbaseUnavailableReason : undefined}
         returnPath={addFundsReturnPath}
       />
     </div>

@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 
 const { gitFileVersion, TERMS_FILE, TERMS_VERSION_LENGTH } = require('./lib/server/gitFileVersion');
+const { CSP_HEADER, boxCsp } = require('./config/csp');
 
 
 // Static-export mode, used only by the GitHub Pages build. Unset everywhere else,
@@ -8,9 +9,9 @@ const { gitFileVersion, TERMS_FILE, TERMS_VERSION_LENGTH } = require('./lib/serv
 // run in parallel (STATIC_FRONTEND_MIGRATION_PLAN.md, Phase 2 step 8).
 //
 // rewrites/redirects/headers are all server features: Next cannot apply them to a
-// static export, and GitHub Pages cannot set response headers at all. They are
-// omitted rather than left in place so the build fails loudly if that changes,
-// instead of silently dropping the frame-ancestors CSP.
+// static export. They are omitted rather than left in place so the build fails
+// loudly if that changes. Cloudflare Pages reads its headers from public/_headers
+// instead (config/csp.js).
 const isStaticExport = process.env.STATIC_EXPORT === 'true';
 
 function normaliseBasePath(value) {
@@ -111,6 +112,10 @@ const serverOnlyConfig = {
           {
             key: 'Content-Security-Policy',
             value: `frame-ancestors ${frameAncestorsValue}`
+          },
+          {
+            key: CSP_HEADER,
+            value: boxCsp()
           }
         ]
       }

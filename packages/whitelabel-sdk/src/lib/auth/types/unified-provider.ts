@@ -27,13 +27,15 @@ export type ConnectionMode = 'default' | 'wallet-only' | 'social-only';
 /** What to put in the connected wallet, in whole tokens as a decimal string ("15" = 15 USDC). */
 export interface FundWalletRequest {
   amount: string;
-  asset: 'USDC' | 'native-currency' | { erc20: string };
+  asset: 'USDC' | { erc20: string };
   chainId: number;
 }
 
 export interface FundWalletResult {
   status: 'completed' | 'cancelled';
   transactionHash?: string;
+  /** The provider's own word for how it ended, for the log. */
+  detail?: string;
 }
 
 export interface ProviderCapabilities {

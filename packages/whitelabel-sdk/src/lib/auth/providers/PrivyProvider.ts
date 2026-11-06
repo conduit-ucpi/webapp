@@ -233,8 +233,8 @@ export class PrivyProvider implements UnifiedProvider {
   }
 
   /**
-   * Privy's funding modal — card (Stripe / MoonPay), exchange (Coinbase), or a transfer from
-   * another wallet, whichever the dashboard has enabled. The app's chain is fixed by config; a
+   * Privy's funding modal, offering whichever fiat providers the dashboard has enabled and can
+   * serve this buyer. The app's chain is fixed by config; a
    * request for another chain is a programming error and is refused rather than quietly
    * funding the wrong network.
    */

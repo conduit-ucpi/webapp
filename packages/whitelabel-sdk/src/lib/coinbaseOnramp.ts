@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/apiFetch';
+import { visitorCountry } from '@/lib/visitorCountry';
 import { detectUserCurrency } from '@/utils/currencyDetection';
 import {
   buildCoinbaseReturnUrl,
@@ -107,6 +108,7 @@ async function fetchSessionToken(params: OpenCoinbaseOnrampParams): Promise<Sess
       contractId: new URLSearchParams(window.location.search).get('contractId') ?? undefined,
       currency: onrampFiatCurrency(params.fiatCurrency),
       locale: navigator.language,
+      country: (await visitorCountry()) ?? undefined,
     }),
   });
 

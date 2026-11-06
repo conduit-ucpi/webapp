@@ -797,6 +797,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
                   isLoadingBalance={isLoadingBalance}
                   hasInsufficientBalance={balanceFloat < amountInTokens}
                   isSameAddress={false}
+                  preview={ownRequest}
                   isPaymentInProgress={busy === 'pay'}
                   onPay={handleWalletPay}
                   onPayFromExternalWallet={() => {

@@ -5,6 +5,7 @@ import Button from '@/components/ui/Button';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/SimpleAuthProvider';
 import { ONRAMP_RETURN_MESSAGE, openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
+import { reportFundingEvent } from '@/lib/reportFundingEvent';
 import { useT, withNodes } from '../../i18n';
 
 /**
@@ -28,6 +29,10 @@ interface AddFundsModalProps {
   networkName: string;
   /** How much more the wallet needs, in whole tokens. */
   shortfall: number;
+  /** The exchange's current minimum in tokens, when known. Otherwise ONRAMP_MIN_CRYPTO applies. */
+  minimumPurchase?: number;
+  /** Why Coinbase cannot serve this buyer, when it cannot. Its option is greyed out and says so. */
+  coinbaseUnavailable?: string;
   /**
    * Where to put the user when Coinbase is done. Defaults to the page they left,
    * which loses the panel they were on — pass the "I have paid" URL so they come
@@ -55,6 +60,8 @@ export default function AddFundsModal({
   chainId,
   networkName,
   shortfall,
+  minimumPurchase = ONRAMP_MIN_CRYPTO,
+  coinbaseUnavailable,
   returnPath,
 }: AddFundsModalProps) {
   const t = useT();
@@ -104,17 +111,24 @@ export default function AddFundsModal({
   const handleProviderFunding = async () => {
     setOnrampError(null);
     setProviderFundingBusy(true);
+    // Same rounding as the Coinbase route: ask for tokens, rounded up to the cent, so the
+    // escrow's >= balance gate cannot fail on dust.
+    const amount = Math.max(Math.ceil(shortfall * 100) / 100, minimumPurchase).toFixed(2);
+    const logged = { wallet: walletAddress, amount };
+    void reportFundingEvent('privy-started', logged);
     try {
       const result = await fundWallet({
-        // Same rounding as the Coinbase route: ask for tokens, rounded up to the cent, so the
-        // escrow's >= balance gate cannot fail on dust.
-        amount: Math.max(Math.ceil(shortfall * 100) / 100, ONRAMP_MIN_CRYPTO).toFixed(2),
+        amount,
         asset: tokenSymbol === 'USDC' ? 'USDC' : { erc20: tokenAddress },
         chainId: chainId ?? config?.chainId ?? 0
       });
-      if (result?.status === 'completed') onClose();
+      const completed = result?.status === 'completed';
+      void reportFundingEvent(completed ? 'privy-completed' : 'privy-cancelled', { ...logged, detail: result?.detail });
+      if (completed) onClose();
     } catch (e) {
-      setOnrampError(e instanceof Error ? e.message : t('addFunds.couldNotOpenFunding'));
+      const message = e instanceof Error ? e.message : t('addFunds.couldNotOpenFunding');
+      void reportFundingEvent('privy-failed', { ...logged, detail: message });
+      setOnrampError(message);
     } finally {
       setProviderFundingBusy(false);
     }
@@ -133,7 +147,7 @@ export default function AddFundsModal({
         // USDC than the shortfall - and the escrow's activation gate is a
         // >= check on the token balance, which then never passes.
         // Rounded up to the cent so the gate cannot fail on dust.
-        presetCryptoAmount: Math.max(Math.ceil(shortfall * 100) / 100, ONRAMP_MIN_CRYPTO),
+        presetCryptoAmount: Math.max(Math.ceil(shortfall * 100) / 100, minimumPurchase),
         returnPath,
       });
     } catch (e) {
@@ -174,17 +188,24 @@ export default function AddFundsModal({
           )}
 
           {showCoinbase && (
-            <button type="button" onClick={handleOnramp} disabled={onrampLoading} className={choiceBox}>
+            <button type="button" onClick={handleOnramp} disabled={onrampLoading || !!coinbaseUnavailable} className={choiceBox}>
               <p className="font-semibold text-secondary-900">
                 {onrampLoading ? t('paymentActionPanel.openingCoinbase') : t('addFunds.addFromCoinbase')}
               </p>
               <p className="mt-1 text-sm text-secondary-500">
-                {t('addFunds.buyWithCardOrBank', { token: tokenSymbol })}
+                {coinbaseUnavailable ?? t('addFunds.buyWithCardOrBank', { token: tokenSymbol })}
               </p>
             </button>
           )}
 
-          <button type="button" onClick={() => setShowTransfer(true)} className={choiceBox}>
+          <button
+            type="button"
+            onClick={() => {
+              void reportFundingEvent('transfer-opened', { wallet: walletAddress });
+              setShowTransfer(true);
+            }}
+            className={choiceBox}
+          >
             <p className="font-semibold text-secondary-900">{t('addFundsModal.transferFromAnotherWallet')}</p>
             <p className="mt-1 text-sm text-secondary-500">
               {t('addFunds.scanOrLink', { token: tokenSymbol })}

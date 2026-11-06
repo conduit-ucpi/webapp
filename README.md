@@ -482,7 +482,17 @@ tab adds no line. `POST /api/coinbase/onramp-returned` works the same way for a 
 writing `COINBASE ONRAMP RETURNED: contract <id>`, and `/api/coinbase/session-token` writes
 `COINBASE ONRAMP STARTED` with the user, contract, button, currency and browser locale. Neither says
 whether anything was bought: that is Coinbase's transaction record, filed under the same user id
-(`partnerUserRef`), and the chain. To look up a link in Grafana: `{container="webapp-prod"} |= "PAYMENT LINK OPENED" |= "<id>"`.
+(`partnerUserRef`), and the chain. `POST /api/funding-event` writes `FUNDING EVENT <event>` for steps only
+the browser sees: `privy-started`, `privy-completed`, `privy-cancelled`, `privy-failed` (with the provider's
+message), `transfer-opened` and `other-wallet-opened`. It is public, so a line is only what a browser reported.
+
+`GET /api/coinbase/onramp-minimum?currency=USD` answers Coinbase's smallest card purchase, cached for an hour.
+The payment screen greys out paying by card into the contract below it, and says why.
+
+`GET /api/coinbase/onramp-support?country=VE` answers whether Coinbase can take card or bank payments in a
+country. The page reads the country from Cloudflare's `/cdn-cgi/trace` on its own domain, greys out Coinbase's
+routes where it cannot, and offers "Not in this country?" because that reading can be wrong. On localhost,
+where there is no Cloudflare, add `?testCountry=VE` to the page's address to try it. To look up a link in Grafana: `{container="webapp-prod"} |= "PAYMENT LINK OPENED" |= "<id>"`.
 
 See backend service repositories for detailed API documentation.
 

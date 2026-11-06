@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo } from 'react';
-import { PrivyProvider, useFundWallet, useLogin, useLogout, usePrivy, useSignTypedData, useWallets } from '@privy-io/react-auth';
+import { PrivyProvider, useDepositFunds, useLogin, useLogout, usePrivy, useSignTypedData, useWallets } from '@privy-io/react-auth';
 import type { ConnectedWallet, SignTypedDataParams, User } from '@privy-io/react-auth';
 import type { ethers } from 'ethers';
 
 import { termsUrl } from '@/lib/auth/siwe-statement';
 import type { AuthConfig } from '@/lib/auth/types';
+import { depositFundsOptions, fundWalletResult } from './fundingRequest';
 import { privyBridge, type PrivyUserInfo } from './privyBridge';
 
 /**
@@ -129,7 +130,7 @@ function PrivyBridge({ config }: { config: AuthConfig }) {
     onError: (code) => privyBridge.loginFailed(String(code))
   });
   const { logout } = useLogout();
-  const { fundWallet } = useFundWallet();
+  const { depositFunds } = useDepositFunds();
   const { signTypedData } = useSignTypedData();
   // Memoised: a fresh chain object every render would re-register the API every render.
   const chain = useMemo(() => chainFromConfig(config), [config.chainId, config.rpcUrl, config.explorerBaseUrl]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -150,22 +151,13 @@ function PrivyBridge({ config }: { config: AuthConfig }) {
       switchChain: async (chainId) => {
         if (active) await active.switchChain(chainId);
       },
-      // The request names the app's chain by id; Privy wants the chain object, which we build
-      // from config rather than import, so the id must agree with it.
-      fundWallet: async (address, request) => {
-        // Privy types the erc20 address as `0x${string}`; ours is a plain string from config.
-        const asset =
-          typeof request.asset === 'object' ? { erc20: request.asset.erc20 as `0x${string}` } : request.asset;
-        const result = await fundWallet({
-          address,
-          options: { chain, asset, amount: request.amount }
-        });
-        return { status: result.status, transactionHash: result.transactionHash };
-      },
+      // Not useFundWallet, which Privy deprecated and which does not surface its Stripe onramp.
+      fundWallet: (address, request) =>
+        fundWalletResult(depositFunds(depositFundsOptions(address, request, chain.id))),
       exportWallet: (address) => exportWallet({ address })
     });
     return () => privyBridge.registerApi(null);
-  }, [login, logout, active, fundWallet, exportWallet, chain, signTypedData]);
+  }, [login, logout, active, depositFunds, exportWallet, chain, signTypedData]);
 
   useEffect(() => {
     privyBridge.publish({

@@ -17,6 +17,8 @@ const mockDetectDevice = detectDevice as jest.MockedFunction<typeof detectDevice
 
 const VALID_ADDRESS = '0x1234567890abcdef1234567890abcdef12345678';
 
+jest.mock('@/lib/visitorCountry', () => ({ visitorCountry: async () => 'VE' }));
+
 const desktopDevice = {
   isMobile: false,
   isTablet: false,
@@ -77,6 +79,7 @@ describe('openCoinbaseOnramp', () => {
     expect(body.purpose).toBe('pay-by-card');
     expect(body.currency).toEqual(expect.any(String));
     expect(body.locale).toBe(navigator.language);
+    expect(body.country).toBe('VE');
   });
 
   it('files the buy under the ref the server chose, and sends none when it chose none', async () => {

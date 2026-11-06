@@ -491,6 +491,12 @@ export const es: Catalogue = {
   'paymentActionPanel.copied': 'Copiado',
   'paymentActionPanel.loading': 'Cargando…',
   'paymentActionPanel.addFundsToThis': 'Agregar fondos a esta billetera',
+  'paymentActionPanel.addFundsBelowMinimum': 'Agregar fondos a esta billetera (transferencia mínima del exchange = {minimum})',
+  'paymentActionPanel.whyNoPay': 'Te faltan {amount} {token}. Agrega fondos primero.',
+  'paymentActionPanel.whyNoAddFunds': 'Tu billetera ya tiene suficiente para pagar.',
+  'paymentActionPanel.whyNoCoinbase': 'Coinbase no acepta pagos con tarjeta ni transferencia bancaria en {country}.',
+  'paymentActionPanel.notInCountry': '¿No estás en {country}?',
+  'paymentActionPanel.whyNoCard': 'Este monto está por debajo de la transferencia mínima del exchange, de {minimum}. Agrega fondos a tu billetera y paga desde ella.',
   'paymentActionPanel.payFromExternalWallet': 'Pagar desde una billetera externa',
   'paymentActionPanel.copyFullWalletAddress': 'Copiar la dirección completa de la billetera',
 

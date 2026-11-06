@@ -69,6 +69,7 @@ const EXTERNAL_FETCH_EXCEPTIONS = [
   'packages/whitelabel-sdk/src/lib/rpc/RpcClient.ts',           // this.rpcUrl — blockchain node
   'packages/whitelabel-sdk/src/lib/auth/magicReachability.ts',  // MAGIC_PROBE_URL — third-party probe
   'packages/whitelabel-sdk/src/hooks/useExchangeRate.ts',       // exchangeRateApiUrl — third-party rates
+  'packages/whitelabel-sdk/src/lib/visitorCountry.ts',          // /cdn-cgi/trace — Cloudflare's, on the page's own origin
   'utils/projectsServer.ts',        // fanout chain service, server-side
 ];
 
@@ -262,6 +263,7 @@ describe('Architecture: single API chokepoint (lib/apiFetch)', () => {
       'packages/whitelabel-sdk/src/lib/rpc/RpcClient.ts',
       'packages/whitelabel-sdk/src/lib/auth/magicReachability.ts',
       'packages/whitelabel-sdk/src/hooks/useExchangeRate.ts',
+      'packages/whitelabel-sdk/src/lib/visitorCountry.ts',
       'utils/projectsServer.ts',
     ]);
   });

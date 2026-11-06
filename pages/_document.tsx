@@ -1,5 +1,6 @@
 import { Html, Head, Main, NextScript, DocumentContext } from 'next/document';
 import Document from 'next/document';
+import { THEME_INIT_SCRIPT } from '../config/csp';
 
 interface DocumentProps {
   farcasterBaseUrl: string;
@@ -59,9 +60,7 @@ export default class CustomDocument extends Document<DocumentProps> {
       </Head>
       <body>
         {/* Apply theme before React hydrates to prevent flash */}
-        <script dangerouslySetInnerHTML={{
-          __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||((!t)&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})();`
-        }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <Main />
         <NextScript />
       </body>

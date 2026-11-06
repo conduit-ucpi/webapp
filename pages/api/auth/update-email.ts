@@ -13,12 +13,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Email is required' });
     }
 
-    console.log('Update email API called with:', {
-      userServiceUrl: process.env.USER_SERVICE_URL,
-      hasAuthCookie: !!req.headers.cookie,
-      email: email
-    });
-
     // Forward request to user service with cookies
     const response = await fetch(`${process.env.USER_SERVICE_URL}/api/user/update-email`, {
       method: 'PUT',
@@ -30,7 +24,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     console.log('UserService update email response:', response.status, response.statusText);
-    const data = await response.json();
+    // A refusal has an empty body. Parsing it threw, which turned every 4xx into a 500 below.
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : {};
 
     // Forward any new cookies from the user service
     const cookies = response.headers.getSetCookie();

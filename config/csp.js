@@ -29,7 +29,10 @@ const inlineScriptHash = (source) =>
 const PRIVY_FRAMES = ['https://auth.privy.io'];
 const WALLETCONNECT_FRAMES = ['https://verify.walletconnect.com', 'https://verify.walletconnect.org'];
 
-/** Who may frame the static site: Farcaster clients, and the Shopify admin for /shopify/embedded. */
+/**
+ * Who may frame the static site: Farcaster clients, the Shopify admin for /shopify/embedded, and the
+ * merchants that embed us. A new embedding merchant goes here.
+ */
 const FRAME_ANCESTORS = [
   "'self'",
   'https://warpcast.com',
@@ -37,6 +40,9 @@ const FRAME_ANCESTORS = [
   'https://farcaster.xyz',
   'https://admin.shopify.com',
   'https://*.myshopify.com',
+  'https://escrow-me.com',
+  'https://www.escrow-me.com',
+  'https://payments.co.ve',
 ];
 
 const DIRECTIVES = {

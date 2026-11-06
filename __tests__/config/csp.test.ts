@@ -45,6 +45,13 @@ describe('Content-Security-Policy', () => {
     ].forEach((source) => expect(headersFile).toContain(source));
   });
 
+  it('lets the merchants that embed us frame the live site', () => {
+    const frameAncestors = headersFile.split('; ').find((d) => d.startsWith('frame-ancestors'))!;
+    ['https://escrow-me.com', 'https://www.escrow-me.com', 'https://payments.co.ve'].forEach((origin) =>
+      expect(frameAncestors.split(' ')).toContain(origin)
+    );
+  });
+
   it('leaves frame-ancestors on the box to next.config.js', () => {
     expect(boxCsp()).not.toContain('frame-ancestors');
     expect(headersFile).toContain('frame-ancestors');

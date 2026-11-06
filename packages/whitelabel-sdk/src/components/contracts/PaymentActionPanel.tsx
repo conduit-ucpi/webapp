@@ -118,6 +118,7 @@ export default function PaymentActionPanel({
 
       await openCoinbaseOnramp({
         destinationAddress: escrowAddress,
+        purpose: 'pay-by-card',
         asset: tokenSymbol,
         // The full amount owed, not a shortfall — nothing is coming from the
         // payer's wallet. Rounded up to the cent so the panel's >= balance

@@ -79,6 +79,8 @@ interface OpenCoinbaseOnrampParams {
    * cancelled, or dismissed. Never called on mobile. See openCoinbasePayUrl.
    */
   onPopupClosed?: () => void;
+  /** Which way into Coinbase this was, for the log. */
+  purpose?: 'add-funds' | 'pay-by-card' | 'guide';
 }
 
 /** Message the return page posts to its opener when the popup finishes. */
@@ -86,10 +88,12 @@ export const ONRAMP_RETURN_MESSAGE = 'coinbase-onramp-return';
 
 interface SessionTokenResponse {
   token?: string;
+  /** The user this buy is filed under at Coinbase; the server decides it. */
+  partnerUserRef?: string;
   error?: string;
 }
 
-async function fetchSessionToken(params: OpenCoinbaseOnrampParams): Promise<string> {
+async function fetchSessionToken(params: OpenCoinbaseOnrampParams): Promise<SessionTokenResponse & { token: string }> {
   const response = await apiFetch('/api/coinbase/session-token', {
     method: 'POST',
     credentials: 'include',
@@ -98,6 +102,11 @@ async function fetchSessionToken(params: OpenCoinbaseOnrampParams): Promise<stri
       address: params.destinationAddress,
       asset: params.asset ?? 'USDC',
       blockchain: params.network ?? 'base',
+      // For the log line only: none of it reaches Coinbase.
+      purpose: params.purpose,
+      contractId: new URLSearchParams(window.location.search).get('contractId') ?? undefined,
+      currency: onrampFiatCurrency(params.fiatCurrency),
+      locale: navigator.language,
     }),
   });
 
@@ -107,7 +116,7 @@ async function fetchSessionToken(params: OpenCoinbaseOnrampParams): Promise<stri
     throw new Error(data.error || `Failed to create Coinbase session (HTTP ${response.status})`);
   }
 
-  return data.token;
+  return { ...data, token: data.token };
 }
 
 /** The fiat currencies Coinbase documents for its hosted onramp presets. */
@@ -122,9 +131,12 @@ export function onrampFiatCurrency(requested?: string): string {
   return COINBASE_FIAT_CURRENCIES.has(candidate) ? candidate : 'USD';
 }
 
-function buildOnrampUrl(token: string, params: OpenCoinbaseOnrampParams): string {
+function buildOnrampUrl(token: string, partnerUserRef: string | undefined, params: OpenCoinbaseOnrampParams): string {
   const url = new URL(COINBASE_ONRAMP_URL);
   url.searchParams.set('sessionToken', token);
+  // Files the buy under the user, for Coinbase's transaction record. Checked against the live
+  // service on 2026-11-06: it does not change the redirect, so it does not reach guest checkout.
+  if (partnerUserRef) url.searchParams.set('partnerUserRef', partnerUserRef);
   // NO defaultAsset / defaultNetwork here — see COINBASE_ONRAMP_URL above. The
   // session token already pins both, and naming them again diverts UK buyers
   // into the US-only guest checkout.
@@ -193,8 +205,8 @@ function buildOnrampUrl(token: string, params: OpenCoinbaseOnrampParams): string
  * Desktop: centered popup. Mobile: full-page redirect (Apple Pay / KYC need a top-level browsing context).
  */
 export async function openCoinbaseOnramp(params: OpenCoinbaseOnrampParams): Promise<void> {
-  const token = await fetchSessionToken(params);
-  const url = buildOnrampUrl(token, params);
+  const { token, partnerUserRef } = await fetchSessionToken(params);
+  const url = buildOnrampUrl(token, partnerUserRef, params);
 
   openCoinbasePayUrl(url, 'coinbase-onramp', params.onPopupClosed);
 }

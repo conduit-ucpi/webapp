@@ -89,7 +89,8 @@ export default function ContractPay() {
   const returning = router.query.resuming === '1' || router.query.method === 'qr';
 
   // Recorded on arrival, signed in or not, because a visitor who leaves at the sign-in screen
-  // leaves no other trace. Coming back from the onramp is the same visit, not another opening.
+  // leaves no other trace. Coming back from the onramp is the same visit, not another opening:
+  // the report remembers the tab, because Coinbase returns to the plain link.
   useEffect(() => {
     if (router.isReady && typeof contractId === 'string' && !returning) {
       void reportPaymentLinkOpened(contractId);

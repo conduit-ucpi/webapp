@@ -288,7 +288,7 @@ describe('TokenGuide', () => {
         button.click();
       });
 
-      expect(mockOpenCoinbaseOnramp).toHaveBeenCalledWith({ destinationAddress: mockUser.walletAddress });
+      expect(mockOpenCoinbaseOnramp).toHaveBeenCalledWith({ destinationAddress: mockUser.walletAddress, purpose: 'guide' });
     });
 
     it('always shows USDC in heading regardless of currency prop (Coinbase only delivers USDC)', () => {

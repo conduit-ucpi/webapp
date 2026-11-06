@@ -1,5 +1,8 @@
+import { useEffect } from 'react';
+import { useRouter } from 'next/router';
 import CoinbaseReturnScreen from '@/components/coinbase/CoinbaseReturnScreen';
 import { ONRAMP_RETURN_MESSAGE } from '@/lib/coinbaseOnramp';
+import { reportOnrampReturned } from '@/lib/reportOnrampReturned';
 
 /**
  * Coinbase's redirectUrl target after a buy. See CoinbaseReturnScreen.
@@ -9,5 +12,13 @@ import { ONRAMP_RETURN_MESSAGE } from '@/lib/coinbaseOnramp';
  *    to a missing page.
  */
 export default function OnrampReturnPage() {
+  const router = useRouter();
+  const { isReady, query } = router;
+  const returnPath = query.return;
+
+  useEffect(() => {
+    if (isReady) void reportOnrampReturned(returnPath);
+  }, [isReady, returnPath]);
+
   return <CoinbaseReturnScreen message={ONRAMP_RETURN_MESSAGE} />;
 }

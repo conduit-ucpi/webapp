@@ -477,7 +477,12 @@ One route under `/api/contracts/` goes to no backend service: `POST /api/contrac
 `/contract-pay` calls it on arrival, signed in or not, and it writes `PAYMENT LINK OPENED: contract <id>`
 to this app's log. It is public, has no cookies and no visitor identifier, and writes at most 120 lines
 per address per hour, so a line means the link was opened or the route was called, not that anyone tried
-to pay. To look up a link in Grafana: `{container="webapp-prod"} |= "PAYMENT LINK OPENED" |= "<id>"`.
+to pay. The page reports each link once per browser tab, so a reload or a return from Coinbase in that
+tab adds no line. `POST /api/coinbase/onramp-returned` works the same way for a buyer Coinbase sends back,
+writing `COINBASE ONRAMP RETURNED: contract <id>`, and `/api/coinbase/session-token` writes
+`COINBASE ONRAMP STARTED` with the user, contract, button, currency and browser locale. Neither says
+whether anything was bought: that is Coinbase's transaction record, filed under the same user id
+(`partnerUserRef`), and the chain. To look up a link in Grafana: `{container="webapp-prod"} |= "PAYMENT LINK OPENED" |= "<id>"`.
 
 See backend service repositories for detailed API documentation.
 

@@ -6,6 +6,7 @@ import {
   getCdpCredentials,
   isValidEvmAddress,
 } from '@/lib/server/coinbaseCdp';
+import { partnerUserRefFor } from '@/lib/server/coinbaseOfframp';
 
 const COINBASE_PATH = '/onramp/v1/token';
 
@@ -13,6 +14,16 @@ interface SessionTokenRequest {
   address: string;
   blockchain?: string;
   asset?: string;
+  /** For the log only: which button, which request, and what the browser says about itself. */
+  purpose?: unknown;
+  contractId?: unknown;
+  currency?: unknown;
+  locale?: unknown;
+}
+
+/** The browser's word, so only its shape is trusted: nothing else reaches the log. */
+function loggable(value: unknown, fallback: string): string {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(value) ? value : fallback;
 }
 
 interface CoinbaseTokenResponse {
@@ -43,7 +54,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Invalid session' });
   }
 
-  const { address, blockchain = 'base', asset = 'USDC' } = (req.body || {}) as SessionTokenRequest;
+  const {
+    address,
+    blockchain = 'base',
+    asset = 'USDC',
+    purpose,
+    contractId,
+    currency,
+    locale,
+  } = (req.body || {}) as SessionTokenRequest;
 
   if (!isValidEvmAddress(address)) {
     return res.status(400).json({ error: 'Invalid wallet address' });
@@ -91,7 +110,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(502).json({ error: 'Invalid response from Coinbase' });
     }
 
-    return res.status(200).json({ token: data.token });
+    // Derived from the session, never the body, as the offramp's is. It files this buy under the
+    // user at Coinbase, which is what makes its transaction record and webhooks attributable.
+    const partnerUserRef = partnerUserRefFor(identity);
+
+    // Started means the token was minted, so the widget is about to open. How it ended is
+    // Coinbase's to say. The locale is the browser's setting, not where the buyer is.
+    console.log(
+      `COINBASE ONRAMP STARTED: user ${loggable(partnerUserRef, 'unknown')} ` +
+        `contract ${loggable(contractId, 'none')} purpose ${loggable(purpose, 'unknown')} ` +
+        `currency ${loggable(currency, 'unknown')} locale ${loggable(locale, 'unknown')} ` +
+        `destination ${address.slice(0, 6)}…${address.slice(-4)}`
+    );
+
+    return res.status(200).json({ token: data.token, ...(partnerUserRef ? { partnerUserRef } : {}) });
   } catch (error) {
     console.error('Session token generation error:', error);
     return res.status(500).json({ error: 'Internal server error' });

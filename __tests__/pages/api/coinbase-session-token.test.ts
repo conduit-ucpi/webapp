@@ -111,6 +111,38 @@ describe('/api/coinbase/session-token', () => {
     expect(res._getStatusCode()).toBe(401);
   });
 
+  describe('the start of a buy', () => {
+    let log: jest.SpyInstance;
+    beforeEach(() => {
+      log = jest.spyOn(console, 'log').mockImplementation(() => {});
+    });
+    afterEach(() => log.mockRestore());
+
+    const mint = async (body: Record<string, unknown>) => {
+      mockUserServiceOk();
+      const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid', body: { address: VALID_ADDRESS, ...body } });
+      await handler(req, res);
+      return { res, line: log.mock.calls.map(([text]) => String(text)).find((text) => text.startsWith('COINBASE ONRAMP STARTED')) };
+    };
+
+    it('logs the way in, and shortens the address', async () => {
+      const { line } = await mint({ contractId: 'req-1', purpose: 'pay-by-card', currency: 'USD', locale: 'es-US' });
+      expect(line).toContain('contract req-1 purpose pay-by-card currency USD locale es-US destination 0x1234…5678');
+    });
+
+    it('logs nothing it cannot vouch for the shape of', async () => {
+      const { line } = await mint({ contractId: 'x\nCOINBASE ONRAMP STARTED: fake', locale: 42 });
+      expect(line).toContain('contract none');
+      expect(line).toContain('locale unknown');
+      expect(line).not.toContain('fake');
+    });
+
+    it('takes the ref from the session, whatever the body says', async () => {
+      const { res } = await mint({ partnerUserRef: 'someone-else' });
+      expect(JSON.parse(res._getData()).partnerUserRef).not.toBe('someone-else');
+    });
+  });
+
   it('returns 400 for an invalid wallet address', async () => {
     mockUserServiceOk();
     const { req, res } = makeReq({ cookie: 'AUTH-TOKEN=valid', body: { address: 'not-an-address' } });
@@ -125,7 +157,7 @@ describe('/api/coinbase/session-token', () => {
     await handler(req, res);
 
     expect(res._getStatusCode()).toBe(200);
-    expect(JSON.parse(res._getData())).toEqual({ token: 'cb-session-token-xyz' });
+    expect(JSON.parse(res._getData())).toMatchObject({ token: 'cb-session-token-xyz' });
 
     expect(mockGenerateJwt).toHaveBeenCalledWith(
       expect.objectContaining({

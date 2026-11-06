@@ -62,11 +62,36 @@ describe('openCoinbaseOnramp', () => {
     expect(fetchCall[0]).toBe('/api/coinbase/session-token');
     expect(fetchCall[1].method).toBe('POST');
     expect(fetchCall[1].credentials).toBe('include');
-    expect(JSON.parse(fetchCall[1].body)).toEqual({
+    expect(JSON.parse(fetchCall[1].body)).toMatchObject({
       address: VALID_ADDRESS,
       asset: 'USDC',
       blockchain: 'base',
     });
+  });
+
+  it('tells the server which way in this was, for its log', async () => {
+    mockDetectDevice.mockReturnValue(desktopDevice);
+    await openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS, purpose: 'pay-by-card' });
+
+    const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(body.purpose).toBe('pay-by-card');
+    expect(body.currency).toEqual(expect.any(String));
+    expect(body.locale).toBe(navigator.language);
+  });
+
+  it('files the buy under the ref the server chose, and sends none when it chose none', async () => {
+    mockDetectDevice.mockReturnValue(desktopDevice);
+    const opened = () => new URL((window.open as jest.Mock).mock.calls.at(-1)[0]);
+
+    await openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS });
+    expect(opened().searchParams.has('partnerUserRef')).toBe(false);
+
+    (global.fetch as jest.Mock).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ token: 'tok', partnerUserRef: 'user-1' }),
+    });
+    await openCoinbaseOnramp({ destinationAddress: VALID_ADDRESS });
+    expect(opened().searchParams.get('partnerUserRef')).toBe('user-1');
   });
 
   it('opens a popup on desktop with the sessionToken in the URL', async () => {

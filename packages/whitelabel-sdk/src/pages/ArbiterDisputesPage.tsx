@@ -13,7 +13,7 @@ import { btnPrimary } from '@/utils/landingStyles';
 import { useT } from '../i18n';
 
 /**
- * The tiebreaker's own screen: every deployed escrow whose record names the connected wallet as
+ * The Third Voter's own screen: every deployed escrow whose record names the connected wallet as
  * arbiter (MARKETPLACE_OPENSPEC §3.3; contractservice `?role=arbiter`).
  *
  * It is deliberately the SAME dispute screen the parties use. DisputeManagementModal already shows

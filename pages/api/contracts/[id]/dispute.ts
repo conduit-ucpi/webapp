@@ -35,7 +35,7 @@ async function handleSubmitDisputeEntry(req: NextApiRequest, res: NextApiRespons
     }
 
     // A null figure is a note without a vote (contractservice renders it as "No figure
-    // submitted"): the tiebreaker's resignation, for one. It must never be coerced to 0,
+    // submitted"): the Third Voter's resignation, for one. It must never be coerced to 0,
     // which would read as a real vote of everything to the seller.
     if (disputeEntry.refundPercent == null) {
       disputeEntry.refundPercent = null;

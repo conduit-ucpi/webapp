@@ -1,7 +1,7 @@
 /**
  * The Terms of Service and Privacy Policy translations cannot wander from the English.
  *
- * 1. SAME SHAPE. Every section, numbered heading, Schedule 1 clause, list item, link, code name and
+ * 1. SAME SHAPE. Every section, numbered heading, numbered clause, list item, link, code name and
  *    button in the English has its counterpart in the translation, in the same order. Adding or
  *    removing a clause on one side only fails here.
  * 2. SAME ENGLISH. Each translation records, as TRANSLATED_FROM, a fingerprint of the English text it
@@ -38,7 +38,7 @@ function shape(root: HTMLElement): string[] {
       case 'code':
         return `code ${text}`;
       case 'span':
-        // Schedule 1 sub-clause numbers ("2.4").
+        // Sub-clause numbers ("2.4").
         return /^\d+\.\d+$/.test(text) ? `clause ${text}` : 'span';
       default:
         return tag;

@@ -5,7 +5,7 @@ import CustomArbiterNotice from '@/components/contracts/CustomArbiterNotice';
 const VALID_ARBITER = '0x4f11cEf6E89CB7F4050E89BA88A5f2Fe1e53482d';
 
 describe('CustomArbiterNotice', () => {
-  it('shows the email the tiebreaker was named by, beside the wallet it resolved to', () => {
+  it('shows the email the Third Voter was named by, beside the wallet it resolved to', () => {
     render(<CustomArbiterNotice arbiterAddress={VALID_ARBITER} arbiterEmail="mediator@example.com" />);
     expect(screen.getByTestId('custom-arbiter-email')).toHaveTextContent('mediator@example.com');
     expect(screen.getByTestId('custom-arbiter-address')).toHaveTextContent(VALID_ARBITER);
@@ -19,13 +19,13 @@ describe('CustomArbiterNotice', () => {
 
     // Body copy — new wording references "application admin"
     expect(
-      screen.getByText(/non-standard tiebreaker chosen by the seller/i)
+      screen.getByText(/non-standard Third Voter chosen by the seller/i)
     ).toBeInTheDocument();
     expect(
       screen.getByText(/not the application admin/i)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/Verify you trust this tiebreaker before paying\./i)
+      screen.getByText(/Verify you trust this Third Voter before paying\./i)
     ).toBeInTheDocument();
 
     // Address displayed in FULL (not truncated) so the buyer can verify it.
@@ -80,7 +80,7 @@ describe('CustomArbiterNotice', () => {
       const copyButton = screen.getByTestId('custom-arbiter-copy-button');
       expect(copyButton).toBeInTheDocument();
       expect(copyButton).toHaveAttribute('type', 'button');
-      expect(copyButton).toHaveAttribute('aria-label', 'Copy tiebreaker address');
+      expect(copyButton).toHaveAttribute('aria-label', 'Copy Third Voter address');
       expect(copyButton.textContent).toBe('Copy');
     });
 

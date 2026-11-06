@@ -3,7 +3,7 @@ import { screen, fireEvent, waitFor } from '@testing-library/dom';
 import ArbiterDisputesPage from '@/pages/ArbiterDisputesPage';
 
 /**
- * The tiebreaker's screen lists the escrows naming them (contractservice `?role=arbiter`) and
+ * The Third Voter's screen lists the escrows naming them (contractservice `?role=arbiter`) and
  * opens the SAME dispute modal the parties use. The modal is mocked here; its behaviour for an
  * arbiter viewer is pinned in its own tests.
  */
@@ -48,7 +48,7 @@ describe('ArbiterDisputesPage', () => {
     expect(fetcher).toHaveBeenCalledWith('/api/combined-contracts?role=arbiter');
 
     expect(screen.getByText('Needs your decision')).toBeInTheDocument();
-    expect(screen.getByText('Other protected payments naming you as tiebreaker')).toBeInTheDocument();
+    expect(screen.getByText('Other protected payments naming you as Third Voter')).toBeInTheDocument();
     expect(screen.getByText('Escrow a1')).toBeInTheDocument();
     // Closed escrows have no seat worth showing.
     expect(screen.queryByText('Escrow c1')).toBeNull();
@@ -67,7 +67,7 @@ describe('ArbiterDisputesPage', () => {
     fetcher.mockResolvedValue({ ok: true, json: async () => [] });
     render(<ArbiterDisputesPage />);
 
-    await waitFor(() => expect(screen.getByText('Nobody has named you as a tiebreaker yet.')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Nobody has named you as a Third Voter yet.')).toBeInTheDocument());
   });
 
   it('asks a signed-out visitor to sign in rather than fetching', () => {

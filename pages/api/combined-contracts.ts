@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // SECURITY: Never log headers - they contain bearer tokens and API keys
 
-    // `?role=arbiter` lists the escrows naming the viewer as tiebreaker instead of their own
+    // `?role=arbiter` lists the escrows naming the viewer as Third Voter instead of their own
     // (contractservice README). Whitelisted rather than forwarded blind.
     const role = req.query.role === 'arbiter' ? '?role=arbiter' : '';
 

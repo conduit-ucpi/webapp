@@ -259,7 +259,7 @@ export default function CreateContractWizard() {
           newErrors.description = t('wizard.errDescription');
         }
 
-        // Validate the optional tiebreaker (advanced field): a wallet address or an email.
+        // Validate the optional Third Voter (advanced field): a wallet address or an email.
         // If blank/whitespace-only: skip — this is an optional override.
         // An email is resolved to that person's wallet by contractservice when the request is
         // stored (it is part of the escrow's address, so it must be a wallet before any quote).

@@ -3,7 +3,7 @@ import { useT } from '../../i18n';
 
 interface CustomArbiterNoticeProps {
   arbiterAddress?: string | null;
-  /** Shown beside the wallet when the seller named the tiebreaker by email: who they chose, not only where it resolved. */
+  /** Shown beside the wallet when the seller named the Third Voter by email: who they chose, not only where it resolved. */
   arbiterEmail?: string | null;
 }
 
@@ -50,7 +50,7 @@ export default function CustomArbiterNotice({ arbiterAddress, arbiterEmail }: Cu
       <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">{t('customArbiterNotice.customDisputeResolver')}</p>
       <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-1">{t('customArbiterNotice.thisContractUsesA')}</p>
       <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-2">
-        {t('customArbiterNotice.tiebreaker')}{' '}
+        {t('customArbiterNotice.thirdVoter')}{' '}
         {arbiterEmail ? (
           <>
             <span data-testid="custom-arbiter-email">{arbiterEmail}</span>{' '}

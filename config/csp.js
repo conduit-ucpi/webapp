@@ -42,7 +42,13 @@ const FRAME_ANCESTORS = [
   'https://*.myshopify.com',
   'https://escrow-me.com',
   'https://www.escrow-me.com',
+  'https://pay.co.ve',
+  'https://payment.co.ve',
   'https://payments.co.ve',
+  'https://payment.com.ve',
+  'https://payments.com.ve',
+  'https://cobro.co.ve',
+  'https://cobro.com.ve',
 ];
 
 const DIRECTIVES = {

@@ -19,7 +19,7 @@ describe('explainTransactionFailure', () => {
     const text = explainTransactionFailure(refused('NotAuthorizedToVote', WRONG), t as any)!;
 
     expect(text).toContain(WRONG);
-    expect(text).toMatch(/not the buyer, the seller or the tiebreaker/);
+    expect(text).toMatch(/not the buyer, the seller or the Third Voter/);
     expect(text).toMatch(/Sign out, sign back in/);
     expect(text).toMatch(/Nothing was sent/);
   });

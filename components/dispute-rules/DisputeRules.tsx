@@ -25,6 +25,9 @@ export function inBrand(text: string, brand: string): string {
 
 const SHORT_SHA = 12;
 
+/** The served sections' numbers in the Dispute Resolution Rules, which number them differently from the policy file. */
+const PUBLIC_NUMBER: Record<string, string> = { '2a': '6.1', '3': '6.2', '4': '6.3', '4a': '6.4' };
+
 function formatDate(unixSeconds: number): string {
   return new Date(unixSeconds * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
 }
@@ -43,7 +46,11 @@ export function VersionLine({ rules }: { rules: PolicyRules }) {
   );
 }
 
-export default function DisputeRules() {
+/**
+ * @param only which served sections to show, by their number in the policy file. Default: all.
+ * @param bare the sections only: no version line, and no headings, for a section that numbers its own clauses.
+ */
+export default function DisputeRules({ only, bare = false }: { only?: string[]; bare?: boolean }) {
   const brand = useBrand().name;
   const [rules, setRules] = useState<PolicyRules | null>(null);
   const [failed, setFailed] = useState(false);
@@ -76,12 +83,14 @@ export default function DisputeRules() {
   }
   return (
     <div className="text-secondary-600 dark:text-secondary-300">
-      <VersionLine rules={rules} />
-      {rules.sections.map((section) => (
+      {!bare && <VersionLine rules={rules} />}
+      {rules.sections.filter((section) => !only || only.includes(section.number)).map((section) => (
         <div key={section.number} className="mb-6" data-testid={`rules-section-${section.number}`}>
-          <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">
-            §{section.number} {inBrand(section.title, brand)}
-          </h3>
+          {!bare && (
+            <h3 className="text-xl font-semibold text-secondary-700 dark:text-secondary-200 mb-2">
+              {PUBLIC_NUMBER[section.number] ?? `§${section.number}`} {inBrand(section.title, brand)}
+            </h3>
+          )}
           <RulesMarkdown markdown={inBrand(section.markdown, brand)} />
         </div>
       ))}

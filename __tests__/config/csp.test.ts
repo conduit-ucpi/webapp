@@ -47,7 +47,17 @@ describe('Content-Security-Policy', () => {
 
   it('lets the merchants that embed us frame the live site', () => {
     const frameAncestors = headersFile.split('; ').find((d) => d.startsWith('frame-ancestors'))!;
-    ['https://escrow-me.com', 'https://www.escrow-me.com', 'https://payments.co.ve'].forEach((origin) =>
+    [
+      'https://escrow-me.com',
+      'https://www.escrow-me.com',
+      'https://pay.co.ve',
+      'https://payment.co.ve',
+      'https://payments.co.ve',
+      'https://payment.com.ve',
+      'https://payments.com.ve',
+      'https://cobro.co.ve',
+      'https://cobro.com.ve',
+    ].forEach((origin) =>
       expect(frameAncestors.split(' ')).toContain(origin)
     );
   });

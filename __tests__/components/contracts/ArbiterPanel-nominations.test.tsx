@@ -145,18 +145,18 @@ describe('agreeing to their suggestion', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /use this address/i }));
 
-    expect(screen.getByLabelText(/nominate a tiebreaker/i)).toHaveValue(BUYERS_PICK);
+    expect(screen.getByLabelText(/nominate a Third Voter/i)).toHaveValue(BUYERS_PICK);
     expect(nominateArbiter).not.toHaveBeenCalled();
   });
 
   it('still keeps the warning about who the address belongs to', () => {
     show({ nominatedByBuyer: BUYERS_PICK }, 'recipient');
 
-    expect(screen.getByText(/no register of approved tiebreakers/i)).toBeInTheDocument();
+    expect(screen.getByText(/no register of approved Third Voters/i)).toBeInTheDocument();
   });
 });
 
-describe('naming a tiebreaker by email', () => {
+describe('naming a Third Voter by email', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     resolveArbiterEmail.mockReset();
@@ -169,7 +169,7 @@ describe('naming a tiebreaker by email', () => {
     nominateArbiter.mockResolvedValue(undefined);
     show({}, 'buyer');
 
-    await userEvent.type(screen.getByLabelText(/nominate a tiebreaker/i), 'mediator@example.com');
+    await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'mediator@example.com');
     await userEvent.click(screen.getByRole('button', { name: 'Nominate' }));
 
     await waitFor(() => expect(nominateArbiter).toHaveBeenCalledWith('0xescrow', MEDIATORS_WALLET));
@@ -182,17 +182,17 @@ describe('naming a tiebreaker by email', () => {
     nominateArbiter.mockResolvedValue(undefined);
     show({ nominatedByRecipient: RECIPIENTS_PICK }, 'buyer');
 
-    await userEvent.type(screen.getByLabelText(/nominate a tiebreaker/i), 'mediator@example.com');
+    await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'mediator@example.com');
     await userEvent.click(screen.getByRole('button', { name: 'Nominate' }));
 
-    expect(await screen.findByText('Nominations matched — that tiebreaker is now seated.')).toBeInTheDocument();
+    expect(await screen.findByText('Nominations matched — that Third Voter is now seated.')).toBeInTheDocument();
   });
 
   it('nominates nobody when the email cannot be looked up, and says why', async () => {
     resolveArbiterEmail.mockRejectedValue(new Error('Could not look up that email right now. Try again, or use a wallet address.'));
     show({}, 'buyer');
 
-    await userEvent.type(screen.getByLabelText(/nominate a tiebreaker/i), 'mediator@example.com');
+    await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'mediator@example.com');
     await userEvent.click(screen.getByRole('button', { name: 'Nominate' }));
 
     expect(await screen.findByText(/Could not look up that email/)).toBeInTheDocument();
@@ -203,7 +203,7 @@ describe('naming a tiebreaker by email', () => {
     nominateArbiter.mockResolvedValue(undefined);
     show({}, 'buyer');
 
-    await userEvent.type(screen.getByLabelText(/nominate a tiebreaker/i), MEDIATORS_WALLET);
+    await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), MEDIATORS_WALLET);
     await userEvent.click(screen.getByRole('button', { name: 'Nominate' }));
 
     await waitFor(() => expect(nominateArbiter).toHaveBeenCalledWith('0xescrow', MEDIATORS_WALLET));
@@ -213,7 +213,7 @@ describe('naming a tiebreaker by email', () => {
   it('will not nominate something that is neither', async () => {
     show({}, 'buyer');
 
-    await userEvent.type(screen.getByLabelText(/nominate a tiebreaker/i), 'mediator');
+    await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'mediator');
 
     expect(screen.getByRole('button', { name: 'Nominate' })).toBeDisabled();
     expect(screen.getByText('That is not a valid wallet address or email address.')).toBeInTheDocument();
@@ -224,7 +224,7 @@ describe('naming a tiebreaker by email', () => {
       resolveArbiterEmail.mockResolvedValue(MEDIATORS_WALLET);
       show({}, 'buyer');
 
-      await userEvent.type(screen.getByLabelText(/nominate a tiebreaker/i), 'mediator@example.com');
+      await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'mediator@example.com');
 
       expect(await screen.findByText(MEDIATORS_WALLET)).toBeInTheDocument();
       expect(screen.getByText(/mediator@example.com has the StableDrop wallet/)).toBeInTheDocument();
@@ -238,7 +238,7 @@ describe('naming a tiebreaker by email', () => {
       show({ nominatedByRecipient: RECIPIENTS_PICK }, 'buyer');
 
       expect(screen.getByText(/type that person's email below/)).toBeInTheDocument();
-      await userEvent.type(screen.getByLabelText(/nominate a tiebreaker/i), 'mediator@example.com');
+      await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'mediator@example.com');
 
       expect(await screen.findByText(/This is the person the other party suggested/)).toBeInTheDocument();
       expect(nominateArbiter).not.toHaveBeenCalled();
@@ -248,7 +248,7 @@ describe('naming a tiebreaker by email', () => {
       resolveArbiterEmail.mockResolvedValue(MEDIATORS_WALLET);
       show({ nominatedByRecipient: RECIPIENTS_PICK }, 'buyer');
 
-      await userEvent.type(screen.getByLabelText(/nominate a tiebreaker/i), 'someone@example.com');
+      await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'someone@example.com');
 
       expect(await screen.findByText('This is not the person the other party suggested.')).toBeInTheDocument();
     });
@@ -257,7 +257,7 @@ describe('naming a tiebreaker by email', () => {
       resolveArbiterEmail.mockResolvedValue(null);
       show({ nominatedByRecipient: RECIPIENTS_PICK }, 'buyer');
 
-      await userEvent.type(screen.getByLabelText(/nominate a tiebreaker/i), 'new@example.com');
+      await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'new@example.com');
 
       expect(await screen.findByText(/new@example.com has not signed in to StableDrop yet/)).toBeInTheDocument();
       expect(screen.getByText('This is not the person the other party suggested.')).toBeInTheDocument();
@@ -266,7 +266,7 @@ describe('naming a tiebreaker by email', () => {
     it('shows a match for a pasted wallet address too, with no lookup', async () => {
       show({ nominatedByRecipient: RECIPIENTS_PICK }, 'buyer');
 
-      await userEvent.type(screen.getByLabelText(/nominate a tiebreaker/i), RECIPIENTS_PICK);
+      await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), RECIPIENTS_PICK);
 
       expect(screen.getByText(/This is the person the other party suggested/)).toBeInTheDocument();
       expect(resolveArbiterEmail).not.toHaveBeenCalled();
@@ -280,7 +280,7 @@ describe('refusing a party before anybody signs', () => {
     resolveArbiterEmail.mockReset();
   });
 
-  const field = () => screen.getByLabelText(/nominate a tiebreaker/i);
+  const field = () => screen.getByLabelText(/nominate a Third Voter/i);
 
   it('says an email is the seller and disables Nominate', async () => {
     // Production, 2026-10-07: charlie@stabledrop.me was the seller, and the escrow reverted.
@@ -289,7 +289,7 @@ describe('refusing a party before anybody signs', () => {
 
     await userEvent.type(field(), 'charlie@stabledrop.me');
 
-    expect(await screen.findByText("That's the seller on this payment; a party can't be the tiebreaker.")).toBeInTheDocument();
+    expect(await screen.findByText("That's the seller on this payment; a party can't be the Third Voter.")).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Nominate' })).toBeDisabled();
   });
 
@@ -298,7 +298,7 @@ describe('refusing a party before anybody signs', () => {
 
     await userEvent.type(field(), BUYER);
 
-    expect(screen.getByText("That's the buyer on this payment; a party can't be the tiebreaker.")).toBeInTheDocument();
+    expect(screen.getByText("That's the buyer on this payment; a party can't be the Third Voter.")).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Nominate' })).toBeDisabled();
   });
 
@@ -330,7 +330,7 @@ describe('a refusal from the escrow, in words', () => {
   const nominate = async (error: Error) => {
     nominateArbiter.mockRejectedValue(error);
     show({}, 'buyer');
-    await userEvent.type(screen.getByLabelText(/nominate a tiebreaker/i), '0x1111111111111111111111111111111111111111');
+    await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), '0x1111111111111111111111111111111111111111');
     await userEvent.click(screen.getByRole('button', { name: 'Nominate' }));
   };
 

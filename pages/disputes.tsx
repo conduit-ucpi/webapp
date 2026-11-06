@@ -1,5 +1,5 @@
 /**
- * Route for the SDK's ArbiterDisputesPage: the escrows the signed-in user is tiebreaker on.
+ * Route for the SDK's ArbiterDisputesPage: the escrows the signed-in user is Third Voter on.
  *
  * As with /dashboard, the page lives in packages/whitelabel-sdk/src/pages so a tenant can mount
  * the same flow; this file only gives it a URL here.

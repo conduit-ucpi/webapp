@@ -230,7 +230,7 @@ export const pagesEn = {
   'integrate.platform.buyer.1': 'Funds held in a payment smart contract',
   'integrate.platform.buyer.2': 'Time-delayed release (default 7 days)',
   'integrate.platform.buyer.3': 'Dispute mechanism',
-  'integrate.platform.buyer.4': 'Independent tiebreaker',
+  'integrate.platform.buyer.4': 'Independent Third Voter',
   'integrate.platform.gas.label': 'No gas fees',
   'integrate.platform.gas.1': 'Platform covers all blockchain fees',
   'integrate.platform.gas.2': 'Users pay 1% platform fee',
@@ -484,7 +484,7 @@ export const pagesEn = {
   'feedback.failed': 'Your message could not be sent. Try again in a minute.',
 
   // Legal pages (/terms-of-service, /privacy-policy, and their tabs on /plugin).
-  'legal.termsTitle': 'Terms of Service',
+  'legal.termsTitle': 'Stabledrop Platform Terms',
   'legal.privacyTitle': 'Privacy Policy',
   'legal.lastUpdated': 'Last Updated:',
   'legal.version': 'Version:',

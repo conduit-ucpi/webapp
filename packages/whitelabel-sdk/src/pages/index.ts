@@ -11,7 +11,7 @@ export { default as CreatePage } from './CreatePage';
 // a tenant's own checkout.
 export { default as ContractCreatePage } from './ContractCreatePage';
 export { default as DashboardPage } from './DashboardPage';
-// The tiebreaker's screen: escrows naming the signed-in wallet as arbiter, with the same dispute
+// The Third Voter's screen: escrows naming the signed-in wallet as arbiter, with the same dispute
 // modal the parties use (read both sides, vote with a reason, resign the seat).
 export { default as ArbiterDisputesPage } from './ArbiterDisputesPage';
 export { default as ContractPayPage } from './ContractPayPage';

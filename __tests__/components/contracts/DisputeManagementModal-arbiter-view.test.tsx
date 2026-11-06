@@ -3,7 +3,7 @@ import { screen } from '@testing-library/dom';
 import DisputeManagementModal from '@/components/contracts/DisputeManagementModal';
 
 /**
- * The seated tiebreaker opens the same modal the parties use. Two things change for them: the
+ * The seated Third Voter opens the same modal the parties use. Two things change for them: the
  * figure form is framed as their vote, and the arbiter panel offers resignation rather than the
  * parties' nomination control. Both sides' filings are shown exactly as they are to the parties.
  */
@@ -43,14 +43,14 @@ const contract: any = {
   ]
 };
 
-describe('DisputeManagementModal for the seated tiebreaker', () => {
+describe('DisputeManagementModal for the seated Third Voter', () => {
   it('shows both sides, frames the form as their vote, and offers resignation', () => {
     render(<DisputeManagementModal isOpen onClose={jest.fn()} contract={contract} onRefresh={jest.fn()} />);
 
     expect(screen.getByText('Only half the tiles arrived')).toBeInTheDocument();
     expect(screen.getByText('Everything was delivered and signed for')).toBeInTheDocument();
-    expect(screen.getByText('Cast your tiebreaker vote')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Resign as tiebreaker' })).toBeInTheDocument();
+    expect(screen.getByText('Cast your vote as Third Voter')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Resign as Third Voter' })).toBeInTheDocument();
     // Not a party: no nominating.
     expect(screen.queryByRole('button', { name: 'Nominate' })).toBeNull();
   });
@@ -67,7 +67,7 @@ describe('DisputeManagementModal for the seated tiebreaker', () => {
     const onRefresh = jest.fn(() => { calls.push('list'); });
 
     render(<DisputeManagementModal isOpen onClose={jest.fn()} contract={contract} onRefresh={onRefresh} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Resign as tiebreaker' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Resign as Third Voter' }));
     fireEvent.click(screen.getByRole('button', { name: 'Yes, resign' }));
 
     await waitFor(() => expect(onRefresh).toHaveBeenCalled());
@@ -88,7 +88,7 @@ describe('DisputeManagementModal for the seated tiebreaker', () => {
     const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
 
     render(<DisputeManagementModal isOpen onClose={jest.fn()} contract={contract} onRefresh={onRefresh} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Resign as tiebreaker' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Resign as Third Voter' }));
     fireEvent.click(screen.getByRole('button', { name: 'Yes, resign' }));
 
     await waitFor(() => expect(onRefresh).toHaveBeenCalled());

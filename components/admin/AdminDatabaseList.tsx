@@ -59,7 +59,7 @@ const STATUSES: Array<{ value: string; label: string; meaning: string }> = [
   {
     value: 'DISPUTED',
     label: 'Disputed',
-    meaning: 'The buyer has raised a dispute. The money stays held until two of the three votes (buyer, seller, third voter) match.'
+    meaning: 'The buyer has raised a dispute. The money stays held until two of the three votes (buyer, seller, Third Voter) match.'
   },
   {
     value: 'RESOLVED',

@@ -93,7 +93,7 @@ export const es: Catalogue = {
   'wizard.created': '¡Solicitud de pago creada!',
   'wizard.createFailed': 'No se pudo crear la solicitud de pago',
   'wizard.errDescription': 'La descripción debe tener entre 1 y 160 caracteres',
-  'wizard.errArbiter': 'Introduce una dirección de billetera o un correo electrónico para el tercero de desempate',
+  'wizard.errArbiter': 'Introduce una dirección de billetera o un correo electrónico para el Tercer Votante',
   'wizard.errAmount': 'Ingresa un monto válido',
   'wizard.errDate': 'Selecciona una fecha y hora válidas',
   'wizard.errPast': 'La fecha de liberación debe ser futura',
@@ -211,7 +211,7 @@ export const es: Catalogue = {
   'terms.advancedOptions': 'Opciones avanzadas',
   'common.progress': 'Progreso',
   'pay.payButton': 'Pagar',
-  'terms.arbiterAddress': 'Tercero de desempate',
+  'terms.arbiterAddress': 'Tercer Votante',
   'terms.arbiterHelp':
     'Opcional. Quien tiene el tercer voto si hay una disputa: una dirección de billetera o un correo electrónico (si nunca ha iniciado sesión, se le creará una billetera y se le invitará). Déjalo en blanco para usar el predeterminado.',
   'review.nextBody':
@@ -338,9 +338,9 @@ export const es: Catalogue = {
   'addFundsModal.orSendManuallyTo': 'O envía manualmente a esta dirección',
   'addFundsModal.back': 'Atrás',
 
-  'arbiterPanel.readingTheArbiterSeat': 'Consultando el puesto del tercero de desempate…',
-  'arbiterPanel.arbiterSeat': 'Puesto del tercero de desempate',
-  'arbiterPanel.nominateAnArbiter': 'Nominar un tercero de desempate',
+  'arbiterPanel.readingTheArbiterSeat': 'Consultando el puesto del Tercer Votante…',
+  'arbiterPanel.arbiterSeat': 'Puesto del Tercer Votante',
+  'arbiterPanel.nominateAnArbiter': 'Nominar un Tercer Votante',
   'arbiterPanel.namingTheSameAddress':
     'Nombrar la misma dirección que la otra parte lo designa de inmediato.',
   'arbiterPanel.thatIsNotA': 'Esa no es una dirección de billetera ni un correo electrónico válidos.',
@@ -353,9 +353,9 @@ export const es: Catalogue = {
     '{email} aún no ha iniciado sesión en StableDrop. Al nominarlo se crea una billetera para esa persona, que ocupa el puesto al iniciar sesión con este correo.',
   'arbiterPanel.sameAsTheirs': 'Es la persona que sugirió la otra parte. Nominarla ahora la sienta en el puesto.',
   'arbiterPanel.notTheirs': 'No es la persona que sugirió la otra parte.',
-  'arbiterPanel.candidateIsBuyer': 'Es el comprador de este pago; una parte no puede ser el árbitro de desempate.',
-  'arbiterPanel.candidateIsSeller': 'Es el vendedor de este pago; una parte no puede ser el árbitro de desempate.',
-  'arbiterPanel.candidateIsSeated': 'Es el árbitro de desempate que ya ocupa el puesto en este pago; nomine a otra persona.',
+  'arbiterPanel.candidateIsBuyer': 'Es el comprador de este pago; una parte no puede ser el Tercer Votante.',
+  'arbiterPanel.candidateIsSeller': 'Es el vendedor de este pago; una parte no puede ser el Tercer Votante.',
+  'arbiterPanel.candidateIsSeated': 'Es el Tercer Votante que ya ocupa el puesto en este pago; nomine a otra persona.',
   'arbiterPanel.refusedCandidate':
     'El contrato de pago rechazó {address}: no se puede nominar a una parte del pago ni al árbitro que ya ocupa el puesto. No se envió nada.',
   'arbiterPanel.refusedNotParty':
@@ -455,8 +455,8 @@ export const es: Catalogue = {
 
   'customArbiterNotice.customDisputeResolver': 'Resolutor de disputas personalizado',
   'customArbiterNotice.thisContractUsesA':
-    'Este contrato usa un tercero de desempate no estándar elegido por el vendedor. Si surge una disputa, será él, y no el administrador de la aplicación, quien emita el tercer voto, que resuelve la disputa cuando coincide con el tuyo o con el del vendedor. Verifica que confías en este tercero de desempate antes de pagar.',
-  'customArbiterNotice.copyArbiterAddress': 'Copiar la dirección del tercero de desempate',
+    'Este contrato usa un Tercer Votante no estándar elegido por el vendedor. Si surge una disputa, será él, y no el administrador de la aplicación, quien emita el tercer voto, que resuelve la disputa cuando coincide con el tuyo o con el del vendedor. Verifica que confías en este Tercer Votante antes de pagar.',
+  'customArbiterNotice.copyArbiterAddress': 'Copiar la dirección del Tercer Votante',
 
   'disputeManagementModal.settleThisDispute': 'Resolver esta disputa',
   'disputeManagementModal.product': 'Producto:',
@@ -480,7 +480,7 @@ export const es: Catalogue = {
   'dispute.noPersonalDetails': 'No incluyas nombres, direcciones ni datos de contacto. No hacen falta para resolver la disputa.',
   'disputeModal.disputeReason': 'Motivo de la disputa',
   'disputeModal.suggestedSplitToBuyer': 'Tu voto (% para el comprador)',
-  'disputeModal.figureIsYourVote': 'Se envía al contrato como tu voto. Si el vendedor o el tercero de desempate votan la misma cifra, el contrato paga ese reparto de inmediato. Puedes cambiar tu voto hasta entonces.',
+  'disputeModal.figureIsYourVote': 'Se envía al contrato como tu voto. Si el vendedor o el Tercer Votante votan la misma cifra, el contrato paga ese reparto de inmediato. Puedes cambiar tu voto hasta entonces.',
   'disputeModal.pleaseDescribeTheReason': 'Describe el motivo de esta disputa...',
 
   'enhancedContractCard.yourRole': 'Tu rol',
@@ -542,7 +542,7 @@ export const es: Catalogue = {
   'standingFiguresPanel.nobodyHasSubmittedA': 'Todavía nadie ha enviado una cifra.',
   'standingFiguresPanel.noFigureSubmitted': 'Sin cifra enviada',
   'standingFiguresPanel.noArbiterIsSeated':
-    'No hay tercero de desempate designado, así que solo el comprador y el destinatario pueden resolverlo entre ellos.',
+    'No hay Tercer Votante designado, así que solo el comprador y el destinatario pueden resolverlo entre ellos.',
 
   'connectWalletEmbedded.emailSocialSignIn': 'Inicio de sesión con correo y redes no disponible',
 
@@ -671,35 +671,35 @@ export const es: Catalogue = {
   'paymentActionPanel.coinbaseNote':
     'Terminarás en Coinbase. ¿Es tu primera vez en Coinbase? Verificarán tu identidad una sola vez.',
   'arbiterPanel.seated': 'Designado:',
-  'arbiterPanel.youHoldTheSeat': 'Ocupas el puesto de tercero de desempate en este pago.',
+  'arbiterPanel.youHoldTheSeat': 'Ocupas el puesto de Tercer Votante en este pago.',
   'arbiterPanel.resignExplainer':
-    'Renunciar deja el puesto vacío. Cualquier cifra que hayas enviado deja de contar de inmediato, y las partes pueden acordar un reemplazo o, 72 horas después de abrirse la disputa, designar al tercero de desempate predeterminado. No mueve fondos.',
-  'arbiterPanel.resign': 'Renunciar como tercero de desempate',
+    'Renunciar deja el puesto vacío. Cualquier cifra que hayas enviado deja de contar de inmediato, y las partes pueden acordar un reemplazo o, 72 horas después de abrirse la disputa, designar al Tercer Votante predeterminado. No mueve fondos.',
+  'arbiterPanel.resign': 'Renunciar como Tercer Votante',
   'arbiterPanel.resignConfirm': 'Sí, renunciar',
   'arbiterPanel.resigned': 'Has dejado el puesto.',
-  'disputeManagementModal.castYourVote': 'Emite tu voto de desempate',
+  'disputeManagementModal.castYourVote': 'Emite tu voto como Tercer Votante',
   'disputeManagementModal.arbiterVoteNote':
-    'Eres el tercero de desempate. Tu cifra es una de tres; si coincide con la del comprador o la del vendedor, los fondos se pagan con esa cifra de inmediato. Explica tus motivos: ambas partes los leerán.',
+    'Eres el Tercer Votante. Tu cifra es una de tres; si coincide con la del comprador o la del vendedor, los fondos se pagan con esa cifra de inmediato. Explica tus motivos: ambas partes los leerán.',
   'arbiterDisputes.title': 'Disputas',
-  'arbiterDisputes.subtitle': 'Pagos protegidos en los que ocupas el puesto de tercero de desempate. Tu voto es uno de tres; dos votos coincidentes liberan el dinero.',
+  'arbiterDisputes.subtitle': 'Pagos protegidos en los que ocupas el puesto de Tercer Votante. Tu voto es uno de tres; dos votos coincidentes liberan el dinero.',
   'arbiterDisputes.signIn': 'Inicia sesión para ver las disputas que te han pedido decidir.',
   'arbiterDisputes.goToDashboard': 'Ir al panel para iniciar sesión',
   'arbiterDisputes.needsDecision': 'Requieren tu decisión',
-  'arbiterDisputes.otherSeats': 'Otros pagos protegidos que te nombran tercero de desempate',
-  'arbiterDisputes.none': 'Nadie te ha nombrado tercero de desempate todavía.',
+  'arbiterDisputes.otherSeats': 'Otros pagos protegidos que te nombran Tercer Votante',
+  'arbiterDisputes.none': 'Nadie te ha nombrado Tercer Votante todavía.',
   'arbiterDisputes.review': 'Revisar la disputa',
   'arbiterDisputes.view': 'Ver',
   'arbiterDisputes.releaseDate': 'liberación',
   'arbiterDisputes.filings': '{count} entradas en el registro de la disputa',
   'arbiterDisputes.loadFailed': 'No se pudieron cargar tus disputas. Inténtalo de nuevo.',
   'arbiterPanel.seatedReplaceable':
-    'Si tú y la otra parte nombráis la misma dirección nueva, esta reemplaza de inmediato al tercero de desempate designado. Ninguno de los dos puede cambiarlo por su cuenta.',
+    'Si tú y la otra parte nombráis la misma dirección nueva, esta reemplaza de inmediato al Tercer Votante designado. Ninguno de los dos puede cambiarlo por su cuenta.',
   'arbiterPanel.seatEmpty':
-    'El puesto está vacío. El flujo de fondos de este pago se vendió, lo que deja al tercero de desempate sin su puesto automáticamente. El comprador y el destinatario pueden acordar un reemplazo, o esperar al tercero de desempate predeterminado.',
+    'El puesto está vacío. El flujo de fondos de este pago se vendió, lo que deja al Tercer Votante sin su puesto automáticamente. El comprador y el destinatario pueden acordar un reemplazo, o esperar al Tercer Votante predeterminado.',
   'arbiterPanel.nominationWarningBody':
-    'Ocurre en esta transacción y no se puede deshacer. No existe un registro de terceros de desempate aprobados ni comprobación de a quién pertenece esta dirección; solo se verifica que no sea el comprador ni el destinatario.',
+    'Ocurre en esta transacción y no se puede deshacer. No existe un registro de Terceros Votantes aprobados ni comprobación de a quién pertenece esta dirección; solo se verifica que no sea el comprador ni el destinatario.',
   'arbiterPanel.decliningIsSafe':
-    'No nominar a nadie siempre es seguro: si nadie se pone de acuerdo, el tercero de desempate predeterminado de la plataforma toma el puesto cuando se cierra el plazo.',
+    'No nominar a nadie siempre es seguro: si nadie se pone de acuerdo, el Tercer Votante predeterminado de la plataforma toma el puesto cuando se cierra el plazo.',
   'arbiterPanel.theyNominated': 'La otra parte ha propuesto:',
   'arbiterPanel.youNominated': 'Tú has propuesto:',
   'arbiterPanel.matchSeatsThem':
@@ -735,7 +735,7 @@ export const es: Catalogue = {
   'transaction.overGasCostCap':
     'Esto cuesta más en comisiones de red ({cost} ETH) de lo que se te cubre actualmente ({cap} ETH). No se envió nada ni se cobró nada. Vuelve a intentarlo más tarde, cuando las comisiones puedan ser más bajas, o contacta con soporte.',
   'transaction.refusedNotVoter':
-    'El contrato de pago rechazó este voto porque se habría enviado desde la billetera {address}, que no es la del comprador, la del vendedor ni la del árbitro de desempate de este pago. Cierra sesión, vuelve a iniciarla con la cuenta que es parte de este pago e inténtalo de nuevo. No se envió nada.',
+    'El contrato de pago rechazó este voto porque se habría enviado desde la billetera {address}, que no es la del comprador, la del vendedor ni la del Tercer Votante de este pago. Cierra sesión, vuelve a iniciarla con la cuenta que es parte de este pago e inténtalo de nuevo. No se envió nada.',
   'transaction.unknownWallet':
     'una billetera desconocida',
   'transaction.refusedNotInDispute':
@@ -758,7 +758,7 @@ export const es: Catalogue = {
   'contractActions.settledInCash': 'Pagué en efectivo',
   'contractActions.settledInCashTitle': '¿Liquidaste este pago en efectivo?',
   'contractActions.settledInCashBody':
-    'Esto abre una disputa y registra en la cadena tu solicitud de reembolso del 100 %, con el motivo "I settled in cash". El pago permanece bloqueado hasta que el vendedor lo confirme igualando el 100 %, o hasta que decida un tercero de desempate. Nada se reembolsa solo con tu palabra.',
+    'Esto abre una disputa y registra en la cadena tu solicitud de reembolso del 100 %, con el motivo "I settled in cash". El pago permanece bloqueado hasta que el vendedor lo confirme igualando el 100 %, o hasta que decida un Tercer Votante. Nada se reembolsa solo con tu palabra.',
   'contractActions.settledInCashConfirm': 'Sí, abrir la disputa',
   'contractActions.settledInCashCancel': 'Cancelar',
   'disputeManagementModal.cashClaimTitle': 'El comprador dice que pagó en efectivo',
@@ -820,7 +820,7 @@ export const es: Catalogue = {
   // disputes
   'disputeManagementModal.roleBuyer': 'el comprador',
   'disputeManagementModal.roleRecipient': 'el destinatario',
-  'disputeManagementModal.roleTiebreaker': 'el tercero de desempate',
+  'disputeManagementModal.roleThirdVoter': 'el Tercer Votante',
   'disputeManagementModal.notDeployed': 'Este contrato aún no se ha desplegado en la cadena de bloques.',
   'disputeManagementModal.notSent': 'La transacción no se envió. No se registró nada.',
   'disputeManagementModal.dateAtTime': '{date} a las {time}',
@@ -844,27 +844,27 @@ export const es: Catalogue = {
   'disputeModal.charactersCount': '{count}/160 caracteres',
   'disputeModal.buyerGetsPct': 'El comprador recibe {buyer} %; el vendedor recibe {seller} %',
   'disputeModal.raiseDispute': 'Abrir disputa',
-  'arbiterPanel.tiebreakerSeated': 'Tercero de desempate designado: {address}',
+  'arbiterPanel.thirdVoterSeated': 'Tercer Votante designado: {address}',
   'arbiterPanel.actionResignation': 'La renuncia',
   'arbiterPanel.actionNomination': 'La nominación',
   'arbiterPanel.actionSeating': 'La designación',
   'arbiterPanel.actionEviction': 'La destitución',
   'arbiterPanel.byBuyer': 'comprador:',
   'arbiterPanel.byRecipient': 'destinatario:',
-  'arbiterPanel.nominationsMatched': 'Las nominaciones coincidieron: ese tercero de desempate ya ocupa el puesto.',
+  'arbiterPanel.nominationsMatched': 'Las nominaciones coincidieron: ese Tercer Votante ya ocupa el puesto.',
   'arbiterPanel.nominationRecordedEmail': 'Nominación registrada para {email} (billetera {wallet}). Ocupará el puesto en cuanto la otra parte nombre el mismo correo o la misma dirección.',
   'arbiterPanel.nominationRecorded': 'Nominación registrada. Ocupará el puesto en cuanto la otra parte nombre la misma dirección.',
   'arbiterPanel.nominate': 'Nominar',
-  'arbiterPanel.defaultSeatable': 'El plazo de nominación de 72 horas terminó sin acuerdo. Ahora cualquiera puede designar al tercero de desempate predeterminado de la plataforma: una billetera multifirma que actúa solo como tercer votante.',
+  'arbiterPanel.defaultSeatable': 'El plazo de nominación de 72 horas terminó sin acuerdo. Ahora cualquiera puede designar al Tercer Votante predeterminado de la plataforma: una billetera multifirma que actúa solo como Tercer Votante.',
   'arbiterPanel.seatingFailed': 'La designación falló',
-  'arbiterPanel.defaultSeated': 'El tercero de desempate predeterminado ya ocupa el puesto y puede votar.',
-  'arbiterPanel.seatDefault': 'Designar al tercero de desempate predeterminado',
-  'arbiterPanel.silent': 'Este tercero de desempate lleva 30 días sin actuar. Puedes dejar el puesto vacío y reabrir las nominaciones. No mueve fondos ni resuelve nada: solo reemplaza al tercer votante.',
-  'arbiterPanel.silentLastActive': 'Este tercero de desempate lleva 30 días sin actuar (última actividad: {date}). Puedes dejar el puesto vacío y reabrir las nominaciones. No mueve fondos ni resuelve nada: solo reemplaza al tercer votante.',
+  'arbiterPanel.defaultSeated': 'El Tercer Votante predeterminado ya ocupa el puesto y puede votar.',
+  'arbiterPanel.seatDefault': 'Designar al Tercer Votante predeterminado',
+  'arbiterPanel.silent': 'Este Tercer Votante lleva 30 días sin actuar. Puedes dejar el puesto vacío y reabrir las nominaciones. No mueve fondos ni resuelve nada: solo reemplaza al Tercer Votante.',
+  'arbiterPanel.silentLastActive': 'Este Tercer Votante lleva 30 días sin actuar (última actividad: {date}). Puedes dejar el puesto vacío y reabrir las nominaciones. No mueve fondos ni resuelve nada: solo reemplaza al Tercer Votante.',
   'arbiterPanel.evicted': 'El puesto quedó vacío y las nominaciones se reabrieron.',
-  'arbiterPanel.requestNew': 'Pedir un nuevo tercero de desempate',
-  'arbiterPanel.defaultSeatableAfter': 'Si nadie se pone de acuerdo, el tercero de desempate predeterminado podrá designarse a partir del {date} a las {time}.',
-  'customArbiterNotice.tiebreaker': 'Tercero de desempate:',
+  'arbiterPanel.requestNew': 'Pedir un nuevo Tercer Votante',
+  'arbiterPanel.defaultSeatableAfter': 'Si nadie se pone de acuerdo, el Tercer Votante predeterminado podrá designarse a partir del {date} a las {time}.',
+  'customArbiterNotice.thirdVoter': 'Tercer Votante:',
   'farcasterNameDisplay.you': '(Tú)',
 
   // contracts

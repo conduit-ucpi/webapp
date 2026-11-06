@@ -11,8 +11,8 @@ import { useAuth } from '@/components/auth';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { CASH_SETTLEMENT_CONFIRMED_REASON, isCashSettlementClaim } from '@/lib/cashSettlement';
 
-/** What the dispute log shows when the tiebreaker steps down. A note, not a vote: no figure. */
-export const ARBITER_RESIGNED_REASON = 'Resigned as tiebreaker';
+/** What the dispute log shows when the Third Voter steps down. A note, not a vote: no figure. */
+export const ARBITER_RESIGNED_REASON = 'Resigned as Third Voter';
 import { useArbiterState, useSettlementState } from '@/hooks/useDisputeState';
 import StandingFiguresPanel from '@/components/contracts/StandingFiguresPanel';
 import ArbiterPanel from '@/components/contracts/ArbiterPanel';
@@ -72,7 +72,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
     return [
       { role: t('disputeManagementModal.roleBuyer'), address: state.buyer, percent: state.buyerVote },
       { role: t('disputeManagementModal.roleRecipient'), address: state.recipient, percent: state.recipientVote },
-      { role: t('disputeManagementModal.roleTiebreaker'), address: state.arbiter, percent: state.arbiterVote }
+      { role: t('disputeManagementModal.roleThirdVoter'), address: state.arbiter, percent: state.arbiterVote }
     ]
       .filter((f) => f.percent !== null && f.address && f.address.toLowerCase() !== me)
       .map((f) => ({ role: f.role, percent: f.percent as number }));
@@ -87,7 +87,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
    *    it only when the settlement state has not loaded.
    *
    * `'arbiter'` when the connected wallet holds the seat (chain read first, record second): the
-   * tiebreaker uses this same screen to read both sides, vote, and resign (§3.3A1c).
+   * Third Voter uses this same screen to read both sides, vote, and resign (§3.3A1c).
    *
    * Null for anyone who is neither party; the panel then names both sides rather than guessing.
    */
@@ -125,7 +125,7 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
   /**
    * After any seat action, have contractservice re-read the seat from the chain. Its arbiter
    * /disputes listing is built from the seat it has recorded, so without this a resigned
-   * tiebreaker keeps the escrow and a newly seated one cannot find it until the hourly sweep.
+   * Third Voter keeps the escrow and a newly seated one cannot find it until the hourly sweep.
    * Never gates anything: the chain already holds the outcome.
    */
   const refreshSeatRecord = async () => {

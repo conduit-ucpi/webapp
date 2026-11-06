@@ -232,7 +232,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
             "I settled in cash": the same dispute path with its arguments fixed — 100% to the buyer
             and the sentinel reason from lib/cashSettlement.ts, which the seller's screen and
             disputeservice recognise. It is not a refund button: the buyer's 100% is one vote, and
-            the seller (or a tiebreaker) must match it before anything moves. The dialog says so.
+            the seller (or a Third Voter) must match it before anything moves. The dialog says so.
           */}
           {isBuyer && (
             <Button

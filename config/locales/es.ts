@@ -229,7 +229,7 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'integrate.platform.buyer.1': 'Fondos retenidos en un smart contract de pago',
   'integrate.platform.buyer.2': 'Liberación diferida (7 días por defecto)',
   'integrate.platform.buyer.3': 'Mecanismo de disputas',
-  'integrate.platform.buyer.4': 'Árbitro independiente para desempatar',
+  'integrate.platform.buyer.4': 'Tercer Votante independiente',
   'integrate.platform.gas.label': 'Sin costos de gas',
   'integrate.platform.gas.1': 'La plataforma cubre todos los costos de la blockchain',
   'integrate.platform.gas.2': 'Los usuarios pagan una comisión de plataforma del 1 %',
@@ -482,7 +482,7 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'feedback.failed': 'No se pudo enviar tu mensaje. Inténtalo de nuevo en un minuto.',
 
   // Páginas legales (/terms-of-service, /privacy-policy y sus pestañas en /plugin).
-  'legal.termsTitle': 'Términos de Servicio',
+  'legal.termsTitle': 'Términos de la Plataforma Stabledrop',
   'legal.privacyTitle': 'Política de Privacidad',
   'legal.lastUpdated': 'Última actualización:',
   'legal.version': 'Versión:',

@@ -5,28 +5,36 @@ jest.mock('@conduit-ucpi/whitelabel-sdk', () => ({ useBrand: () => ({ name: 'COB
 jest.mock('@/components/SEO', () => ({ __esModule: true, default: ({ title }: { title: string }) => <span data-testid="seo-title">{title}</span> }));
 jest.mock('@/components/dispute-rules/DisputeRules', () => ({ __esModule: true, default: () => <div data-testid="dispute-rules" /> }));
 
-/** The dispute policy page: three parts, named from the visitor's brand, with nothing hard-coded. */
+/** The Dispute Resolution Rules page: fourteen sections, named from the visitor's brand. */
 describe('dispute policy page', () => {
-  it('has exactly the three parts, the third served by disputeservice', () => {
-    render(<DisputePolicy dateModified="2026-10-03" />);
-    const parts = Array.from(document.querySelectorAll('section[id^="part-"] h2')).map(h => h.textContent);
-    expect(parts).toEqual([
-      'Part 1. How a dispute works in the payment contract',
-      'Part 2. How the tiebreaker is appointed and changed',
-      "Part 3. How COBRO's default tiebreaker votes",
-    ]);
-    expect(document.querySelector('#part-3 [data-testid="dispute-rules"]')).not.toBeNull();
-  });
-
-  it('starts and ends with the same statement of the three votes', () => {
+  it('has the fourteen sections, with 6 and 7 served by disputeservice', () => {
     render(<DisputePolicy dateModified="2026-10-03" />);
     const sections = Array.from(document.querySelectorAll('section'));
-    const last = sections[sections.length - 1];
-    expect(last.id).toBe('one-vote');
-    expect(last.querySelector('h2')?.textContent).toBe('Remember: the tiebreaker has one vote of three');
-    const phrase = "The contract has three votes of equal standing: the buyer's, the seller's, and the tiebreaker's (a party you nominate, or COBRO's default). Funds are released when any two of the three agree.";
-    expect(last.querySelector('p')?.textContent).toBe(phrase);
-    expect(document.getElementById('three-votes-intro')?.textContent).toBe(phrase);
+    expect(sections.map(s => s.querySelector('h2')?.textContent)).toEqual([
+      '1. Definitions',
+      '2. About these rules',
+      "3. COBRO's role",
+      '4. How each Smart Contract treats a Dispute',
+      '5. How the Third Voter is appointed and changed',
+      "6. How COBRO's default Third Voter votes",
+      '7. Deadlines and notices',
+      '8. Independent review',
+      '9. Evidence and fair play',
+      '10. Fees and costs',
+      '11. Your consents and rights',
+      '12. Liability',
+      '13. Changes to these rules',
+      '14. Governing law and language',
+    ]);
+    expect(sections[5].querySelector('[data-testid="dispute-rules"]')).not.toBeNull();
+    expect(sections[6].querySelector('[data-testid="dispute-rules"]')).not.toBeNull();
+  });
+
+  it('states what the contract does about the seat', () => {
+    const { container } = render(<DisputePolicy dateModified="2026-10-03" />);
+    expect(container.textContent).toContain('remove the Third Voter if it has not voted for 30 days');
+    expect(container.textContent).toContain('A Seller moving their payout directly to another wallet does not empty the seat.');
+    expect(container.textContent).toContain("The Seller can move their payout to another wallet unless there's a live dispute.");
   });
 
   it('does not wrap itself in Layout: the app shell already does, and a second one doubles the header and footer', () => {
@@ -34,11 +42,13 @@ describe('dispute policy page', () => {
     expect(source).not.toMatch(/components\/layout\/Layout|<Layout\b/);
   });
 
-  it('takes every name from the brand', () => {
+  it('takes every name from the brand, except where 2.1 says whose trading name Stabledrop is', () => {
     const { container } = render(<DisputePolicy dateModified="2026-10-03" />);
-    expect(screen.getByTestId('seo-title').textContent).toBe('Dispute Policy | COBRO');
-    expect(container.textContent).toContain('On COBRO it is COBRO’s default tiebreaker'.replace('’', "'"));
-    expect(container.textContent).not.toMatch(/StableDrop|Stabledrop|Conduit/);
-    expect(container.textContent).toContain('The contract cannot be changed once it is created, by anyone, including COBRO. It has no owner, no admin key and no way to be upgraded. Its rules are fixed in its code.');
+    expect(screen.getByTestId('seo-title').textContent).toBe('Dispute Resolution Rules | COBRO');
+    expect(container.textContent).toContain("On COBRO it is COBRO's default Third Voter");
+    expect(container.textContent).toContain('Stabledrop is the trading name of Conduit-UCPI Ltd');
+    const without21 = (container.textContent ?? '').replace('Stabledrop is the trading name of Conduit-UCPI Ltd', '');
+    expect(without21).not.toMatch(/StableDrop|Stabledrop|Conduit/);
+    expect(container.textContent).toContain('The Smart Contract cannot be changed once it is created, by anyone, including COBRO. It has no owner,');
   });
 });

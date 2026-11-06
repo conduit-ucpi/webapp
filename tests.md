@@ -9,7 +9,7 @@ hand or by an agent: each test says what to do in which tab, and what must be tr
   - **SELLER** — signed in as `testSupplier@stabledrop.me` (`SELLER_EMAIL`): requests and
     receives payments.
   - **BUYER** — signed in as `testcustomer@stabledrop.me` (`BUYER_EMAIL`): pays.
-  - `fairperson@stabledrop.me` (`ARBITER_EMAIL`) — a third party used as a custom tiebreaker.
+  - `fairperson@stabledrop.me` (`ARBITER_EMAIL`) — a third party used as a custom Third Voter.
     Nobody signs in as them.
 - Identify each tab by the signed-in email shown in its account menu or dashboard, read each
   tab's wallet address there, and use those wherever a test says `SELLER_WALLET` or
@@ -147,16 +147,16 @@ request created!" and the "Now send this to your buyer" screen. Record the payme
 **C-06 Create an instant request.** As C-05 but choose "Instantly", description `UI test C-06`.
 Record the link as `REQUEST_INSTANT`. Expect the review step to say the release is instant.
 
-**C-07 Custom tiebreaker validation.** Open "Advanced Options", enter `not-an-address` as the
-tiebreaker. Expect "Enter a wallet address or an email address for the tiebreaker". Clear it.
+**C-07 Custom Third Voter validation.** Open "Advanced Options", enter `not-an-address` as the
+Third Voter. Expect "Enter a wallet address or an email address for the Third Voter". Clear it.
 
-**C-08 Request with a custom tiebreaker.** Create a 0.001 request (description `UI test C-08`,
-buyer `BUYER_EMAIL`) and, under "Advanced Options", set the tiebreaker to `ARBITER_EMAIL`.
-Record as `REQUEST_ARBITER`. Expect the review to show the tiebreaker. An email tiebreaker is
+**C-08 Request with a custom Third Voter.** Create a 0.001 request (description `UI test C-08`,
+buyer `BUYER_EMAIL`) and, under "Advanced Options", set the Third Voter to `ARBITER_EMAIL`.
+Record as `REQUEST_ARBITER`. Expect the review to show the Third Voter. An email Third Voter is
 resolved to that person's wallet, so in R-08 the confirm screen shows a wallet address (or the
 email) for them, never `SELLER_WALLET` or `BUYER_WALLET`. Then try `SELLER_EMAIL` as the
-tiebreaker on a new request: expect "Create Payment Request" to fail with a message that the
-tiebreaker can't also be a party (contractservice refuses it before any address is quoted), and
+Third Voter on a new request: expect "Create Payment Request" to fail with a message that the
+Third Voter can't also be a party (contractservice refuses it before any address is quoted), and
 no request to be created.
 
 ---
@@ -193,7 +193,7 @@ make a payment to yourself. …" and no address to pay.
 
 **R-08 Refresh on the confirm step.** Needs: C-08. In BUYER open `REQUEST_ARBITER`, continue to
 "Confirm payment", note the address, reload the page. Expect to land back on the same request
-with the same escrow address (and the tiebreaker shown). Don't pay unless dave asks; leave it
+with the same escrow address (and the Third Voter shown). Don't pay unless dave asks; leave it
 unpaid for C-09/D tests if useful.
 
 ---

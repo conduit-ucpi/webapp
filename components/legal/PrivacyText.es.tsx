@@ -14,7 +14,7 @@ import { openConsentSettings } from '@/lib/consent';
  * changes, __tests__/components/legal/translations.test.tsx fails and prints the new value: update
  * the Spanish to match, then set this to it. Never update this without updating the Spanish.
  */
-export const TRANSLATED_FROM = 'bc1edb130185452b';
+export const TRANSLATED_FROM = 'b756a3cfb18a5198';
 
 export default function PrivacyTextEs() {
   return (
@@ -57,6 +57,14 @@ export default function PrivacyTextEs() {
           <li>Con tu consentimiento expreso</li>
           <li>Con proveedores de servicios que nos ayudan en nuestras operaciones (bajo estrictos acuerdos de confidencialidad)</li>
         </ul>
+        <p className="text-secondary-700 dark:text-secondary-200 mt-4">
+          <strong>IA en las disputas.</strong> Nuestro Servicio de Disputas usa Claude, un modelo de IA de Anthropic, según se
+          establece en las Reglas de Resolución de Disputas. Recibe el expediente del caso, que no contiene nombres, datos de contacto
+          ni direcciones de billetera de nuestros registros. En el texto escrito por las partes, las direcciones de correo electrónico,
+          las direcciones de billetera, los números de teléfono, los códigos postales del Reino Unido y las rutas de los enlaces se
+          sustituyen por marcadores antes de enviarlo. Los nombres y las direcciones postales escritos en ese texto no se detectan, así
+          que no los incluyas en lo que escribas en una disputa.
+        </p>
       </section>
 
       <section className="mb-8">

@@ -46,6 +46,13 @@ export default function PrivacyTextEn() {
           <li>With your explicit consent</li>
           <li>With service providers who assist in our operations (under strict confidentiality agreements)</li>
         </ul>
+        <p className="text-secondary-700 dark:text-secondary-200 mt-4">
+          <strong>AI in disputes.</strong> Our Dispute Service uses Claude, an AI model provided by Anthropic, as set out in the
+          Dispute Resolution Rules. It receives the case record, which contains no names, contact details or wallet addresses from
+          our records. In the text the parties wrote, email addresses, wallet addresses, phone numbers, UK postcodes and the paths of
+          links are replaced with placeholders before it is sent. Names and street addresses written in that text are not detected,
+          so please leave them out of what you write in a dispute.
+        </p>
       </section>
 
       <section className="mb-8">

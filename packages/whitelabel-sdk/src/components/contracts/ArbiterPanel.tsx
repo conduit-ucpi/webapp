@@ -33,7 +33,7 @@ interface ArbiterPanelProps {
    * Null for anyone who is neither party, and for a viewer we could not place. The panel then
    * falls back to naming both sides explicitly rather than guessing which one is "theirs".
    *
-   * `'arbiter'` is the seated tiebreaker looking at their own seat: no nominating (the contract
+   * `'arbiter'` is the seated Third Voter looking at their own seat: no nominating (the contract
    * refuses a non-party), no evicting, and a resign control instead (§3.3A1c).
    */
   viewerRole?: 'buyer' | 'recipient' | 'arbiter' | null;
@@ -45,7 +45,7 @@ interface ArbiterPanelProps {
   onResigned?: () => Promise<void> | void;
   /**
    * The escrow's buyer and recipient as the chain has them (the caller's read, which wins over
-   * the local record after a sale). The contract refuses either of them as a tiebreaker, so the
+   * the local record after a sale). The contract refuses either of them as a Third Voter, so the
    * panel refuses them first, before anybody signs anything.
    */
   buyerAddress?: string | null;
@@ -61,7 +61,7 @@ interface ArbiterPanelProps {
  * pre-loaded arbiter's vote into one block. Every path back to a seat then runs through the new
  * recipient. And on ANY live escrow, sold or not, buyer and recipient may jointly replace whoever
  * holds the seat by naming the same address (§3.3A1b) — the platform's default included. That is
- * how a party who does not want the default tiebreaker deciding their case leaves it, with the
+ * how a party who does not want the default Third Voter deciding their case leaves it, with the
  * other party's consent.
  *
  * ⚠️ DRIVEN ENTIRELY OFF THE `can*` FLAGS. Show a control when its flag is true; that is the whole
@@ -126,7 +126,7 @@ export default function ArbiterPanel({
   if (!state || (!isArbiter && !state.canNominate && !state.canSeatDefaultArbiter && !state.canEvictArbiter && state.seated)) {
     return state?.seated ? (
       <div className="text-sm text-gray-600 dark:text-secondary-300">
-        {withNodes(t('arbiterPanel.tiebreakerSeated'), {
+        {withNodes(t('arbiterPanel.thirdVoterSeated'), {
           address: <span className="font-mono text-xs">{state.arbiter}</span>
         })}
       </div>
@@ -160,7 +160,7 @@ export default function ArbiterPanel({
     }
   };
 
-  // A tiebreaker may be named by email: a wallet is made for it if need be on Nominate, and the
+  // A Third Voter may be named by email: a wallet is made for it if need be on Nominate, and the
   // wallet is what goes on chain.
   const candidateIsEmail = EMAIL.test(candidate);
   const candidateIsValid = ethers.isAddress(candidate) || candidateIsEmail;

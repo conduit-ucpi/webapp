@@ -109,7 +109,7 @@ export const HOW_IT_WORKS = [
   {
     num: '03',
     title: 'Payout',
-    desc: "On the agreed date, the seller is paid automatically. If something's wrong, the buyer can freeze the payment before then. Most issues are sorted between buyer and seller, but if they can't agree, an independent tiebreaker casts the third vote.",
+    desc: "On the agreed date, the seller is paid automatically. If something's wrong, the buyer can freeze the payment before then. Most issues are sorted between buyer and seller, but if they can't agree, an independent Third Voter casts the third vote.",
   },
 ];
 
@@ -136,7 +136,7 @@ export const FEE_COMPARISON = [
 export const BOTH_SIDES_POINTS = [
   { label: 'Buyers', text: 'Pay any supplier with confidence, no vetting needed. Your money is held until the goods arrive or the work is done.' },
   { label: 'Sellers', text: 'See the money is committed before you ship or deliver.' },
-  { label: 'If something goes wrong', text: "Freeze the funds and agree a fix together. If you can't agree, an independent tiebreaker casts the third vote." },
+  { label: 'If something goes wrong', text: "Freeze the funds and agree a fix together. If you can't agree, an independent Third Voter casts the third vote." },
 ];
 
 export const BUYER_POINTS = [
@@ -334,7 +334,7 @@ export const DISPUTE_FLOW = [
   { title: 'Buyer raises a dispute', text: 'Any time before the payout date, with a comment and a suggested refund. The funds freeze.' },
   { title: 'Seller is told', text: 'By email, straight away. Both sides see the same case in their dashboard.' },
   { title: 'They agree a number', text: 'Refund proposals go back and forth. The moment both enter the same amount, it executes.' },
-  { title: 'Nobody agreed?', text: 'Funds stay frozen. Either side can bring in a tiebreaker; both enter the decided amount and it settles.' },
+  { title: 'Nobody agreed?', text: 'Funds stay frozen. Either side can bring in a Third Voter; both enter the decided amount and it settles.' },
 ];
 
 /** Why a dollar-pegged stablecoin, in plain terms, for people who have not used one. */

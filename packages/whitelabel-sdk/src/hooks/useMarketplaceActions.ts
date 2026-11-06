@@ -134,7 +134,7 @@ export function useMarketplaceActions() {
   );
 
   /**
-   * The wallet a tiebreaker given by email will be nominated as. userservice owns the mapping, so
+   * The wallet a Third Voter given by email will be nominated as. userservice owns the mapping, so
    * the same email always names the same wallet: two parties who type the same address nominate
    * the same person, and that person reaches the seat by signing in with it.
    *

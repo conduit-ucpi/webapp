@@ -144,7 +144,7 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /advanced options/i }));
     expect(screen.getByPlaceholderText('0x... or name@example.com')).toBeInTheDocument();
-    expect(screen.getByText(/^tiebreaker$/i)).toBeInTheDocument();
+    expect(screen.getByText(/^Third Voter$/i)).toBeInTheDocument();
   });
 
   it('accepts the form with no arbiter (it is optional)', async () => {
@@ -178,7 +178,7 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
     expect(screen.getByText(/enter a wallet address or an email address/i)).toBeInTheDocument();
   });
 
-  it('accepts an email as the tiebreaker and sends it as typed, lower-cased, for contractservice to resolve', async () => {
+  it('accepts an email as the Third Voter and sends it as typed, lower-cased, for contractservice to resolve', async () => {
     const authenticatedFetch = okFetch();
     mockUseAuth.mockReturnValue(buildAuth(authenticatedFetch) as any);
     render(<CreateContractWizard />);

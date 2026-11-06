@@ -71,7 +71,7 @@ describe('DisputeRules', () => {
     render(<DisputeRules />);
     await waitFor(() => expect(screen.getByTestId('rules-section-3')).toBeTruthy());
     expect(fetchMock.mock.calls[0][0]).toBe('/api/dispute-rules');
-    expect(screen.getByText('§3 Jurisdiction — checked before anything else')).toBeTruthy();
+    expect(screen.getByText('6.2 Jurisdiction — checked before anything else')).toBeTruthy();
     expect(screen.getByText('The last substantive filing that nobody answered carries.').tagName).toBe('STRONG');
     const version = screen.getByTestId('rules-version');
     expect(version.textContent).toBe(SHA.slice(0, 12));
@@ -81,11 +81,11 @@ describe('DisputeRules', () => {
 
   it("shows the visitor's brand where the served text names the default one, and changes nothing else", async () => {
     fetchMock.mockResolvedValueOnce(json(200, rules({
-      sections: [{ number: '2a', title: 'What these rules cover', markdown: "These rules decide one thing: how Stabledrop.me's default tiebreaker casts its vote." }],
+      sections: [{ number: '2a', title: 'What these rules cover', markdown: "These rules decide one thing: how Stabledrop.me's default Third Voter casts its vote." }],
     })));
     render(<DisputeRules />);
     await waitFor(() => expect(screen.getByTestId('rules-section-2a')).toBeTruthy());
-    expect(screen.getByTestId('rules-section-2a').textContent).toContain("These rules decide one thing: how COBRO's default tiebreaker casts its vote.");
+    expect(screen.getByTestId('rules-section-2a').textContent).toContain("These rules decide one thing: how COBRO's default Third Voter casts its vote.");
     expect(screen.getByTestId('rules-section-2a').textContent).not.toContain('Stabledrop.me');
   });
 

@@ -6,7 +6,7 @@ import type { GasCostCapError } from '@/lib/web3';
  * Why an escrow transaction was not sent, in words, for the failures a party can meet on the
  * dispute screens; null when it is none of these, so the caller falls back to the raw message.
  *
- * Shared by the settlement vote and the tiebreaker panel so the same refusal reads the same on
+ * Shared by the settlement vote and the Third Voter panel so the same refusal reads the same on
  * both. Screen-specific refusals (a nomination's candidate) stay with their screen.
  *
  * ⚠️ MATCHED BY NAME, NOT instanceof. These errors cross the hook boundary, which tests replace

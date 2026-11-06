@@ -250,7 +250,7 @@ export default function WhiteLabelGuide() {
               your brand then opens on your site rather than ours. Leave it out and the links open on our site, in your
               branding.
             </p>
-            <p>Nothing you send can change a payment&apos;s terms, fee, tiebreaker or verification. Branding only changes how the pages look and read.</p>
+            <p>Nothing you send can change a payment&apos;s terms, fee, Third Voter or verification. Branding only changes how the pages look and read.</p>
           </Step>
 
           <Step id="create-brand" n="Step 2" title="We create your brand" roles={['us']} who="Stabledrop, once your request arrives. Nothing for you to do here; this is how we do it.">
@@ -303,7 +303,7 @@ WHITELABEL_URL=${API} WHITELABEL_ADMIN_KEY=… node scripts/brands/push.mjs ${br
             <p>
               With <C>payPageBase</C> set in your brand, the links we hand out for your payments open these four pages
               on your site, at the same path and with the payment in the query string: payment links and QR codes,
-              request emails, the &quot;payment received&quot; email&apos;s link to the dashboard, and the tiebreaker&apos;s
+              request emails, the &quot;payment received&quot; email&apos;s link to the dashboard, and the Third Voter&apos;s
               link to disputes. For example <C>your-site/contract-pay?contractId=6ada…&amp;b={brand}</C>. Each page passes
               its query string straight into our page. Host all four, or a link will lead to a missing page.
             </p>
@@ -321,7 +321,7 @@ WHITELABEL_URL=${API} WHITELABEL_ADMIN_KEY=… node scripts/brands/push.mjs ${br
                       ['/contract-pay', 'A payment request\'s link and QR code, from the request page or the API (pay_link).'],
                       ['/pay', 'A payment prepared for a named buyer: the request email, and pay_link from the AI-agent tools.'],
                       ['/dashboard', 'The "payment received" emails, opening the payment on the dashboard.'],
-                      ['/disputes', 'Emails to a payment\'s tiebreaker.'],
+                      ['/disputes', 'Emails to a payment\'s Third Voter.'],
                     ] as [string, string][]
                   ).map(([page, opens]) => (
                     <tr key={page}>

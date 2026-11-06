@@ -54,7 +54,7 @@ describe('ArbiterPanel as the seated arbiter', () => {
 
     render(<ArbiterPanel contractAddress="0xescrow" state={seatedState} loading={false} onChanged={onChanged} viewerRole="arbiter" onResigned={onResigned} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Resign as tiebreaker' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Resign as Third Voter' }));
     expect(resignArbiter).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Yes, resign' }));
@@ -69,7 +69,7 @@ describe('ArbiterPanel as the seated arbiter', () => {
     render(<ArbiterPanel contractAddress="0xescrow" state={seatedState} loading={false} onChanged={jest.fn()} viewerRole="arbiter" />);
 
     expect(screen.queryByRole('button', { name: 'Nominate' })).toBeNull();
-    expect(screen.queryByLabelText('Nominate a tiebreaker')).toBeNull();
+    expect(screen.queryByLabelText('Nominate a Third Voter')).toBeNull();
   });
 
   it('a failed recording does not undo or hide the on-chain resignation', async () => {
@@ -77,7 +77,7 @@ describe('ArbiterPanel as the seated arbiter', () => {
     const onResigned = jest.fn().mockRejectedValue(new Error('403'));
     render(<ArbiterPanel contractAddress="0xescrow" state={seatedState} loading={false} onChanged={onChanged} viewerRole="arbiter" onResigned={onResigned} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Resign as tiebreaker' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Resign as Third Voter' }));
     fireEvent.click(screen.getByRole('button', { name: 'Yes, resign' }));
 
     await waitFor(() => expect(onChanged).toHaveBeenCalled());
@@ -88,6 +88,6 @@ describe('ArbiterPanel as the seated arbiter', () => {
     render(<ArbiterPanel contractAddress="0xescrow" state={seatedState} loading={false} onChanged={jest.fn()} viewerRole="buyer" />);
 
     expect(screen.getByRole('button', { name: 'Nominate' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Resign as tiebreaker' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Resign as Third Voter' })).toBeNull();
   });
 });

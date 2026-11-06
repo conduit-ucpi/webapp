@@ -1,5 +1,5 @@
 /**
- * Email → wallet for a tiebreaker nominated by email: signed in, the webapp's own userservice key,
+ * Email → wallet for a Third Voter nominated by email: signed in, the webapp's own userservice key,
  * nothing of the visitor's request forwarded.
  */
 

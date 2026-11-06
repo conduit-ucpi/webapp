@@ -109,7 +109,7 @@ interface UseCombinedContractsOptions {
   enabled?: boolean;
   /**
    * Which of the viewer's roles to list for. Default: the escrows they are buyer or seller on.
-   * `'arbiter'`: the escrows naming their wallet as tiebreaker, for the /disputes screen.
+   * `'arbiter'`: the escrows naming their wallet as Third Voter, for the /disputes screen.
    */
   role?: 'arbiter';
   /**

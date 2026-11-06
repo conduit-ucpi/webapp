@@ -7,7 +7,7 @@ import { extractAuthToken } from '@/utils/api-auth';
  * The wallet an email address names. With `create: true`, one is made for it if its owner has
  * never signed in; without, an email nobody has signed in with is a 404 and nothing is made.
  *
- * The dispute screen's: a party nominating a tiebreaker by email nominates the wallet this
+ * The dispute screen's: a party nominating a Third Voter by email nominates the wallet this
  * returns. userservice owns the mapping and the same email always answers with the same wallet,
  * so two parties who type the same email name the same person, who reaches the seat by signing
  * in with it. The screen looks up as the party types (no `create`, so a half-typed address never

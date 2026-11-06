@@ -10,8 +10,8 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "Article",
-    "headline": "Dispute Policy",
-    "description": `How disputes work in a ${brand} protected payment: the contract's three-party voting, how the tiebreaker is appointed and changed, and how ${brand}'s default tiebreaker decides its vote.`,
+    "headline": "Dispute Resolution Rules",
+    "description": `How disputes work in a ${brand} protected payment: the contract's three-party voting, how the Third Voter is appointed and changed, and how ${brand}'s default Third Voter decides its vote.`,
     "publisher": { "@type": "Organization", "name": brand },
     "dateModified": dateModified
   };
@@ -19,9 +19,9 @@ export default function DisputePolicy({ dateModified }: { dateModified: string }
   return (
     <>
       <SEO
-        title={`Dispute Policy | ${brand}`}
-        description={`How disputes work in a ${brand} protected payment: three-party voting in the contract, how the tiebreaker is appointed and changed, and how ${brand}'s default tiebreaker decides its vote.`}
-        keywords="escrow dispute, dispute policy, tiebreaker, USDC escrow, smart contract dispute"
+        title={`Dispute Resolution Rules | ${brand}`}
+        description={`How disputes work in a ${brand} protected payment: three-party voting in the contract, how the Third Voter is appointed and changed, and how ${brand}'s default Third Voter decides its vote.`}
+        keywords="escrow dispute, dispute resolution rules, Third Voter, USDC escrow, smart contract dispute"
         canonical="/dispute-policy"
         structuredData={structuredData}
       />

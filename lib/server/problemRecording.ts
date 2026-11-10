@@ -1,5 +1,12 @@
 import type { NextApiRequest } from 'next';
-import { MAX_CONSOLE_ENTRIES, MAX_CONSOLE_ENTRY, MAX_DESCRIPTION, type CreateRecordingRequest } from '@/lib/problemReport';
+import {
+  MAX_CONSOLE_ENTRIES,
+  MAX_CONSOLE_ENTRY,
+  MAX_DESCRIPTION,
+  capturedSurface,
+  type CapturedSurface,
+  type CreateRecordingRequest,
+} from '@/lib/problemReport';
 import type { SignedInAccount } from '@/lib/server/signedInAccount';
 
 /**
@@ -33,6 +40,8 @@ export interface RecordingRecord {
     timezone: string | null;
     connectedWallet: string | null;
     replayId: string | null;
+    captured: CapturedSurface | null;
+    framedBy: string | null;
     console: string[];
   };
   request: { userAgent: string | null; country: string | null; serverVersion: string };
@@ -72,6 +81,8 @@ export function cleanReported(body: Partial<CreateRecordingRequest>): RecordingR
     timezone: matching(body.timezone, /^[A-Za-z0-9_+\-/]{1,64}$/),
     connectedWallet: matching(body.connectedWallet, /^0x[0-9a-fA-F]{40}$/),
     replayId: matching(body.replayId, /^[A-Za-z0-9_-]{1,100}$/),
+    captured: capturedSurface(body.captured),
+    framedBy: matching(body.framedBy, /^https?:\/\/[A-Za-z0-9.-]{1,253}(:\d{1,5})?$/),
     console: (Array.isArray(body.console) ? body.console : [])
       .slice(-MAX_CONSOLE_ENTRIES)
       .map((entry) => line(entry, MAX_CONSOLE_ENTRY))
@@ -91,6 +102,14 @@ export function requestFacts(req: NextApiRequest): RecordingRecord['request'] {
     serverVersion: process.env.GIT_SHA || 'unknown',
   };
 }
+
+/** What the recorder was given, in words. A tab shows nothing that opened beside it. */
+const SURFACES: Record<CapturedSurface | 'unknown', string> = {
+  monitor: 'whole screen',
+  window: 'one window',
+  browser: 'ONE TAB ONLY: other tabs and pop-ups are not in it',
+  unknown: 'the browser did not say what was shared',
+};
 
 const megabytes = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 
@@ -116,7 +135,8 @@ export function notificationMessage(record: RecordingRecord, videoUrl: string, r
     `User id: ${record.account.userId ?? '(not signed in)'}`,
     `Connected wallet, as the page reported it: ${r.connectedWallet ?? '(none)'}`,
     `Route: ${r.route ?? '(not given)'}`,
-    `Video: ${megabytes(record.video.size)}, ${record.video.contentType}, ${record.source === 'recorder' ? 'recorded in the page' : 'uploaded file'}`,
+    `Shown inside: ${r.framedBy ?? '(not framed: our own site)'}`,
+    `Video: ${megabytes(record.video.size)}, ${record.video.contentType}, ${record.source === 'recorder' ? `recorded in the page (${SURFACES[r.captured ?? 'unknown']})` : 'uploaded file'}`,
     `Viewport: ${r.viewport ? `${r.viewport.width}x${r.viewport.height}` : '(not given)'}, platform ${r.platform ?? '(not given)'}`,
     `App version: ${r.appVersion ?? '(not given)'} (server ${record.request.serverVersion})`,
     `Their time: ${r.clientTime ?? '(not given)'} in ${r.timezone ?? '(not given)'}, country ${record.request.country ?? 'unknown'}`,

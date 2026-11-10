@@ -45,6 +45,8 @@ const BODY = {
   timezone: 'Europe/London',
   connectedWallet: WALLET,
   replayId: null,
+  captured: 'browser',
+  framedBy: 'https://shop.example',
   console: ['error unsupported asset for stripe onramp'],
 };
 

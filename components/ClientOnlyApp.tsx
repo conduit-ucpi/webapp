@@ -11,6 +11,7 @@ import CookieConsent from '@/components/consent/CookieConsent';
 import FeedbackButton from '@/components/feedback/FeedbackButton';
 import ReportProblemButton from '@/components/feedback/ReportProblemButton';
 import { watchConsoleProblems } from '@/lib/consoleProblems';
+import { RECORDER_WINDOW_PATH } from '@/lib/problemReport';
 import { FarcasterDetectionProvider } from '@/components/farcaster/FarcasterDetectionProvider';
 import { NavigationProvider } from '@/components/navigation/NavigationProvider';
 import { EthersProvider } from '@/components/providers/EthersProvider';
@@ -69,7 +70,7 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
           )}
           <FarcasterReady />
           {/* Not inside Shopify's admin iframe: no banner there, so no analytics either. */}
-          {router.pathname !== '/shopify/embedded' && <CookieConsent />}
+          {router.pathname !== '/shopify/embedded' && router.pathname !== RECORDER_WINDOW_PATH && <CookieConsent />}
           <FarcasterDetectionProvider children={
             <ConfigProvider children={
               <EthersProvider children={
@@ -82,8 +83,9 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
                               <Component {...pageProps} />
                             } />
                             {/* Outside Layout on purpose: every page has it, whichever layout branch it takes. */}
-                            <FeedbackButton />
-                            <ReportProblemButton />
+                            {/* Not in the recorder window, which is itself part of reporting a problem. */}
+                            {router.pathname !== RECORDER_WINDOW_PATH && <FeedbackButton />}
+                            {router.pathname !== RECORDER_WINDOW_PATH && <ReportProblemButton />}
                           </>
                         } />
                       } />

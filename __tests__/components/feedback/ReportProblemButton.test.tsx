@@ -52,8 +52,8 @@ function recordingBrowser(getDisplayMedia: jest.Mock) {
   Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getDisplayMedia } });
   return instances;
 }
-const stream = () => {
-  const track = { stop: jest.fn(), addEventListener: jest.fn() };
+const stream = (surface: string = 'monitor') => {
+  const track = { stop: jest.fn(), addEventListener: jest.fn(), getSettings: () => ({ displaySurface: surface }) };
   return { getTracks: () => [track], getVideoTracks: () => [track], track };
 };
 
@@ -173,7 +173,7 @@ describe('a browser that can record its screen', () => {
       fireEvent.click(screen.getByRole('button', { name: 'Start recording' }));
     });
 
-    expect(getDisplayMedia).toHaveBeenCalledWith({ video: { frameRate: 15 }, audio: false, preferCurrentTab: true });
+    expect(getDisplayMedia).toHaveBeenCalledWith({ video: { frameRate: 15, displaySurface: 'monitor' }, audio: false });
     expect(recorders[0].mimeType).toBe('video/webm');
     expect(screen.queryByRole('dialog')).toBeNull();
 
@@ -183,7 +183,25 @@ describe('a browser that can record its screen', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Send' }));
     await waitFor(() => expect(mockSend).toHaveBeenCalled());
-    expect(mockSend.mock.calls[0][0].request).toMatchObject({ source: 'recorder', contentType: 'video/webm' });
+    expect(mockSend.mock.calls[0][0].request).toMatchObject({ source: 'recorder', contentType: 'video/webm', captured: 'monitor' });
+    expect(screen.queryByText(/Only this tab is being recorded/)).toBeNull();
+  });
+
+  it('says so while only a tab is being recorded, and reports what was shared', async () => {
+    recordingBrowser(jest.fn(async () => stream('browser')));
+    mockUseAuth.mockReturnValue({ user: { email: 'ana@example.com' }, authenticatedFetch } as any);
+    render(<ReportProblemButton />);
+    open();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Start recording' }));
+    });
+    expect(screen.getByText(/Only this tab is being recorded/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Stop recording/ }));
+    await screen.findByLabelText('What were you trying to do?');
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+    await waitFor(() => expect(mockSend).toHaveBeenCalled());
+    expect(mockSend.mock.calls[0][0].request).toMatchObject({ captured: 'browser' });
   });
 
   it('stops when sharing is ended from the browser itself', async () => {
@@ -213,5 +231,85 @@ describe('a browser that can record its screen', () => {
     expect(screen.getByText(/We could not record your screen from this page/)).toBeInTheDocument();
     expect(screen.getByLabelText('Upload recording', { selector: 'input' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Start recording' })).toBeNull();
+    // A computer's own recorder, not a phone's.
+    expect(screen.getByText(/Shift \+ Command \+ 5/)).toBeInTheDocument();
+    expect(screen.queryByText(/Control Centre/)).toBeNull();
+  });
+
+  it('goes straight to the upload when the site framing us does not allow screen capture', () => {
+    const getDisplayMedia = jest.fn();
+    recordingBrowser(getDisplayMedia);
+    Object.defineProperty(document, 'featurePolicy', { configurable: true, value: { allowsFeature: (feature: string) => feature !== 'display-capture' } });
+    try {
+      render(<ReportProblemButton />);
+      open();
+      expect(screen.queryByRole('button', { name: 'Start recording' })).toBeNull();
+      expect(screen.getByLabelText('Upload recording', { selector: 'input' })).toBeInTheDocument();
+      expect(screen.getByText(/Shift \+ Command \+ 5/)).toBeInTheDocument();
+      expect(getDisplayMedia).not.toHaveBeenCalled();
+    } finally {
+      delete (document as unknown as { featurePolicy?: unknown }).featurePolicy;
+    }
+  });
+
+  it('records through a window of our own when a partner site frames us without allowing capture', async () => {
+    const getDisplayMedia = jest.fn();
+    recordingBrowser(getDisplayMedia);
+    Object.defineProperty(document, 'featurePolicy', { configurable: true, value: { allowsFeature: () => false } });
+    const realParent = window.parent;
+    Object.defineProperty(window, 'parent', { configurable: true, value: {} });
+    const popup = { closed: false, close: jest.fn(), postMessage: jest.fn() };
+    const openWindow = jest.spyOn(window, 'open').mockReturnValue(popup as unknown as Window);
+    const say = (data: unknown, source: unknown = popup, origin = window.location.origin) =>
+      act(() => {
+        window.dispatchEvent(new MessageEvent('message', { data, origin, source: source as MessageEventSource }));
+      });
+    try {
+      mockUseAuth.mockReturnValue({ user: { email: 'ana@example.com' }, authenticatedFetch } as any);
+      render(<ReportProblemButton />);
+      open();
+      fireEvent.click(screen.getByRole('button', { name: 'Start recording' }));
+      expect(openWindow).toHaveBeenCalledWith('/report-recorder/', 'problem-recorder', expect.any(String));
+      expect(getDisplayMedia).not.toHaveBeenCalled();
+      expect(screen.getByText(/small window that opened/)).toBeInTheDocument();
+
+      // Nobody but the window we opened, on our own origin, is believed.
+      say({ type: 'problem-recorder', event: 'started', surface: 'monitor' }, {});
+      say({ type: 'problem-recorder', event: 'started', surface: 'monitor' }, popup, 'https://shop.example');
+      expect(screen.queryByRole('button', { name: /Stop recording/ })).toBeNull();
+
+      say({ type: 'problem-recorder', event: 'started', surface: 'monitor' });
+      fireEvent.click(screen.getByRole('button', { name: /Stop recording/ }));
+      expect(popup.postMessage).toHaveBeenCalledWith({ type: 'problem-recorder', event: 'stop' }, window.location.origin);
+
+      say({ type: 'problem-recorder', event: 'finished', blob: new Blob(['video'], { type: 'video/webm' }), hitLimit: false, surface: 'monitor' });
+      await screen.findByLabelText('What were you trying to do?');
+      fireEvent.click(screen.getByRole('button', { name: 'Send' }));
+      await waitFor(() => expect(mockSend).toHaveBeenCalled());
+      expect(mockSend.mock.calls[0][0].request).toMatchObject({ source: 'recorder', captured: 'monitor' });
+    } finally {
+      openWindow.mockRestore();
+      Object.defineProperty(window, 'parent', { configurable: true, value: realParent });
+      delete (document as unknown as { featurePolicy?: unknown }).featurePolicy;
+    }
+  });
+
+  it('falls back to the upload when the browser blocks that window', () => {
+    recordingBrowser(jest.fn());
+    Object.defineProperty(document, 'featurePolicy', { configurable: true, value: { allowsFeature: () => false } });
+    const realParent = window.parent;
+    Object.defineProperty(window, 'parent', { configurable: true, value: {} });
+    const openWindow = jest.spyOn(window, 'open').mockReturnValue(null);
+    try {
+      render(<ReportProblemButton />);
+      open();
+      fireEvent.click(screen.getByRole('button', { name: 'Start recording' }));
+      expect(screen.queryByRole('button', { name: 'Start recording' })).toBeNull();
+      expect(screen.getByLabelText('Upload recording', { selector: 'input' })).toBeInTheDocument();
+    } finally {
+      openWindow.mockRestore();
+      Object.defineProperty(window, 'parent', { configurable: true, value: realParent });
+      delete (document as unknown as { featurePolicy?: unknown }).featurePolicy;
+    }
   });
 });

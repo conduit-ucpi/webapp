@@ -3,6 +3,7 @@ import Header from './Header';
 import Footer from './Footer';
 import EmailPromptManager from '@/components/auth/EmailPromptManager';
 import { WHITE_LABEL_ROUTES } from '@/config/brands';
+import { RECORDER_WINDOW_PATH } from '@/lib/problemReport';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,8 +12,8 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const router = useRouter();
   
-  // Shopify embedded app - no layout at all
-  if (router.pathname === '/shopify/embedded') {
+  // Shopify embedded app - no layout at all. Nor the small recorder window "Report a problem" opens.
+  if (router.pathname === '/shopify/embedded' || router.pathname === RECORDER_WINDOW_PATH) {
     return <>{children}</>;
   }
 

@@ -103,8 +103,31 @@ export interface ReportContext {
   /** The wallet the page has connected, as the page sees it. The account is looked up server-side. */
   connectedWallet: string | null;
   replayId: string | null;
+  /** What the in-page recorder was given to record. Null for an uploaded file, or when the browser does not say. */
+  captured: CapturedSurface | null;
+  /** The origin of the site whose page frames ours (a white-label partner's), or null when nobody does. */
+  framedBy: string | null;
   console: string[];
 }
+
+/**
+ * The recorder window. A page framed by another site can only record the screen if that site's
+ * <iframe allow> says so, and we do not write partners' pages. A window of our own is nobody's
+ * frame, so it can always record: the framed page opens it, it records, and it hands the video
+ * back. Both are our origin, so they talk with postMessage and nothing passes through the partner.
+ */
+export const RECORDER_WINDOW_PATH = '/report-recorder';
+export type RecorderWindowMessage =
+  | { type: 'problem-recorder'; event: 'started'; surface: CapturedSurface | null }
+  | { type: 'problem-recorder'; event: 'finished'; blob: Blob; hitLimit: boolean; surface: CapturedSurface | null }
+  | { type: 'problem-recorder'; event: 'stop' };
+export const recorderWindowMessage = (data: unknown): RecorderWindowMessage | null =>
+  !!data && typeof data === 'object' && (data as { type?: unknown }).type === 'problem-recorder' ? (data as RecorderWindowMessage) : null;
+
+/** The browser's own names: the whole screen, one window, or one tab. A tab shows nothing that opens beside it. */
+export type CapturedSurface = 'monitor' | 'window' | 'browser';
+export const capturedSurface = (value: unknown): CapturedSurface | null =>
+  value === 'monitor' || value === 'window' || value === 'browser' ? value : null;
 
 export interface CreateRecordingRequest extends ReportContext {
   contentType: string;

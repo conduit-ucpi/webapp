@@ -111,7 +111,7 @@ export default function WhiteLabelGuide() {
   var frame = document.createElement('iframe');
   frame.src = SITE + '/contract-create?' + params.toString();
   frame.title = 'Checkout';
-  frame.allow = 'clipboard-write; payment';
+  frame.allow = 'clipboard-write; payment; display-capture';
   frame.style.cssText = 'width:100%;height:760px;border:0';
   document.getElementById('checkout').appendChild(frame);
 
@@ -152,12 +152,12 @@ export default function WhiteLabelGuide() {
   var frame = document.createElement('iframe');
   frame.src = SITE + '${path}?' + params.toString();
   frame.title = '${title}';
-  frame.allow = 'clipboard-write; payment';
+  frame.allow = 'clipboard-write; payment; display-capture';
   frame.style.cssText = 'width:100%;height:${height};border:0';
   document.getElementById('stabledrop').appendChild(frame);
 </script>`;
 
-  const frame = (path: string, title: string, size: string, allow = 'clipboard-write; payment') =>
+  const frame = (path: string, title: string, size: string, allow = 'clipboard-write; payment; display-capture') =>
     `<iframe src="${SITE}${path}?b=${brand}"
         title="${title}"
         allow="${allow}"
@@ -280,7 +280,8 @@ WHITELABEL_URL=${API} WHITELABEL_ADMIN_KEY=… node scripts/brands/push.mjs ${br
           <Step id="pages" n="Step 4" title="Host the framed pages on your site" roles={['partner']} who="You, the partner, on your own website: copy these pages into it.">
             <p>
               Each page on your site frames one of ours with your brand id. Keep the <C>allow</C> attribute: without{' '}
-              <C>clipboard-write</C> the copy buttons fail inside your page.
+              <C>clipboard-write</C> the copy buttons fail inside your page, and without <C>display-capture</C> a customer
+              who reports a problem cannot record their screen from it (they are asked to upload a recording instead).
             </p>
 
             <H3>Checkout: <C>your-site/contract-create</C> (required for checkout)</H3>

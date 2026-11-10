@@ -14,11 +14,13 @@ import {
   fileProblem,
   isEmail,
   videoContentType,
+  type CapturedSurface,
   type CreateRecordingRequest,
 } from '@/lib/problemReport';
 import { recentConsoleProblems } from '@/lib/consoleProblems';
 import { UploadError, sendRecording } from '@/lib/recordingUpload';
 import { useScreenRecorder } from './useScreenRecorder';
+import { useRecorderWindow } from './useRecorderWindow';
 
 /**
  * "Report a problem": a button on every page that sends us a screen recording of what the person
@@ -39,7 +41,7 @@ import { useScreenRecorder } from './useScreenRecorder';
 
 type Step =
   | { kind: 'closed' }
-  | { kind: 'intro'; recorderRefused?: boolean }
+  | { kind: 'intro'; recorderRefused?: boolean; windowBlocked?: boolean }
   | { kind: 'recording' }
   | { kind: 'review'; hitLimit: boolean }
   | { kind: 'sending'; fraction: number }
@@ -74,6 +76,36 @@ const writeDraft = (draft: Draft | null) => {
  * Which phone's instructions to show. Only wording hangs on this: which path the person takes is
  * decided by canRecordInPage. Unknown shows both.
  */
+/** False only when the browser says outright that this frame may not capture the screen. */
+function frameAllowsCapture(): boolean {
+  try {
+    const doc = document as unknown as Record<'permissionsPolicy' | 'featurePolicy', { allowsFeature?: (feature: string) => boolean } | undefined>;
+    const policy = doc.permissionsPolicy ?? doc.featurePolicy;
+    return policy?.allowsFeature ? policy.allowsFeature('display-capture') : true;
+  } catch {
+    return true;
+  }
+}
+
+/** Whether another page is showing this one in a frame. */
+function isFramed(): boolean {
+  try {
+    return typeof window !== 'undefined' && window.parent !== window;
+  } catch {
+    return true;
+  }
+}
+
+/** The origin of the page framing this one, as far as the browser will say. */
+function framingOrigin(): string | null {
+  try {
+    const ancestors = (window.location as Location & { ancestorOrigins?: DOMStringList }).ancestorOrigins;
+    return ancestors?.[0] ?? (document.referrer ? new URL(document.referrer).origin : null);
+  } catch {
+    return null;
+  }
+}
+
 function phonePlatform(): 'ios' | 'android' | 'unknown' {
   if (typeof navigator === 'undefined') return 'unknown';
   if (/android/i.test(navigator.userAgent)) return 'android';
@@ -122,11 +154,28 @@ export default function ReportProblemButton() {
 
   const inPage = useMemo(() => canRecordInPage(), []);
   const platform = useMemo(phonePlatform, []);
+  // Framed by a site whose <iframe allow> leaves out display-capture: the browser has the
+  // recorder but will refuse it here, so record through a window of our own instead.
+  const framed = useMemo(isFramed, []);
+  const framedOut = useMemo(() => inPage && !frameAllowsCapture(), [inPage]);
+  // A browser that has the recorder is a computer, whatever stopped it; phones have none.
+  const computer = inPage && platform === 'unknown';
 
-  const recorder = useScreenRecorder(({ blob, hitLimit }) => {
+  const [captured, setCaptured] = useState<CapturedSurface | null>(null);
+  const recorder = useScreenRecorder(({ blob, hitLimit, surface }) => {
     setFile(blob);
+    setCaptured(surface);
     setStep({ kind: 'review', hitLimit });
   });
+
+  const recorderWindow = useRecorderWindow(
+    ({ blob, hitLimit, surface }) => {
+      setFile(blob);
+      setCaptured(surface);
+      setStep({ kind: 'review', hitLimit });
+    },
+    () => setStep({ kind: 'intro' })
+  );
 
   // Back from the phone's recorder into a reloaded tab: reopen where they left off.
   useEffect(() => {
@@ -170,6 +219,14 @@ export default function ReportProblemButton() {
     if (!(await recorder.start())) setStep({ kind: 'intro', recorderRefused: true });
   };
 
+  const startInWindow = () => {
+    setError(null);
+    // The partner's brand, so the window is dressed as the page that opened it.
+    const brand = new URLSearchParams(window.location.search).get('b');
+    if (recorderWindow.open(brand ? `?b=${encodeURIComponent(brand)}` : '')) setStep({ kind: 'recording' });
+    else setStep({ kind: 'intro', recorderRefused: true, windowBlocked: true });
+  };
+
   const discard = () => {
     setFile(null);
     setError(null);
@@ -183,6 +240,7 @@ export default function ReportProblemButton() {
     const problem = fileProblem(chosen);
     if (problem) return setError(t(`report.${problem}`));
     setError(null);
+    setCaptured(null);
     setFile(chosen);
     setStep({ kind: 'review', hitLimit: false });
   };
@@ -211,6 +269,8 @@ export default function ReportProblemButton() {
       connectedWallet: user?.walletAddress || null,
       // Whichever session-replay tool is turned on publishes its session id here.
       replayId: (window as unknown as { __sessionReplayId?: string }).__sessionReplayId ?? null,
+      captured: recorded ? captured : null,
+      framedBy: framed ? framingOrigin() : null,
       console: recentConsoleProblems(),
     };
     setError(null);
@@ -233,22 +293,29 @@ export default function ReportProblemButton() {
 
   const instructions = (
     <div className="space-y-3">
-      <p className="text-sm text-gray-700">{t('report.phoneIntro')}</p>
-      {platform !== 'android' && (
+      <p className="text-sm text-gray-700">{t(computer ? 'report.computerIntro' : 'report.phoneIntro')}</p>
+      {computer && <p className="text-sm text-gray-700">{t('report.computerSteps')}</p>}
+      {!computer && platform !== 'android' && (
         <div className="flex items-center gap-3">
           <RecordGlyph />
           <p className="text-sm text-gray-700">{t('report.iosSteps')}</p>
         </div>
       )}
-      {platform !== 'ios' && (
+      {!computer && platform !== 'ios' && (
         <div className="flex items-center gap-3">
           <RecordGlyph />
           <p className="text-sm text-gray-700">{t('report.androidSteps')}</p>
         </div>
       )}
-      <p className="text-sm text-gray-700">{t('report.phoneReturn')}</p>
+      <p className="text-sm text-gray-700">{t(computer ? 'report.computerReturn' : 'report.phoneReturn')}</p>
     </div>
   );
+
+  const canStart = inPage && !framedOut && !(step.kind === 'intro' && step.recorderRefused);
+  // Refused inside somebody's frame: our own window can still record.
+  const canStartInWindow = inPage && framed && !canStart && !(step.kind === 'intro' && step.windowBlocked);
+  // Whichever recorder is running, the page's own or the window's.
+  const live = recorder.recording ? recorder : recorderWindow.state === 'recording' ? recorderWindow : null;
 
   const uploadControl = (
     <>
@@ -272,20 +339,34 @@ export default function ReportProblemButton() {
         </button>
       )}
 
-      {step.kind === 'recording' && recorder.recording && (
-        <div role="status" className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 rounded-full bg-red-600 text-white pl-4 pr-2 py-2 shadow-xl">
+      {step.kind === 'recording' && recorderWindow.state === 'waiting' && (
+        <div role="status" className="fixed bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 rounded-full bg-gray-900 text-white pl-4 pr-2 py-2 shadow-xl max-w-[calc(100vw-2rem)]">
+          <span className="text-sm font-medium">{t('report.windowWaiting')}</span>
+          <button type="button" onClick={recorderWindow.cancel} className="rounded-full bg-white text-gray-900 px-3 py-1.5 text-sm font-semibold">
+            {t('report.cancel')}
+          </button>
+        </div>
+      )}
+
+      {step.kind === 'recording' && live && (
+        <div role="status" className="fixed bottom-4 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 max-w-[calc(100vw-2rem)]">
+          {live.surface === 'browser' && (
+            <p className="rounded-lg bg-amber-100 text-amber-900 text-sm px-3 py-2 shadow-xl text-center">{t('report.tabOnly')}</p>
+          )}
+          <div className="flex items-center gap-3 rounded-full bg-red-600 text-white pl-4 pr-2 py-2 shadow-xl">
           <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" aria-hidden="true" />
           <span className="text-sm font-medium tabular-nums">
-            {t('report.recordingFor', { elapsed: clock(recorder.seconds), limit: clock(MAX_RECORDING_SECONDS) })}
+            {t('report.recordingFor', { elapsed: clock(live.seconds), limit: clock(MAX_RECORDING_SECONDS) })}
           </span>
           <button
             type="button"
-            onClick={recorder.stop}
+            onClick={live.stop}
             className="inline-flex items-center gap-1 rounded-full bg-white text-red-700 px-3 py-1.5 text-sm font-semibold"
           >
             <StopCircleIcon className="w-5 h-5" aria-hidden="true" />
             {t('report.stop')}
           </button>
+          </div>
         </div>
       )}
 
@@ -296,9 +377,11 @@ export default function ReportProblemButton() {
 
             {step.kind === 'intro' && (
               <>
-                {step.recorderRefused && <p role="status" className="text-sm text-gray-700">{t('report.recorderRefused')}</p>}
-                {inPage && !step.recorderRefused ? (
+                {step.recorderRefused && !canStartInWindow && <p role="status" className="text-sm text-gray-700">{t('report.recorderRefused')}</p>}
+                {canStart ? (
                   <p className="text-sm text-gray-700">{t('report.desktopIntro', { limit: clock(MAX_RECORDING_SECONDS) })}</p>
+                ) : canStartInWindow ? (
+                  <p className="text-sm text-gray-700">{t('report.windowIntro', { limit: clock(MAX_RECORDING_SECONDS) })}</p>
                 ) : (
                   instructions
                 )}
@@ -306,8 +389,10 @@ export default function ReportProblemButton() {
                 {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
                 <div className="flex flex-wrap justify-end gap-2">
                   <Button type="button" variant="ghost" onClick={close}>{t('report.cancel')}</Button>
-                  {inPage && !step.recorderRefused ? (
+                  {canStart ? (
                     <Button type="button" onClick={startRecording}>{t('report.start')}</Button>
+                  ) : canStartInWindow ? (
+                    <Button type="button" onClick={startInWindow}>{t('report.start')}</Button>
                   ) : (
                     uploadControl
                   )}

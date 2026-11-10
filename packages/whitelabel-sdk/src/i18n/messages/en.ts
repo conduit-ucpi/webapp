@@ -701,7 +701,7 @@ export const en = {
   'push.paying': 'Paying',
   'push.sellerReceives': 'They receive',
   'push.fee': 'Platform fee',
-  'push.cannotSign': "This payment can't be signed for right now. Try again in a minute.",
+  'push.cannotPay': "This payment can't be taken right now. Go back and try again in a minute.",
   'push.signing': 'Approve in your wallet…',
   'push.settling': 'Protecting your payment…',
   'push.failed': 'Payment not made',

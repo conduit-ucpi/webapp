@@ -801,7 +801,7 @@ export const es: Catalogue = {
   'push.paying': 'Pagas a',
   'push.sellerReceives': 'Recibe',
   'push.fee': 'Comisión de la plataforma',
-  'push.cannotSign': 'Este pago no se puede firmar ahora mismo. Inténtalo de nuevo en un minuto.',
+  'push.cannotPay': 'Este pago no se puede realizar ahora mismo. Vuelve atrás e inténtalo de nuevo en un minuto.',
   'push.signing': 'Aprueba en tu billetera…',
   'push.settling': 'Protegiendo tu pago…',
   'push.failed': 'No se realizó el pago',

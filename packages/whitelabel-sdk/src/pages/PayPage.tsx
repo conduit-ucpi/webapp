@@ -23,7 +23,7 @@ import { getNetworkName } from '@/utils/networkUtils';
 import { MIN_AMOUNT, TEST_AMOUNT, formatUsd, isAllowedAmount, parseAmount } from '@/utils/escrowFees';
 import { callAp2Tool, isAp2ToolError, type Ap2ToolError } from '../lib/ap2Mcp';
 import { attachAnalyticsClientId } from '../lib/analyticsClientId';
-import { verifyAuthorizationTarget, verifyQuotedEscrowAddress } from '../lib/escrow/verifyQuotedEscrow';
+import { verifyQuotedEscrowAddress } from '../lib/escrow/verifyQuotedEscrow';
 import { decodePayResume, encodePayResume, withPayResume } from '../lib/payResume';
 import { useT } from '../i18n';
 import { useBrandedHref, usePartnerBrand } from '../theme';
@@ -32,15 +32,20 @@ import { useBrandedHref, usePartnerBrand } from '../theme';
  * /pay — a buyer pushes a payment to a seller, into an escrow they can dispute.
  *
  * ⚠️ A THIN SKIN OVER ap2service'S MCP TOOLS, ON PURPOSE. prepare_escrow_payment decides the
- *    escrow address, the fee, the dispute window and the data the wallet signs; settle_escrow_
- *    payment relays the signature and creates the escrow. This page collects the terms, shows
- *    what prepare said, asks the wallet to sign, and shows what settle said. It is the same path
- *    an AI agent takes, so the site dogfoods the agent surface rather than bypassing it.
+ *    escrow address, the fee and the dispute window; settle_escrow_payment creates the escrow
+ *    around the money once it is at that address. This page collects the terms, shows what
+ *    prepare said, moves the money, and shows what settle said. It is the same path an AI agent
+ *    takes, so the site dogfoods the agent surface rather than bypassing it.
+ *
+ * ⚠️ EVERY ROUTE IS AN ORDINARY TRANSFER TO THE ESCROW ADDRESS, the signed-in wallet's included:
+ *    we sponsor its gas (fund-wallet) and the wallet sends a plain ERC20 transfer. Nothing here
+ *    signs an EIP-3009 authorization. That route only works for tokens that implement it (USDC
+ *    does, USDT on Base does not), so a page built on it cannot take every token we list.
  *
  * The ways of paying are /contract-pay's, through the same PaymentOptions: the signed-in wallet
  * (adding funds first if it is short, or by card straight into the escrow), or any other wallet
- * by address or QR. The transfer routes are offered only when prepare put the escrow on file,
- * and "I have paid" — or the balance poll — settles through the same MCP tool, unsigned.
+ * by address or QR. All of them need prepare to have put the escrow on file, and all of them
+ * settle through the same MCP tool, with the same terms.
  */
 
 const PUSH_JOURNEY_STEPS: JourneyStep[] = [
@@ -59,18 +64,6 @@ interface Prepared {
   seller_receives_estimate: string;
   platform_fee_estimate: string;
   parties?: { seller?: { address: string } };
-  fund_by_signature:
-    | string
-    | {
-        typed_data?: {
-          domain: Record<string, unknown>;
-          types: Record<string, { name: string; type: string }[]>;
-          message: Record<string, unknown>;
-        };
-        authorization?: Record<string, unknown>;
-        payer_balance_base_units?: number;
-        payer_can_cover?: boolean;
-      };
   /** An object when the escrow is on file and may be funded directly; a reason when not. */
   fund_by_transfer: string | { payment_uri: string };
   dispute: { until?: string };
@@ -143,6 +136,10 @@ export function paidEscrowFrom(settled: Settled | null, fallbackAddress: string)
   };
 }
 
+/** How long a wallet payment waits to see its own transfer at the escrow address before settling. */
+const ESCROW_FUNDS_POLLS = 15;
+const ESCROW_FUNDS_POLL_MS = 2000;
+
 // 'refused' is final: a sanctions refusal. Nothing on it can pay, and nothing leads back.
 type Stage = 'details' | 'review' | 'done' | 'refused';
 
@@ -164,7 +161,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
   // The partner this payment is made under, recorded on the contract. Not a term: it moves no address.
   const brandId = usePartnerBrand()?.id;
   const attribution = brandId ? { brand: brandId } : {};
-  const { getWeb3Service, getTokenBalance } = useSimpleEthers();
+  const { getTokenBalance, transferToContract, prewarmTransferToContract } = useSimpleEthers();
   const { showToast } = useToast();
 
   // A checkout's terms are the merchant's, a request's the seller's: either way not the payer's to edit.
@@ -222,7 +219,6 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
   };
 
   const { steps: paymentSteps, updateStep, setSteps } = usePaymentSteps([]);
-  const signing = prepared && typeof prepared.fund_by_signature === 'object' ? prepared.fund_by_signature : null;
   const transferOffered = !!prepared && typeof prepared.fund_by_transfer === 'object';
   const amountInTokens = parseFloat(amount) || 0;
   const balanceFloat = parseFloat(tokenBalance) || 0;
@@ -395,17 +391,20 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
   /**
    * The wallet payment in flight, resolving true once it has settled.
    *
-   * ⚠️ THE BALANCE POLL MUST NOT SETTLE UNDER IT. The relayed transfer lands at the escrow address
-   *    before this payment's own settle creates the escrow, and the poll sees that money. Settling
-   *    too, it raced this one to the same deploy (test, 1 Oct: two identical transactions, one
-   *    refused as "already known" and flashed as an error). The poll waits for this instead.
+   * ⚠️ THE BALANCE POLL MUST NOT SETTLE UNDER IT. The wallet's transfer lands at the escrow
+   *    address before this payment's own settle creates the escrow, and the poll sees that money.
+   *    Settling too, it raced this one to the same deploy (test, 1 Oct: two identical
+   *    transactions, one refused as "already known" and flashed as an error). The poll waits for
+   *    this instead.
    */
   const walletPayment = useRef<Promise<boolean> | null>(null);
 
-  /** Paying from the signed-in wallet: it signs what prepare returned, and settle relays it. */
+  /** Paying from the signed-in wallet: a gas-sponsored ordinary transfer, then settle. */
   const handleWalletPay = async () => {
-    if (!prepared || !signing?.typed_data) return fail(t('push.cannotSign'));
-    const payment = payFromWallet(prepared, signing);
+    // ⚠️ ONLY TO AN ADDRESS ON FILE. If settle fails after the money has moved, the sweep is what
+    //    finishes the payment, and it only knows about escrows on file.
+    if (!prepared || !transferOffered || !selectedToken?.address) return fail(t('push.cannotPay'));
+    const payment = payFromWallet(prepared, selectedToken.address);
     walletPayment.current = payment;
     try {
       await payment;
@@ -414,40 +413,51 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     }
   };
 
-  const payFromWallet = async (
-    prepared: Prepared,
-    signing: Exclude<Prepared['fund_by_signature'], string>
-  ): Promise<boolean> => {
-    if (!signing.typed_data) return false;
-    // The authorization must pay the escrow just checked, this amount, in this token, from this
-    // wallet: the typed data comes from the API too.
-    const target = verifyAuthorizationTarget(signing.typed_data, {
-      escrow: prepared.escrow_address,
-      token: selectedToken?.address ?? '',
-      amount: BigInt(baseUnits),
-      payer: payer ?? '',
-    });
-    if (!target.ok) {
-      fail(`${t('push.addressUnverified')} ${target.detail}`);
+  /**
+   * Wait for the transfer to show at the escrow address before settle is asked to build on it.
+   * The send returns once the transaction is submitted, which can be before it is mined, and
+   * settle refuses an address that does not hold the money yet. Bounded: settle is asked either
+   * way, and says what the address holds if it is still short.
+   */
+  const waitForEscrowFunds = async (escrow: string, tokenAddress: string) => {
+    for (let attempt = 0; attempt < ESCROW_FUNDS_POLLS; attempt++) {
+      if (await escrowHoldsFunds(escrow, tokenAddress)) return;
+      await new Promise((resolve) => setTimeout(resolve, ESCROW_FUNDS_POLL_MS));
+    }
+  };
+
+  /** Whether the escrow address already holds this payment. Unreadable counts as no. */
+  const escrowHoldsFunds = async (escrow: string, tokenAddress: string): Promise<boolean> => {
+    try {
+      return amountInTokens > 0 && parseFloat(await getTokenBalance(escrow, tokenAddress)) >= amountInTokens;
+    } catch {
       return false;
     }
+  };
+
+  const payFromWallet = async (prepared: Prepared, tokenAddress: string): Promise<boolean> => {
     setBusy('pay');
     setSteps([
-      { id: 'sign', label: t('push.signing'), status: 'active' },
+      { id: 'transfer', label: t('push.signing'), status: 'active' },
       { id: 'settle', label: t('push.settling'), status: 'pending' },
     ]);
     try {
-      const signer = await (await getWeb3Service()).getSigner();
-      const { domain, types, message } = signing.typed_data;
-      const signature = await signer.signTypedData(domain, types, message);
+      // ⚠️ NEVER SENT TWICE. A settle that failed after the transfer leaves the money at the
+      //    address and this button live again; pressing it must finish that payment, not send
+      //    another. An address that already holds the amount is only settled.
+      if (!(await escrowHoldsFunds(prepared.escrow_address, tokenAddress))) {
+        // The address was checked against the pinned factory when prepare answered.
+        // transferToContract asks for the gas first (fund-wallet), then the wallet sends.
+        await transferToContract(tokenAddress, prepared.escrow_address, String(baseUnits));
+        updateStep('settle', 'active');
+        await waitForEscrowFunds(prepared.escrow_address, tokenAddress);
+      }
 
       updateStep('settle', 'active');
       const result = await callAp2Tool<Settled>('settle_escrow_payment', {
         ...terms(),
         ...attribution,
         external_id: prepared.external_id,
-        authorization: signing.authorization,
-        signature,
       }, { fetcher: authenticatedFetch });
       if (isAp2ToolError(result)) {
         updateStep('settle', 'error');
@@ -466,6 +476,21 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
       setBusy(null);
     }
   };
+
+  /*
+   * Get the gas and the estimate out of the way while the payer reads the review screen, so
+   * pressing the button goes straight to their wallet. Once per escrow and amount: an estimate
+   * costs RPC calls, and the public RPC refuses a page that makes them on every render.
+   */
+  const prewarmedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!prepared || !transferOffered || ownRequest || !selectedToken?.address) return;
+    if (isLoadingBalance || balanceFloat < amountInTokens) return;
+    const key = `${selectedToken.address}:${prepared.escrow_address}:${baseUnits}`;
+    if (prewarmedFor.current === key) return;
+    prewarmedFor.current = key;
+    void prewarmTransferToContract(selectedToken.address, prepared.escrow_address, String(baseUnits));
+  }, [prepared, transferOffered, ownRequest, selectedToken?.address, isLoadingBalance, balanceFloat, amountInTokens, baseUnits, prewarmTransferToContract]);
 
   /**
    * The transfer routes' sweep: settle with no signature, around what the address holds. Run by
@@ -647,7 +672,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     );
   }
 
-  // The same gate as /create: the payer signs from their own wallet, and holds the right to
+  // The same gate as /create: the payer pays from their own wallet, and holds the right to
   // dispute from the same account.
   if (!isConnected || !address) {
     return (
@@ -772,14 +797,13 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
               // PaymentOptions states what happens, once, over every way of paying.
               nextBody={null}
             />
-            {/* No typed data means ap2service could not build the authorization (the token has
-                no EIP-712 domain, or the chain was unreadable). Said, not left as a dead button;
-                the transfer routes below still work. */}
+            {/* Not on file means nothing would finish a payment whose settle failed, so no way
+                of paying is offered. Said, not left as a dead button. */}
             {/* A disabled fieldset turns off every control inside it, styled as disabled too. */}
             <fieldset disabled={ownRequest} className="min-w-0 border-0 p-0">
               {request?.notice && <div className="mt-5">{request.notice}</div>}
-              {!signing?.typed_data && !ownRequest && (
-                <p className="mt-5 text-sm text-error-600 dark:text-error-400 text-center">{t('push.cannotSign')}</p>
+              {prepared && !transferOffered && !ownRequest && (
+                <p className="mt-5 text-sm text-error-600 dark:text-error-400 text-center">{t('push.cannotPay')}</p>
               )}
               <div className="mt-8">
                 <PaymentOptions

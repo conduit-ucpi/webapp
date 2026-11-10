@@ -3,7 +3,8 @@
  *
  * The page decides nothing, so what matters is the wire: the terms it hands prepare and settle
  * must be the same (they ARE the escrow's address), the payer and the nominal buyer must be the
- * signed-in wallet, and the wallet must sign exactly the typed data prepare returned.
+ * signed-in wallet, and the wallet must send an ordinary, gas-sponsored transfer to exactly the
+ * escrow address prepare quoted and the factory confirmed. Nothing is signed for.
  */
 
 import { act, render } from '@testing-library/react';
@@ -38,9 +39,14 @@ jest.mock('@/lib/ap2Mcp', () => ({
 }));
 // What the chain reads back: the payer's wallet, and the escrow address (empty until funded).
 const mockBalances = { wallet: '100.0', escrow: '0' };
+// The wallet's own transfer (gas sponsored inside it), and the estimate made ahead of it.
+const mockTransfer = jest.fn();
+const mockPrewarm = jest.fn();
+const TRANSFER_HASH = '0x' + 'cd'.repeat(32);
 jest.mock('@/hooks/useSimpleEthers', () => ({
   useSimpleEthers: () => ({
-    getWeb3Service: async () => ({ getSigner: async () => payerWallet }),
+    transferToContract: mockTransfer,
+    prewarmTransferToContract: mockPrewarm,
     getTokenBalance: async (owner: string) =>
       owner.toLowerCase() === '0x7b0e8fa36cf4e8ae5416f759692759ae7745f51b' ? mockBalances.escrow : mockBalances.wallet,
   }),
@@ -139,6 +145,14 @@ beforeEach(() => {
   mockBalances.escrow = '0';
   mockPredict.mockReset();
   mockPredict.mockResolvedValue(ESCROW);
+  // A transfer that lands: the escrow address holds the money by the time it returns.
+  mockTransfer.mockReset();
+  mockTransfer.mockImplementation(async () => {
+    mockBalances.escrow = '10';
+    return TRANSFER_HASH;
+  });
+  mockPrewarm.mockReset();
+  mockPrewarm.mockResolvedValue(undefined);
   (useConfig as jest.Mock).mockReturnValue({
     config: {
       chainId: 8453,
@@ -248,7 +262,8 @@ describe('/pay', () => {
     expect(mockCall.mock.calls[0][1]).not.toHaveProperty('brand');
   });
 
-  it('signs exactly what prepare returned and settles the same terms with it', async () => {
+  it('pays by an ordinary transfer to the quoted escrow, then settles the same terms unsigned', async () => {
+    const sign = jest.spyOn(payerWallet, 'signTypedData');
     mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({
       status: 'settled',
       dispute: { where: 'https://stabledrop.me/dashboard?contract=abc' },
@@ -258,17 +273,55 @@ describe('/pay', () => {
     fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
 
     await screen.findByText('Payment protected', { selector: 'h2' });
+    // The token, the address the factory confirmed, and the amount in base units.
+    expect(mockTransfer).toHaveBeenCalledTimes(1);
+    expect(mockTransfer).toHaveBeenCalledWith(USDC, ESCROW, '10000000');
     const [, prepareArgs] = mockCall.mock.calls[0];
     const [tool, settleArgs] = mockCall.mock.calls[1];
     expect(tool).toBe('settle_escrow_payment');
     const { payer: _payer, ...terms } = prepareArgs;
-    expect(settleArgs).toMatchObject({ ...terms, external_id: 'mcp-123', authorization: typedData.message });
-    // The signature is the payer's, over the token's own domain: what the token will accept.
-    const recovered = ethers.verifyTypedData(typedData.domain, typedData.types, typedData.message, settleArgs.signature);
-    expect(recovered).toBe(PAYER);
+    // Exactly the terms: no authorization and no signature, so settle builds on what is there.
+    expect(settleArgs).toEqual({ ...terms, external_id: 'mcp-123' });
+    expect(sign).not.toHaveBeenCalled();
+    sign.mockRestore();
 
     fireEvent.click(screen.getByRole('button', { name: 'View this payment' }));
     expect(push).toHaveBeenCalledWith('/dashboard?contract=abc');
+  });
+
+  it('pays from the wallet in a token that cannot be signed for (no EIP-3009: USDT on Base)', async () => {
+    mockCall
+      .mockResolvedValueOnce(prepared({ typed_data: undefined, authorization: undefined }))
+      .mockResolvedValueOnce({ status: 'settled' });
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await screen.findByText('Payment protected', { selector: 'h2' });
+    expect(mockTransfer).toHaveBeenCalledWith(USDC, ESCROW, '10000000');
+    expect(screen.queryByText(/can't be signed for/)).toBeNull();
+  });
+
+  it('settles nothing when the wallet did not send the transfer', async () => {
+    mockTransfer.mockRejectedValueOnce(new Error('User rejected the request'));
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })));
+    expect(mockCall).toHaveBeenCalledTimes(1);
+    // Still open to try again.
+    expect(await screen.findByRole('button', { name: /from this wallet/ })).toBeEnabled();
+  });
+
+  it('warms the transfer up once while the payer reads the review screen', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+
+    await waitFor(() => expect(mockPrewarm).toHaveBeenCalledWith(USDC, ESCROW, '10000000'));
+    expect(mockPrewarm).toHaveBeenCalledTimes(1);
   });
 
   it('offers to add funds, not to pay, when the wallet is short — as /contract-pay does', async () => {
@@ -363,15 +416,32 @@ describe('/pay', () => {
     expect(mockCall).toHaveBeenCalledTimes(2);
   });
 
-  it('any other settle failure still leaves the payment open to try again', async () => {
-    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({ error: 'service_unavailable', retryable: true, message: 'down' });
+  it('any other settle failure is not a refusal, and the money is not sent again', async () => {
+    mockCall
+      .mockResolvedValueOnce(prepared())
+      .mockResolvedValueOnce({ error: 'service_unavailable', retryable: true, message: 'down' })
+      // The balance poll may then settle what the transfer left at the address.
+      .mockResolvedValue({ status: 'settled' });
     render(<PayPage />);
     fill();
     fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
 
-    await waitFor(() => expect(mockCall).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', message: 'down' })));
     expect(screen.queryByText('Payment refused', { selector: 'h2' })).toBeNull();
-    expect(await screen.findByRole('button', { name: /from this wallet/ })).toBeTruthy();
+    expect(mockTransfer).toHaveBeenCalledTimes(1);
+  });
+
+  it('only settles when the escrow address already holds the payment: pressing pay sends nothing more', async () => {
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({ status: 'settled' });
+    render(<PayPage />);
+    fill();
+    const pay = await screen.findByRole('button', { name: /from this wallet/ });
+
+    mockBalances.escrow = '10';
+    fireEvent.click(pay);
+
+    await screen.findByText('Payment protected', { selector: 'h2' });
+    expect(mockTransfer).not.toHaveBeenCalled();
   });
 
   it('"I have paid" settles the funded address through the same tool, unsigned, with the same terms', async () => {
@@ -393,7 +463,7 @@ describe('/pay', () => {
 
   it('never settles the transfer route under a wallet payment that is still settling', async () => {
     jest.useFakeTimers();
-    // test, 1 Oct: the wallet's relayed transfer landed, the balance check saw it and settled
+    // test, 1 Oct: the wallet's transfer landed, the balance check saw it and settled
     // too, and the two raced to one deploy — the loser flashed "already known" at the payer.
     let finishWalletSettle: (value: unknown) => void = () => {};
     mockCall
@@ -404,8 +474,8 @@ describe('/pay', () => {
     fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
     await waitFor(() => expect(mockCall).toHaveBeenCalledTimes(2));
 
-    // The relayed transfer has landed; the balance poll finds it while the wallet's settle runs.
-    mockBalances.escrow = '10';
+    // The transfer has landed; the balance poll finds it while the wallet's settle runs.
+    expect(mockBalances.escrow).toBe('10');
     await act(async () => {
       jest.advanceTimersByTime(10_000);
     });
@@ -414,7 +484,7 @@ describe('/pay', () => {
     await screen.findByText('Payment protected', { selector: 'h2' });
     const settles = mockCall.mock.calls.filter(([tool]) => tool === 'settle_escrow_payment');
     expect(settles).toHaveLength(1);
-    expect(settles[0][1]).toHaveProperty('signature');
+    expect(mockTransfer).toHaveBeenCalledTimes(1);
   });
 
   it('settles the money itself if the wallet payment failed after it moved', async () => {
@@ -438,7 +508,8 @@ describe('/pay', () => {
     await screen.findByText('Payment protected', { selector: 'h2' });
     const settles = mockCall.mock.calls.filter(([tool]) => tool === 'settle_escrow_payment');
     expect(settles).toHaveLength(2);
-    expect(settles[1][1]).not.toHaveProperty('signature');
+    // The money moved once; only the settle was repeated.
+    expect(mockTransfer).toHaveBeenCalledTimes(1);
   });
 
   it('does not settle an address that holds nothing yet', async () => {
@@ -451,24 +522,21 @@ describe('/pay', () => {
     expect(mockCall).toHaveBeenCalledTimes(1);
   });
 
-  it('withholds the transfer routes when ap2service could not put the escrow on file', async () => {
+  it('offers no way of paying when ap2service could not put the escrow on file', async () => {
     mockCall.mockResolvedValueOnce(prepared({}, { fund_by_transfer: 'Not offered: could not be put on file' }));
     render(<PayPage />);
     fill();
 
-    expect(await screen.findByRole('button', { name: /from this wallet/ })).toBeInTheDocument();
+    // Nothing would finish a payment whose settle failed, so nothing is sent there.
+    expect(await screen.findByText(/can't be taken right now/)).toBeInTheDocument();
     expect(screen.queryByText('Or pay from another wallet')).toBeNull();
     expect(screen.queryByDisplayValue(ESCROW)).toBeNull();
-  });
+    expect(mockPrewarm).not.toHaveBeenCalled();
 
-  it('says why it cannot sign when ap2service could not build the authorization', async () => {
-    mockCall.mockResolvedValueOnce(prepared({ typed_data: undefined, authorization: undefined }));
-    render(<PayPage />);
-    fill();
-
-    expect(await screen.findByText(/can't be signed for right now/)).toBeInTheDocument();
-    // The transfer routes do not need a signature, so they are still there.
-    expect(screen.getByText('Or pay from another wallet')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /from this wallet/ }));
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })));
+    expect(mockTransfer).not.toHaveBeenCalled();
+    expect(mockCall).toHaveBeenCalledTimes(1);
   });
 
   it.each([
@@ -598,25 +666,6 @@ describe('/pay', () => {
 
     await waitFor(() => expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })));
     expect(screen.queryByText('Confirm payment')).toBeNull();
-  });
-
-  it('signs nothing when the authorization pays somewhere other than the checked escrow', async () => {
-    const ATTACKER = '0x000000000000000000000000000000000000dEaD';
-    const sign = jest.spyOn(payerWallet, 'signTypedData');
-    mockCall.mockResolvedValueOnce(
-      prepared({ typed_data: { ...typedData, message: { ...typedData.message, to: ATTACKER } } })
-    );
-    render(<PayPage />);
-    fill();
-    await screen.findByText('Confirm payment');
-
-    fireEvent.click(await screen.findByRole('button', { name: /Pay 10/ }));
-
-    await waitFor(() => expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })));
-    expect(showToast.mock.calls.at(-1)[0].message).toMatch(/pays a different address/);
-    expect(sign).not.toHaveBeenCalled();
-    expect(mockCall).toHaveBeenCalledTimes(1); // nothing was settled
-    sign.mockRestore();
   });
 
   describe('resuming from the URL', () => {

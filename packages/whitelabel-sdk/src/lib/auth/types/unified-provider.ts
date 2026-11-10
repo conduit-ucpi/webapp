@@ -27,7 +27,12 @@ export type ConnectionMode = 'default' | 'wallet-only' | 'social-only';
 /** What to put in the connected wallet, in whole tokens as a decimal string ("15" = 15 USDC). */
 export interface FundWalletRequest {
   amount: string;
-  asset: 'USDC' | { erc20: string };
+  /**
+   * The token to buy. `symbol` lets the provider name the token the way its onramps know it
+   * (Privy matches provider support by symbol, not address - see depositFundsOptions); the
+   * address is the fallback for a token it does not recognise.
+   */
+  asset: 'USDC' | { erc20: string; symbol?: string };
   chainId: number;
 }
 

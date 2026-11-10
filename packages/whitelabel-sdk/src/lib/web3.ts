@@ -1978,32 +1978,33 @@ export class Web3Service {
    * not.
    */
   private describeTransactionForPrompt(tx: { to?: string; data?: string }): string {
-    const decimals = this.config.usdcDetails?.decimals ?? 6;
     const type = this.detectTransactionType(tx.data || '0x');
 
     const shorten = (address?: string) =>
       address && address.length > 10 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address || 'the contract';
 
-    const amountFrom = (data: string) => {
-      try {
-        // transfer(address,uint256) and approve(address,uint256) share a layout:
-        // 4-byte selector, 32-byte address, 32-byte amount.
-        const [, amount] = ethers.AbiCoder.defaultAbiCoder().decode(
-          ['address', 'uint256'],
-          '0x' + data.slice(10)
-        );
-        return ethers.formatUnits(amount, decimals);
-      } catch {
-        return null;
-      }
-    };
-
     if (type === 'transfer' || type === 'approve') {
-      const amount = amountFrom(tx.data || '0x');
-      if (amount) {
-        return type === 'transfer'
-          ? `sending ${amount} USDC to ${shorten(tx.to)}`
-          : `approving ${amount} USDC to be spent by ${shorten(tx.to)}`;
+      // ⚠️ THE TOKEN IS THE CONTRACT BEING CALLED, NOT ALWAYS USDC. This used to say "USDC" and
+      //    use USDC's decimals whatever was moving, so a USDT payment was announced as USDC.
+      //    A token this deployment does not list has no symbol or decimals we can state, so it
+      //    gets the warning without figures below.
+      const token = this.tokenForPrompt(tx.to);
+      if (token) {
+        try {
+          // transfer(address,uint256) and approve(address,uint256) share a layout:
+          // 4-byte selector, 32-byte address, 32-byte amount. The address is who receives
+          // (or may spend) the tokens; `tx.to` is the token contract itself.
+          const [counterparty, value] = ethers.AbiCoder.defaultAbiCoder().decode(
+            ['address', 'uint256'],
+            '0x' + (tx.data || '').slice(10)
+          );
+          const amount = ethers.formatUnits(value, token.decimals);
+          return type === 'transfer'
+            ? `sending ${amount} ${token.symbol} to ${shorten(counterparty)}`
+            : `approving ${amount} ${token.symbol} to be spent by ${shorten(counterparty)}`;
+        } catch {
+          // Undecodable: fall through to the warning without figures.
+        }
       }
     }
 
@@ -2012,6 +2013,23 @@ export class Web3Service {
     }
 
     return `submitting a transaction to ${shorten(tx.to)}`;
+  }
+
+  /** The listed token at this address: what a transfer or approval sent to it moves. */
+  private tokenForPrompt(address?: string): { symbol: string; decimals: number } | null {
+    if (!address) return null;
+    const is = (candidate?: string | null) => !!candidate && candidate.toLowerCase() === address.toLowerCase();
+    const listed = [...(this.config.supportedTokens ?? []), this.config.defaultToken].find(
+      (token) => token && is(token.address)
+    );
+    if (listed) return { symbol: listed.symbol, decimals: listed.decimals };
+    if (is(this.config.usdcContractAddress)) {
+      return { symbol: this.config.usdcDetails?.symbol ?? 'USDC', decimals: this.config.usdcDetails?.decimals ?? 6 };
+    }
+    if (is(this.config.usdtContractAddress) && this.config.usdtDetails) {
+      return { symbol: this.config.usdtDetails.symbol, decimals: this.config.usdtDetails.decimals };
+    }
+    return null;
   }
 
   private detectTransactionType(data: string): 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds' | 'unknown' {

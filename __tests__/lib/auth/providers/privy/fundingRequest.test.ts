@@ -15,7 +15,12 @@ describe('depositFundsOptions', () => {
     });
   });
 
-  it('names any other token by its address', () => {
+  it('names any other token by its symbol, lower-case as Privy spells its own', () => {
+    const options = depositFundsOptions(WALLET, { amount: '5', asset: { erc20: TOKEN, symbol: 'USDT' }, chainId: 8453 }, 8453);
+    expect(options.destination.asset).toBe('usdt');
+  });
+
+  it('falls back to the address for a token with no symbol', () => {
     const options = depositFundsOptions(WALLET, { amount: '5', asset: { erc20: TOKEN }, chainId: 8453 }, 8453);
     expect(options.destination.asset).toBe(TOKEN);
   });

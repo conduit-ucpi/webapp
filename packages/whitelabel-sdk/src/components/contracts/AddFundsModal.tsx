@@ -119,7 +119,7 @@ export default function AddFundsModal({
     try {
       const result = await fundWallet({
         amount,
-        asset: tokenSymbol === 'USDC' ? 'USDC' : { erc20: tokenAddress },
+        asset: tokenSymbol === 'USDC' ? 'USDC' : { erc20: tokenAddress, symbol: tokenSymbol },
         chainId: chainId ?? config?.chainId ?? 0
       });
       const completed = result?.status === 'completed';

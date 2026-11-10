@@ -13,11 +13,17 @@ import type { FundWalletRequest, FundWalletResult } from '@/lib/auth/types/unifi
  *    tried on 2026-11-06, under $2. Short purchases stay in the buyer's wallet, and they can edit it.
  */
 export function depositFundsOptions(address: string, request: FundWalletRequest, chainId: number) {
+  // Privy takes "a token symbol or address". A symbol, lower-case like its own 'usdc', is what its
+  // provider matching understands; a bare address got a USDT buyer offered Stripe, which cannot
+  // deliver USDT on Base (seen 2026-11-10). The address stays as the fallback for a token with no
+  // symbol to give.
+  const asset =
+    request.asset === 'USDC' ? 'usdc' : request.asset.symbol ? request.asset.symbol.toLowerCase() : request.asset.erc20;
   return {
     destination: {
       wallet: address,
       chain: `eip155:${chainId}`,
-      asset: request.asset === 'USDC' ? 'usdc' : request.asset.erc20,
+      asset,
     },
     fiat: { source: { defaultAsset: 'usd' as const }, defaultAmount: request.amount },
   };

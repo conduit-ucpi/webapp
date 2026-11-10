@@ -14,7 +14,7 @@ import { openConsentSettings } from '@/lib/consent';
  * changes, __tests__/components/legal/translations.test.tsx fails and prints the new value: update
  * the Spanish to match, then set this to it. Never update this without updating the Spanish.
  */
-export const TRANSLATED_FROM = 'b756a3cfb18a5198';
+export const TRANSLATED_FROM = '48fd9d3789d8489a';
 
 export default function PrivacyTextEs() {
   return (
@@ -29,6 +29,7 @@ export default function PrivacyTextEs() {
           <li>Direcciones de correo electrónico para identificar tu cuenta</li>
           <li>Datos de transacciones relacionados con los contratos de pago</li>
           <li>Análisis de uso y métricas de rendimiento</li>
+          <li>Grabaciones de pantalla que decidas enviarnos con «Informar de un problema», junto con lo que escribas y datos técnicos de la página y de tu navegador. Una grabación muestra todo lo que había en la pantalla que compartiste. Eliminamos las grabaciones a los 90 días</li>
         </ul>
       </section>
 

@@ -9,6 +9,8 @@ import { TourProvider } from '@/components/onboarding/TourProvider';
 import FarcasterReady from '@/components/farcaster/FarcasterReady';
 import CookieConsent from '@/components/consent/CookieConsent';
 import FeedbackButton from '@/components/feedback/FeedbackButton';
+import ReportProblemButton from '@/components/feedback/ReportProblemButton';
+import { watchConsoleProblems } from '@/lib/consoleProblems';
 import { FarcasterDetectionProvider } from '@/components/farcaster/FarcasterDetectionProvider';
 import { NavigationProvider } from '@/components/navigation/NavigationProvider';
 import { EthersProvider } from '@/components/providers/EthersProvider';
@@ -39,6 +41,8 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
        runs, so a dependency's own console.error (notably AppKit's SIWX
        failures) is visible from a phone. No-op off mobile. */
     captureConsoleForMobile();
+    // The last 50 console errors and warnings, held in memory for a problem report to carry.
+    watchConsoleProblems();
     // Our GA client id for the payment pages' purchase attribution. Only our app registers one:
     // on a partner's site the SDK sends none. Answers null without analytics consent.
     setAnalyticsClientIdSource(() => analyticsClientId());
@@ -79,6 +83,7 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
                             } />
                             {/* Outside Layout on purpose: every page has it, whichever layout branch it takes. */}
                             <FeedbackButton />
+                            <ReportProblemButton />
                           </>
                         } />
                       } />

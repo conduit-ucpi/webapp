@@ -68,6 +68,8 @@ const DIRECTIVES = {
   // Any https image: wallet icons, token logos and QR codes come from hosts we do not control, and an
   // image cannot run anything.
   'img-src': ["'self'", 'data:', 'blob:', 'https:'],
+  // blob: is the preview of a screen recording before it is sent (Report a problem).
+  'media-src': ["'self'", 'blob:'],
   'object-src': ["'none'"],
   'base-uri': ["'self'"],
   'form-action': ["'self'"],

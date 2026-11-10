@@ -7,6 +7,8 @@ export type FundingEvent =
   | 'privy-cancelled'
   | 'privy-failed'
   | 'transfer-opened'
+  | 'kraken-opened'
+  | 'link-opened'
   | 'other-wallet-opened';
 
 /**

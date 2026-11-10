@@ -3,6 +3,10 @@ import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import AddFundsModal from '@/components/contracts/AddFundsModal';
 import { openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
+import { canBuyToken } from '@/utils/buyableToken';
+import { linkDelivers, linkOnrampUrl } from '@/lib/stripeLinkOnramp';
+import { useLinkAvailability } from '@/hooks/useLinkAvailability';
+import { KRAKEN_MINIMUM_USD, krakenDelivers, krakenRampUrl } from '@/lib/krakenRamp';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { reportFundingEvent } from '@/lib/reportFundingEvent';
 import { useOnrampMinimum } from '@/hooks/useOnrampMinimum';
@@ -143,6 +147,73 @@ export default function PaymentActionPanel({
       setCbPayLoading(false);
     }
   };
+  /**
+   * Buy the stablecoin on Kraken and have it sent straight to the payment address: Kraken's
+   * counterpart to handlePayWithCoinbase, settled the same way, by the "I have paid" panel.
+   *
+   * ⚠️ THE TAB IS OPENED BEFORE THE ADDRESS IS KNOWN, AND POINTED AT KRAKEN AFTER. Resolving the
+   *    address is asynchronous, and a browser only lets a click open a window while it is still
+   *    handling that click: opened afterwards, it is blocked as a popup.
+   */
+  const handlePayWithKraken = async () => {
+    if (!resolveEscrowAddress) return;
+    setCbPayError(null);
+    const tab = window.open('', '_blank');
+    try {
+      const escrowAddress = await resolveEscrowAddress();
+      // The whole amount owed, in tokens, rounded up to the cent as the Coinbase route is.
+      const url = escrowAddress
+        ? krakenRampUrl({ walletAddress: escrowAddress, tokenSymbol, chainId, amount: Math.ceil(amountInTokens * 100) / 100 })
+        : null;
+      if (!url) throw new Error(t('paymentActionPanel.couldNotPrepare'));
+      void reportFundingEvent('kraken-opened', { wallet: escrowAddress ?? undefined, amount: String(amountInTokens) });
+      if (tab) {
+        tab.opener = null;
+        tab.location.href = url;
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+      // Kraken has no way back here that we know of: show the panel that checks the address
+      // and sweeps the money in, as the Coinbase route does when its window closes.
+      onPayFromExternalWallet();
+    } catch (e) {
+      tab?.close();
+      setCbPayError(e instanceof Error ? e.message : t('paymentActionPanel.couldNotPrepare'));
+    }
+  };
+  /**
+   * Buy on Stripe's Link page and have it sent to the payment address. Link takes no address
+   * from us, so it is copied for the buyer to paste there, and the panel this opens shows it.
+   * The tab is opened during the click, for the reason given on handlePayWithKraken.
+   */
+  const handlePayWithLink = async () => {
+    if (!resolveEscrowAddress) return;
+    setCbPayError(null);
+    const tab = window.open('', '_blank');
+    try {
+      const escrowAddress = await resolveEscrowAddress();
+      const url = escrowAddress
+        ? linkOnrampUrl({ tokenSymbol, chainId, amount: Math.ceil(amountInTokens * 100) / 100 })
+        : null;
+      if (!escrowAddress || !url) throw new Error(t('paymentActionPanel.couldNotPrepare'));
+      void reportFundingEvent('link-opened', { wallet: escrowAddress, amount: String(amountInTokens) });
+      try {
+        await navigator.clipboard.writeText(escrowAddress);
+      } catch {
+        // Clipboard can be blocked; the address is on screen in the panel opened below.
+      }
+      if (tab) {
+        tab.opener = null;
+        tab.location.href = url;
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+      onPayFromExternalWallet();
+    } catch (e) {
+      tab?.close();
+      setCbPayError(e instanceof Error ? e.message : t('paymentActionPanel.couldNotPrepare'));
+    }
+  };
   const [copied, setCopied] = useState(false);
 
   const shortfall = Math.max(amountInTokens - balanceFloat, 0);
@@ -153,8 +224,11 @@ export default function PaymentActionPanel({
   const minimumLabel = minimum ? `${minimum.amount} ${minimum.currency}` : '';
   const coinbase = useCoinbaseAvailability(showCoinbasePay);
   const belowMinimumForContract = !!minimum && amountInTokens < minimum.inTokens;
+  // No onramp delivers this token (utils/buyableToken): paying by card is greyed out, and that
+  // reason replaces the exchange's own, which say nothing to a buyer it cannot serve at all.
+  const buyable = canBuyToken(tokenSymbol);
   // Coinbase's minimum says nothing to a buyer it cannot serve.
-  const belowMinimumForWallet = !!minimum && !coinbase.unavailable && shortfall > 0 && shortfall < minimum.inTokens;
+  const belowMinimumForWallet = buyable && !!minimum && !coinbase.unavailable && shortfall > 0 && shortfall < minimum.inTokens;
   const shortAddress = walletAddress
     ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
     : '';
@@ -174,7 +248,17 @@ export default function PaymentActionPanel({
   // Balance gates both wallet-dependent actions, in opposite directions.
   const canPayFromThisWallet =
     !hasInsufficientBalance && !isSameAddress && !isLoadingBalance && !isPreparing;
-  const canAddFunds = hasInsufficientBalance && !isLoadingBalance;
+  // Every way of adding funds buys the token or sends it to this wallet first; for a token no
+  // onramp delivers the buyer is pointed at what does work instead (their own holding, or USDC).
+  // Kraken into the payment address: only what it has been seen to deliver, and never below its
+  // minimum, since the payment address takes the exact amount.
+  const krakenCanDeliver = krakenDelivers(tokenSymbol, chainId);
+  const belowKrakenMinimum = amountInTokens < KRAKEN_MINIMUM_USD;
+  const linkCanDeliver = linkDelivers(tokenSymbol, chainId);
+  // Link sells in the United States only; the country is advice, so it can be overruled.
+  const linkCountry = useLinkAvailability();
+  const canAddFunds = hasInsufficientBalance && !isLoadingBalance && buyable;
+  const cannotBuyReason = t('addFunds.cannotBuyToken', { token: tokenSymbol });
 
   const actionButton = 'w-full rounded-lg justify-center';
 
@@ -284,6 +368,7 @@ export default function PaymentActionPanel({
             : t('paymentActionPanel.addFundsToThis')}
         </Button>
         {!hasInsufficientBalance && !isSameAddress && reason(t('paymentActionPanel.whyNoAddFunds'))}
+        {hasInsufficientBalance && !isSameAddress && !buyable && reason(cannotBuyReason)}
 
         {/* Never gated on balance: this route bypasses the connected wallet. */}
         <Button
@@ -309,7 +394,7 @@ export default function PaymentActionPanel({
           <Button
             variant="outline"
             onClick={handlePayWithCoinbase}
-            disabled={isPaymentInProgress || cbPayLoading || belowMinimumForContract || coinbase.unavailable}
+            disabled={isPaymentInProgress || cbPayLoading || belowMinimumForContract || coinbase.unavailable || !buyable}
             className={`${actionButton} h-auto flex-col gap-1 py-3 text-center`}
           >
             <span className="font-medium">
@@ -320,7 +405,10 @@ export default function PaymentActionPanel({
             </span>
           </Button>
         )}
-        {resolveEscrowAddress && showCoinbasePay && coinbase.unavailable && !preview && (
+        {/* Said once: under Add funds when that is greyed out for the same reason, else here. */}
+        {resolveEscrowAddress && showCoinbasePay && !buyable && !preview && !(hasInsufficientBalance && !isSameAddress) &&
+          reason(cannotBuyReason)}
+        {resolveEscrowAddress && showCoinbasePay && buyable && coinbase.unavailable && !preview && (
           <p className="-mt-2 text-xs text-secondary-500 dark:text-secondary-400">
             {coinbaseUnavailableReason}{' '}
             <button type="button" onClick={coinbase.overrule} className="underline hover:text-secondary-900 dark:hover:text-white">
@@ -328,8 +416,51 @@ export default function PaymentActionPanel({
             </button>
           </p>
         )}
-        {resolveEscrowAddress && showCoinbasePay && !coinbase.unavailable && belowMinimumForContract &&
+        {resolveEscrowAddress && showCoinbasePay && buyable && !coinbase.unavailable && belowMinimumForContract &&
           reason(t('paymentActionPanel.whyNoCard', { minimum: minimumLabel }))}
+
+        {resolveEscrowAddress && (
+          <Button
+            variant="outline"
+            onClick={handlePayWithKraken}
+            disabled={isPaymentInProgress || !krakenCanDeliver || belowKrakenMinimum}
+            className={`${actionButton} h-auto flex-col gap-1 py-3 text-center`}
+          >
+            <span className="font-medium">{t('paymentActionPanel.payWithKraken')}</span>
+            <span className="text-xs font-normal leading-snug text-secondary-500 dark:text-secondary-400">
+              {t('paymentActionPanel.krakenNote')}
+            </span>
+          </Button>
+        )}
+        {/* A token nothing delivers already has its own line above; this is for the rest. */}
+        {resolveEscrowAddress && buyable && !krakenCanDeliver &&
+          reason(t('addFunds.krakenCannotDeliver', { token: tokenSymbol, network: networkName }))}
+        {resolveEscrowAddress && krakenCanDeliver && belowKrakenMinimum &&
+          reason(t('paymentActionPanel.whyNoKraken', { minimum: KRAKEN_MINIMUM_USD }))}
+
+        {resolveEscrowAddress && (
+          <Button
+            variant="outline"
+            onClick={handlePayWithLink}
+            disabled={isPaymentInProgress || !linkCanDeliver || linkCountry.unavailable}
+            className={`${actionButton} h-auto flex-col gap-1 py-3 text-center`}
+          >
+            <span className="font-medium">{t('paymentActionPanel.payWithLink')}</span>
+            <span className="text-xs font-normal leading-snug text-secondary-500 dark:text-secondary-400">
+              {t('paymentActionPanel.linkNote')}
+            </span>
+          </Button>
+        )}
+        {resolveEscrowAddress && buyable && !linkCanDeliver &&
+          reason(t('addFunds.linkCannotDeliver', { token: tokenSymbol, network: networkName }))}
+        {resolveEscrowAddress && linkCanDeliver && linkCountry.unavailable && !preview && (
+          <p className="-mt-2 text-xs text-secondary-500 dark:text-secondary-400">
+            {t('addFunds.linkNotInCountry', { country: linkCountry.countryName ?? '' })}{' '}
+            <button type="button" onClick={linkCountry.overrule} className="underline hover:text-secondary-900 dark:hover:text-white">
+              {t('paymentActionPanel.notInCountry', { country: linkCountry.countryName ?? '' })}
+            </button>
+          </p>
+        )}
       </div>
 
       {cbPayError && <p className="mt-2 text-sm text-red-600">{cbPayError}</p>}

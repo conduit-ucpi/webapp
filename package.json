@@ -25,6 +25,8 @@
     "check-currency-boundaries": "node scripts/check-currency-boundaries.js"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1165.0",
+    "@aws-sdk/s3-request-presigner": "^3.1165.0",
     "@coinbase/cdp-sdk": "^1.48.2",
     "@conduit-ucpi/sdk": "^0.1.0",
     "@farcaster/miniapp-sdk": "^0.2.0",

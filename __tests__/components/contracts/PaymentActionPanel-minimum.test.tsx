@@ -67,6 +67,49 @@ describe('PaymentActionPanel and the exchange minimum', () => {
     });
   });
 
+  describe('a token no onramp delivers (USDT on Base)', () => {
+    const SAYS = "Some external suppliers can't support USDT yet. If your option is greyed out, use USDT you already hold or use USDC instead";
+    const usdt = (overrides: Record<string, unknown> = {}) =>
+      props({ amountLabel: '32 USDT', amountInTokens: 32, tokenSymbol: 'USDT', ...overrides });
+
+    it('greys out adding funds and paying by card, and says why once', () => {
+      render(<PaymentActionPanel {...usdt()} />);
+      expect(screen.getByRole('button', { name: 'Add funds to this wallet' })).toBeDisabled();
+      expect(card()).toBeDisabled();
+      expect(screen.getAllByText(SAYS)).toHaveLength(1);
+    });
+
+    it('still says why paying by card is greyed out when the wallet holds enough', () => {
+      render(<PaymentActionPanel {...usdt({ balanceFloat: 50, hasInsufficientBalance: false })} />);
+      expect(card()).toBeDisabled();
+      expect(screen.getAllByText(SAYS)).toHaveLength(1);
+      expect(screen.getByRole('button', { name: /from this wallet/ })).toBeEnabled();
+    });
+
+    it("says that instead of the exchange's own reasons, which do not apply", () => {
+      (useCoinbaseAvailability as jest.Mock).mockReturnValue({ unavailable: true, countryName: 'Venezuela', overrule: jest.fn() });
+      render(<PaymentActionPanel {...usdt({ amountLabel: '1.50 USDT', amountInTokens: 1.5 })} />);
+      expect(screen.queryByText(/Venezuela/)).toBeNull();
+      expect(screen.queryByText(/below the exchange's minimum/)).toBeNull();
+      expect(screen.queryByRole('button', { name: /exchange's minimum transfer/ })).toBeNull();
+    });
+
+    it('leaves paying from another wallet open', () => {
+      render(<PaymentActionPanel {...usdt()} />);
+      expect(screen.getByRole('button', { name: /external wallet/ })).toBeEnabled();
+    });
+
+    it('stays quiet in a seller preview', () => {
+      render(<PaymentActionPanel {...usdt({ preview: true })} />);
+      expect(screen.queryByText(/can't support USDT yet/)).toBeNull();
+    });
+
+    it('leaves adding funds open for USDC', () => {
+      render(<PaymentActionPanel {...props({ amountLabel: '32 USDC', amountInTokens: 32 })} />);
+      expect(screen.getByRole('button', { name: 'Add funds to this wallet' })).toBeEnabled();
+    });
+  });
+
   it('greys out paying by card below the minimum, with the reason', () => {
     render(<PaymentActionPanel {...props()} />);
     expect(card()).toBeDisabled();

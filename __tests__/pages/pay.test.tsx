@@ -1077,7 +1077,8 @@ describe('/pay for a payment request (/contract-pay)', () => {
       expect(screen.getByText('Confirm payment')).toBeInTheDocument();
       expect(await screen.findByText('0.300000 USDC')).toBeInTheDocument();
       expect(screen.getByTestId('qr-placeholder')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /I have paid/i })).toBeInTheDocument();
+      // By its exact name: the Kraken button's note mentions pressing it.
+      expect(screen.getByRole('button', { name: 'I have paid' })).toBeInTheDocument();
       expect(screen.getByDisplayValue('Protected payment address')).toBeDisabled();
       expect(screen.queryByText(/cannot make a payment to yourself/)).toBeNull();
     });

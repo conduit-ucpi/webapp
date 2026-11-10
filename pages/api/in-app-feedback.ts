@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { methodGuard } from '@/lib/server/serviceProxy';
 import { clientAddress, rateLimiter } from '@/lib/server/publicFormLimit';
-import { extractAuthToken } from '@/utils/api-auth';
+import { signedInAccount } from '@/lib/server/signedInAccount';
 
 /**
  * A message from the feedback button on every page, sent to our inbox through emailservice.
@@ -27,28 +27,6 @@ export const config = {
 export const allow = rateLimiter(10, 60 * 60 * 1000);
 
 const FAILED = 'Your message could not be sent. Try again in a minute.';
-
-/** The signed-in account's wallet and email, or nulls when there is no session. Never throws. */
-async function signedInAccount(req: NextApiRequest): Promise<{ walletAddress: string | null; accountEmail: string | null }> {
-  const none = { walletAddress: null, accountEmail: null };
-  const base = process.env.USER_SERVICE_URL;
-  const token = extractAuthToken(req);
-  if (!base || (!token && !req.headers.cookie)) return none;
-  try {
-    // Only the visitor's credentials: userservice refuses lookups that carry forwarded headers.
-    const headers: Record<string, string> = { Cookie: req.headers.cookie || '' };
-    if (token) headers.Authorization = `Bearer ${token}`;
-    const response = await fetch(`${base.replace(/\/$/, '')}/api/user/identity`, { headers });
-    if (!response.ok) return none;
-    const identity = await response.json();
-    return {
-      walletAddress: typeof identity?.walletAddress === 'string' && identity.walletAddress ? identity.walletAddress : null,
-      accountEmail: typeof identity?.email === 'string' && identity.email ? identity.email : null,
-    };
-  } catch {
-    return none;
-  }
-}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!methodGuard(req, res, 'POST')) return;

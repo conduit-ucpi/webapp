@@ -6,6 +6,10 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/SimpleAuthProvider';
 import { ONRAMP_RETURN_MESSAGE, openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
 import { reportFundingEvent } from '@/lib/reportFundingEvent';
+import { canBuyToken } from '@/utils/buyableToken';
+import { linkDelivers, linkOnrampUrl } from '@/lib/stripeLinkOnramp';
+import { useLinkAvailability } from '@/hooks/useLinkAvailability';
+import { KRAKEN_MINIMUM_USD, krakenDelivers, krakenPurchaseAmount, krakenRampUrl } from '@/lib/krakenRamp';
 import { useT, withNodes } from '../../i18n';
 
 /**
@@ -77,6 +81,8 @@ export default function AddFundsModal({
   const { canFundWallet, fundWallet } = useAuth();
   const showProviderFunding = typeof canFundWallet === 'function' && canFundWallet();
   const [providerFundingBusy, setProviderFundingBusy] = useState(false);
+  // No onramp delivers this token: the buying routes are greyed out and say so (utils/buyableToken).
+  const cannotBuy = canBuyToken(tokenSymbol) ? undefined : t('addFunds.cannotBuyToken', { token: tokenSymbol });
   const shortfallBase = BigInt(Math.ceil(shortfall * 10 ** tokenDecimals));
 
   // EIP-681: carries the token, the network (chainId) and the exact amount, so a
@@ -157,6 +163,38 @@ export default function AddFundsModal({
     }
   };
 
+  // Kraken's purchase page, for what it has been seen to deliver (lib/krakenRamp). Offered to
+  // everyone and greyed out, with the reason, for a token or network it cannot.
+  const krakenChainId = chainId ?? config?.chainId;
+  const krakenUnavailable = krakenDelivers(tokenSymbol, krakenChainId)
+    ? undefined
+    : t('addFunds.krakenCannotDeliver', { token: tokenSymbol, network: networkName });
+  const handleKraken = () => {
+    const amount = krakenPurchaseAmount(shortfall);
+    const url = krakenRampUrl({ walletAddress, tokenSymbol, chainId: krakenChainId, amount });
+    if (!url) return;
+    void reportFundingEvent('kraken-opened', { wallet: walletAddress, amount: String(amount) });
+    // A new tab: Kraken has no way back here that we know of, and the payment waits in this one.
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  // Stripe's Link page (lib/stripeLinkOnramp). It takes no wallet address, so the address is
+  // copied for the buyer to paste there, and shown to check against.
+  const linkCountry = useLinkAvailability();
+  const linkUnavailable = !linkDelivers(tokenSymbol, krakenChainId)
+    ? t('addFunds.linkCannotDeliver', { token: tokenSymbol, network: networkName })
+    : linkCountry.unavailable
+      ? t('addFunds.linkNotInCountry', { country: linkCountry.countryName ?? '' })
+      : undefined;
+  const handleLink = () => {
+    const amount = Math.ceil(shortfall * 100) / 100;
+    const url = linkOnrampUrl({ tokenSymbol, chainId: krakenChainId, amount });
+    if (!url) return;
+    void reportFundingEvent('link-opened', { wallet: walletAddress, amount: String(amount) });
+    void copy(walletAddress, 'address');
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
   const handleClose = () => {
     setShowTransfer(false);
     setOnrampError(null);
@@ -177,24 +215,53 @@ export default function AddFundsModal({
       {!showTransfer ? (
         <div className="space-y-3">
           {showProviderFunding && (
-            <button type="button" onClick={handleProviderFunding} disabled={providerFundingBusy} className={choiceBox}>
+            <button type="button" onClick={handleProviderFunding} disabled={providerFundingBusy || !!cannotBuy} className={choiceBox}>
               <p className="font-semibold text-secondary-900">
                 {providerFundingBusy ? t('addFunds.opening') : t('addFunds.addWithCard')}
               </p>
               <p className="mt-1 text-sm text-secondary-500">
-                {t('addFunds.buyWithCard', { token: tokenSymbol })}
+                {cannotBuy ?? t('addFunds.buyWithCard', { token: tokenSymbol })}
               </p>
             </button>
           )}
 
           {showCoinbase && (
-            <button type="button" onClick={handleOnramp} disabled={onrampLoading || !!coinbaseUnavailable} className={choiceBox}>
+            <button type="button" onClick={handleOnramp} disabled={onrampLoading || !!coinbaseUnavailable || !!cannotBuy} className={choiceBox}>
               <p className="font-semibold text-secondary-900">
                 {onrampLoading ? t('paymentActionPanel.openingCoinbase') : t('addFunds.addFromCoinbase')}
               </p>
               <p className="mt-1 text-sm text-secondary-500">
-                {coinbaseUnavailable ?? t('addFunds.buyWithCardOrBank', { token: tokenSymbol })}
+                {cannotBuy ?? coinbaseUnavailable ?? t('addFunds.buyWithCardOrBank', { token: tokenSymbol })}
               </p>
+            </button>
+          )}
+
+          <button type="button" onClick={handleKraken} disabled={!!krakenUnavailable} className={choiceBox}>
+            <p className="font-semibold text-secondary-900">{t('addFunds.addFromKraken')}</p>
+            <p className="mt-1 text-sm text-secondary-500">
+              {krakenUnavailable ?? t('addFunds.buyWithKraken', { token: tokenSymbol, minimum: KRAKEN_MINIMUM_USD })}
+            </p>
+            {!krakenUnavailable && (
+              <p className="mt-1 text-xs text-secondary-500 break-all">
+                {t('addFunds.krakenCheckAddress', { address: walletAddress, network: networkName })}
+              </p>
+            )}
+          </button>
+
+          <button type="button" onClick={handleLink} disabled={!!linkUnavailable} className={choiceBox}>
+            <p className="font-semibold text-secondary-900">{t('addFunds.addFromLink')}</p>
+            <p className="mt-1 text-sm text-secondary-500">
+              {linkUnavailable ?? t('addFunds.buyWithLink', { token: tokenSymbol })}
+            </p>
+            {!linkUnavailable && (
+              <p className="mt-1 text-xs text-secondary-500 break-all">
+                {t('addFunds.linkPasteAddress', { address: walletAddress, network: networkName })}
+              </p>
+            )}
+          </button>
+          {linkCountry.unavailable && linkDelivers(tokenSymbol, krakenChainId) && (
+            <button type="button" onClick={linkCountry.overrule} className="-mt-1 text-xs underline text-secondary-500 hover:text-secondary-900">
+              {t('paymentActionPanel.notInCountry', { country: linkCountry.countryName ?? '' })}
             </button>
           )}
 

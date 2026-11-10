@@ -18,6 +18,7 @@ export default function PrivacyTextEn() {
           <li>Email addresses for account identification</li>
           <li>Transaction data related to payment contracts</li>
           <li>Usage analytics and performance metrics</li>
+          <li>Screen recordings you choose to send us with &quot;Report a problem&quot;, together with what you write and technical details of the page and your browser. A recording shows whatever was on the screen you shared. We delete recordings after 90 days</li>
         </ul>
       </section>
 

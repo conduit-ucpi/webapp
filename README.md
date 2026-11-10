@@ -486,6 +486,24 @@ whether anything was bought: that is Coinbase's transaction record, filed under 
 the browser sees: `privy-started`, `privy-completed`, `privy-cancelled`, `privy-failed` (with the provider's
 message), `transfer-opened` and `other-wallet-opened`. It is public, so a line is only what a browser reported.
 
+**Report a problem (screen recordings).** A button on every page lets someone send us a recording of
+their screen, which shows what our logs cannot: the inside of the Privy and Stripe windows. Where the
+browser can record its screen the page does it (up to 3 minutes, no audio); elsewhere, phones included,
+the person records with the phone's own recorder and uploads the file (up to 500 MB). The video goes
+straight from the browser to a private bucket and never through this app:
+
+| Route | What it does |
+|---|---|
+| `POST /api/recordings` | Takes the description and page context (never the video). Answers a recording id and a signed PUT URL, or a multipart plan for files over 16 MB. |
+| `POST /api/recordings/{id}/part-url` | Signs one part of a multipart upload, asked for as each part is sent. |
+| `POST /api/recordings/{id}/complete` | Confirms the file is in the bucket at the declared size, then emails our feedback inbox (through emailservice) with links that work for 7 days. |
+
+All three are public and rate-limited per address; upload URLs die after 15 minutes. The signed-in
+account is looked up from userservice, never taken from the browser. Each recording is two objects,
+`recordings/<id>/video.<ext>` and `recordings/<id>/record.json` (the context, including the last 50
+console errors and warnings). The bucket is configured with `RECORDINGS_S3_*` (see `.env.example`);
+without it the button is hidden. In Grafana: `{container="webapp-prod"} |= "PROBLEM RECORDING"`.
+
 `GET /api/coinbase/onramp-minimum?currency=USD` answers Coinbase's smallest card purchase, cached for an hour.
 The payment screen greys out paying by card into the contract below it, and says why.
 

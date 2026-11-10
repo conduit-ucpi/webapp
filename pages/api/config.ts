@@ -1,3 +1,4 @@
+import { recordingsConfigured } from '@/lib/server/recordingsConfig';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { TokenDetails } from '@/types';
 import { TokenConfig, parseTokensFromEnv } from '@/types/tokens';
@@ -205,6 +206,8 @@ async function buildConfig() {
     // Release flags (see utils/featureFlags.ts) — the client reads them from here
     projectsLive: isProjectsLive(),
     emailVerificationLive: isEmailVerificationLive(),
+    // "Report a problem" is offered only where there is a bucket to send recordings to
+    problemRecordingsLive: recordingsConfigured(),
     explorerBaseUrl: process.env.EXPLORER_BASE_URL,
     serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',
     // The Terms of Service version a sign-in accepts (next.config.js); the SIWE statement names it

@@ -195,6 +195,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
   const [amountError, setAmountError] = useState<string>();
 
   const [stage, setStage] = useState<Stage>('details');
+  const [linkCopied, setLinkCopied] = useState(false);
   const [busy, setBusy] = useState<'prepare' | 'pay' | null>(null);
   const [prepared, setPrepared] = useState<Prepared | null>(null);
   const [settled, setSettled] = useState<Settled | null>(null);
@@ -921,6 +922,24 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
               <div role="status" className="mb-6 rounded-lg border border-secondary-300 dark:border-secondary-600 bg-secondary-50 dark:bg-secondary-800/50 p-4">
                 <p className="text-sm font-semibold text-secondary-900 dark:text-white">{t('push.previewTitle')}</p>
                 <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">{t('push.previewBody')}</p>
+                {/* The next thing a seller does with a request that looks right: send it. */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(window.location.href);
+                      setLinkCopied(true);
+                      setTimeout(() => setLinkCopied(false), 2000);
+                    } catch {
+                      // Clipboard can be blocked; the link is in the address bar.
+                    }
+                  }}
+                >
+                  {linkCopied ? t('push.previewLinkCopied') : t('push.previewCopyLink')}
+                </Button>
               </div>
             )}
             <ReviewRequest
@@ -952,6 +971,10 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
               {prepared && !transferOffered && !ownRequest && (
                 <p className="mt-5 text-sm text-error-600 dark:text-error-400 text-center">{t('push.cannotPay')}</p>
               )}
+            </fieldset>
+            {/* Outside the fieldset: a seller's preview opens the two choices to look at, and the
+                panel itself turns off everything in them that would pay (preview). */}
+            <div>
               <div className="mt-8">
                 <PaymentOptions
                   paymentSteps={paymentSteps}
@@ -1001,7 +1024,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
                   }
                 />
               </div>
-            </fieldset>
+            </div>
             {checkout && (
               <div className="mt-6 flex justify-center">
                 <Button variant="outline" onClick={checkout.onCancel} disabled={busy === 'pay'}>{t('common.cancel')}</Button>

@@ -166,6 +166,20 @@ beforeEach(() => {
   signIn();
 });
 
+/**
+ * The payment address, its QR and "I have paid" are behind "Pay with crypto", for the buyer who
+ * says their money is in another wallet. Opens that, once.
+ */
+async function openElsewhere() {
+  if (screen.queryByRole('button', { name: 'I have paid' })) return;
+  fireEvent.click(await screen.findByRole('button', { name: /Pay with crypto/ }));
+  fireEvent.click(await screen.findByRole('button', { name: /In another wallet or an exchange/ }));
+}
+async function iHavePaid() {
+  await openElsewhere();
+  return screen.findByRole('button', { name: 'I have paid' });
+}
+
 function fill(seller = 'seller@example.com') {
   fireEvent.change(screen.getByPlaceholderText('Email address or wallet (0x…)'), { target: { value: seller } });
   fireEvent.change(screen.getByPlaceholderText("What's this payment for?"), { target: { value: 'Logo design' } });
@@ -349,8 +363,14 @@ describe('/pay', () => {
     render(<PayPage />);
     fill();
 
-    expect(await screen.findByRole('button', { name: 'Add funds to this wallet' })).toBeEnabled();
-    await waitFor(() => expect(screen.getByRole('button', { name: /from this wallet/ })).toBeDisabled());
+    // Two plain choices, and no greyed-out pay button above them.
+    expect(await screen.findByRole('button', { name: /Pay by card or bank transfer/ })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: /Pay with crypto/ }));
+    expect(screen.queryByRole('button', { name: /from this wallet/ })).toBeNull();
+    // Topping up is the first answer to "Where is your USDC?".
+    expect(
+      await screen.findByRole('button', { name: /In this wallet, but not enough.*You hold 5\.00 USDC\. Add 5\.00 more/ })
+    ).toBeEnabled();
   });
 
   it('going back and pressing Continue with the same terms keeps the same escrow', async () => {
@@ -378,6 +398,7 @@ describe('/pay', () => {
     );
     render(<PayPage />);
     fill();
+    await openElsewhere();
     expect(await screen.findByDisplayValue(ESCROW)).toBeInTheDocument();
 
     fireEvent.click(screen.getByLabelText('Back to payment terms'));
@@ -385,6 +406,7 @@ describe('/pay', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
     // The bug: the panel kept offering the first escrow while settle checked the second.
+    await openElsewhere();
     expect(await screen.findByDisplayValue(SECOND)).toBeInTheDocument();
     expect(screen.queryByDisplayValue(ESCROW)).toBeNull();
     expect(mockCall.mock.calls[1][1]).not.toHaveProperty('external_id');
@@ -395,7 +417,13 @@ describe('/pay', () => {
     render(<PayPage />);
     fill();
 
-    expect(await screen.findByText('Or pay from another wallet')).toBeInTheDocument();
+    // Not on the screen for everyone: only for the buyer who says their money is elsewhere.
+    await screen.findByRole('button', { name: /Pay with crypto/ });
+    expect(screen.queryByDisplayValue(ESCROW)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'I have paid' })).toBeNull();
+
+    await openElsewhere();
+    expect(await screen.findByText('Send USDC from another wallet')).toBeInTheDocument();
     expect(await screen.findByDisplayValue(ESCROW)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'I have paid' })).toBeInTheDocument();
   });
@@ -425,7 +453,7 @@ describe('/pay', () => {
     mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce(SANCTIONED);
     render(<PayPage />);
     fill();
-    const paid = await screen.findByRole('button', { name: 'I have paid' });
+    const paid = await iHavePaid();
 
     mockBalances.escrow = '10';
     fireEvent.click(paid);
@@ -467,7 +495,7 @@ describe('/pay', () => {
     mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({ status: 'settled' });
     render(<PayPage />);
     fill();
-    const paid = await screen.findByRole('button', { name: 'I have paid' });
+    const paid = await iHavePaid();
 
     mockBalances.escrow = '10';
     fireEvent.click(paid);
@@ -535,7 +563,7 @@ describe('/pay', () => {
     mockCall.mockResolvedValueOnce(prepared());
     render(<PayPage />);
     fill();
-    fireEvent.click(await screen.findByRole('button', { name: 'I have paid' }));
+    fireEvent.click(await iHavePaid());
 
     expect(await screen.findByText(/No payment found|not found|haven't received/i)).toBeInTheDocument();
     expect(mockCall).toHaveBeenCalledTimes(1);
@@ -606,7 +634,7 @@ describe('/pay', () => {
       .mockResolvedValueOnce({ error: 'settlement_refused', message: 'The minimum payment is 1 USD. …' });
     render(<PayPage />);
     fill();
-    const paid = await screen.findByRole('button', { name: 'I have paid' });
+    const paid = await iHavePaid();
 
     mockBalances.escrow = '10';
     fireEvent.click(paid);
@@ -911,7 +939,7 @@ describe('/pay in a checkout', () => {
       receipt_claims: { 'stabledrop.escrow': { contract_id: 'c-2', escrow_account: `eip155:8453:${ESCROW}` } },
     });
     render(<PayPage checkout={{ terms: terms(), ...h }} />);
-    const paid = await screen.findByRole('button', { name: 'I have paid' });
+    const paid = await iHavePaid();
     mockBalances.escrow = '10';
     fireEvent.click(paid);
 
@@ -1092,23 +1120,50 @@ describe('/pay for a payment request (/contract-pay)', () => {
     it('shows the payment screen as a preview, with the factory fee', async () => {
       render(<PayPage request={request({ seller: PAYER })} />);
 
-      expect(await screen.findByText('This is a preview')).toBeInTheDocument();
+      expect(await screen.findByText('This is what your customer will see')).toBeInTheDocument();
       expect(screen.getByText('Confirm payment')).toBeInTheDocument();
       expect(await screen.findByText('0.300000 USDC')).toBeInTheDocument();
-      expect(screen.getByTestId('qr-placeholder')).toBeInTheDocument();
-      // By its exact name: the Kraken button's note mentions pressing it.
-      expect(screen.getByRole('button', { name: 'I have paid' })).toBeInTheDocument();
-      expect(screen.getByDisplayValue('Protected payment address')).toBeDisabled();
       expect(screen.queryByText(/cannot make a payment to yourself/)).toBeNull();
+      // The two choices their customer gets, and no technical block at the foot of the page.
+      expect(screen.getByRole('button', { name: /Pay by card or bank transfer/ })).toBeEnabled();
+      expect(screen.getByRole('button', { name: /Pay with crypto/ })).toBeEnabled();
+      expect(screen.queryByTestId('qr-placeholder')).toBeNull();
     });
 
-    it('leaves nothing they can press', async () => {
+    it('lets them open the address view to look at: a picture for the code, a label for the address, nothing to press', async () => {
       render(<PayPage request={request({ seller: PAYER })} />);
       await screen.findByText('0.300000 USDC');
+      await openElsewhere();
 
-      const buttons = screen.getByRole('group').querySelectorAll('button');
-      expect(buttons.length).toBeGreaterThan(0);
-      buttons.forEach((button) => expect(button).toBeDisabled());
+      expect(screen.getByTestId('qr-placeholder')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Protected payment address')).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'I have paid' })).toBeDisabled();
+    });
+
+    it('lets them open the card providers to look at, with none that can be continued with', async () => {
+      render(<PayPage request={request({ seller: PAYER })} />);
+      await screen.findByText('0.300000 USDC');
+      fireEvent.click(screen.getByRole('button', { name: /Pay by card or bank transfer/ }));
+
+      const providers = await screen.findAllByRole('button', { name: /^Continue with/ });
+      providers.forEach((provider) => expect(provider).toBeDisabled());
+    });
+
+    it('offers no way to pay from their own wallet', async () => {
+      render(<PayPage request={request({ seller: PAYER })} />);
+      await screen.findByText('0.300000 USDC');
+      expect(screen.queryByRole('button', { name: /from this wallet/ })).toBeNull();
+      expect(mockTransfer).not.toHaveBeenCalled();
+    });
+
+    it('gives them the next step: copying the link to send', async () => {
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, { clipboard: { writeText } });
+      render(<PayPage request={request({ seller: PAYER })} />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Copy payment link' }));
+
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith(window.location.href));
+      expect(await screen.findByRole('button', { name: 'Link copied' })).toBeInTheDocument();
     });
 
     it('never prepares, so the request is not claimed and no address exists to pay', async () => {

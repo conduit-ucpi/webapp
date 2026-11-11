@@ -58,6 +58,18 @@ export default function PaymentOptions({
     }
   };
 
+  const elsewherePanel = elsewhere ? (
+    <QrPaymentPanel
+      {...elsewhere}
+      isMobileDevice={isMobileDevice}
+      copiedAddress={copiedAddress}
+      onCopyAddress={handleCopyAddress}
+      networkName={actionPanel.networkName}
+      tokenSymbol={actionPanel.tokenSymbol}
+      amountInTokens={actionPanel.amountInTokens}
+    />
+  ) : null;
+
   return (
     <>
       {isPaymentInProgress && <PaymentProgress steps={paymentSteps} loadingMessage={loadingMessage ?? ''} />}
@@ -70,35 +82,15 @@ export default function PaymentOptions({
         </div>
       )}
 
-      <PaymentActionPanel {...actionPanel} />
-
-      {/* Paying from somewhere else: the address, a QR for it, and the button that sweeps the
-          funds in once they arrive.
-
-          Framed as one block on purpose. Both methods inside it are fire-and-forget from our
-          side — we cannot see an external transfer land — so pressing "I have paid" is what
-          actually secures the money. Left loose beneath the other options, that button reads
-          as unrelated to the code and address above it. */}
-      {elsewhere && !isPaymentInProgress && !isSameAddress && (
-        <div
-          id="pay-from-elsewhere"
-          className="mt-8 rounded-lg border border-secondary-300 dark:border-secondary-600 bg-secondary-50 dark:bg-secondary-800/50 p-5"
-        >
-          <h3 className="text-base font-semibold text-secondary-900 dark:text-white mb-1">
-            {t('pay.elsewhereHeading')}
-          </h3>
-          <p className="text-sm text-secondary-600 dark:text-secondary-300 mb-4">{t('pay.elsewhereLead')}</p>
-          <QrPaymentPanel
-            {...elsewhere}
-            isMobileDevice={isMobileDevice}
-            copiedAddress={copiedAddress}
-            onCopyAddress={handleCopyAddress}
-            networkName={actionPanel.networkName}
-            tokenSymbol={actionPanel.tokenSymbol}
-            amountInTokens={actionPanel.amountInTokens}
-          />
-        </div>
-      )}
+      {/* The address, its QR and "I have paid" belong to the buyer who holds the token somewhere
+          else, so they sit behind "Pay with crypto" in the panel's modal, not at the foot of the
+          screen for everyone. Framed as one block on purpose: both methods inside it are
+          fire-and-forget from our side, so pressing "I have paid" is what secures the money.
+          A seller's preview opens the same modal, with everything in it off. */}
+      <PaymentActionPanel
+        {...actionPanel}
+        elsewherePanel={elsewhere && !isPaymentInProgress && !isSameAddress ? elsewherePanel : undefined}
+      />
     </>
   );
 }

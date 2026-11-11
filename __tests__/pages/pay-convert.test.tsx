@@ -94,7 +94,7 @@ const tokens = [
   { symbol: 'USDT', address: USDT, decimals: 6, name: 'Tether USD', enabled: true },
 ];
 const QUOTED = BigInt(19_985_028);
-const usingUsdc = () => screen.findByRole('button', { name: /Pay 20 USDT using your USDC \(about 19\.99 USDC\)/ });
+const usingUsdc = () => screen.findByRole('button', { name: /Pay 20 USDT with your USDC.*About 19\.99 USDC/ });
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -176,7 +176,7 @@ describe('paying a USDT request with USDC', () => {
     mockQuote.mockResolvedValue(BigInt(7_494_000));
     mockCall.mockResolvedValueOnce({ status: 'settled' });
     render(<PayPage request={request()} />);
-    fireEvent.click(await screen.findByRole('button', { name: /using your USDC \(about 7\.50 USDC\)/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /with your USDC.*About 7\.50 USDC/ }));
 
     await screen.findByText('Payment protected', { selector: 'h2' });
     expect(mockSwap.mock.calls[0][1].amountOut).toBe(BigInt(7_500_000));
@@ -249,10 +249,10 @@ describe('paying a USDT request with USDC', () => {
     mockHeld.usdc = '5';
     render(<PayPage request={request()} />);
 
-    expect(await screen.findByRole('button', { name: 'Add USDC to this wallet' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /Pay 20 USDT from this wallet/ })).toBeDisabled();
-    expect(await screen.findByText('You need about 14.99 more USDC to pay this. Add USDC first.')).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: /Buy USDT directly/ })).toHaveAttribute('aria-disabled', 'true');
+    expect(await screen.findByRole('button', { name: /Buy USDC and pay with it.*About 15\.19 USDC/ })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /^Buy USDT.*Not sold on this network yet/ })).toBeDisabled();
+    // Paying is not the next step, so there is no greyed-out pay button above the one that is.
+    expect(screen.queryByRole('button', { name: /Pay 20 USDT/ })).toBeNull();
   });
 
   it('does not offer a conversion the pool prices past the cap', async () => {
@@ -289,6 +289,6 @@ describe('paying a USDT request with USDC', () => {
 
     expect(await screen.findByRole('button', { name: /Pay 20 USDT from this wallet/ })).toBeDisabled();
     expect(mockQuote).not.toHaveBeenCalled();
-    expect(screen.queryByRole('radiogroup')).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Buy/ })).toBeNull();
   });
 });

@@ -54,6 +54,13 @@ interface AddFundsModalProps {
  * never touches this wallet. Same EIP-681 URI shape, deliberately different
  * destination — so the destination is named on screen in both places.
  */
+/**
+ * This modal's panel is white in dark mode too (ui/Modal). An outline button's dark-mode colours
+ * are for a dark page: pale text and a pale border, which vanish on white. These put its
+ * light-mode colours back.
+ */
+const onWhite = 'dark:border-secondary-300 dark:text-secondary-700 dark:hover:bg-secondary-50 dark:hover:text-secondary-900';
+
 export default function AddFundsModal({
   isOpen,
   onClose,
@@ -307,16 +314,16 @@ export default function AddFundsModal({
               onClick={(e) => e.currentTarget.select()}
               className="flex-1 min-w-0 rounded-md border border-secondary-300 bg-secondary-50 px-3 py-2 font-mono text-xs"
             />
-            <Button variant="outline" onClick={() => copy(walletAddress, 'address')} className="flex-shrink-0">
+            <Button variant="outline" onClick={() => copy(walletAddress, 'address')} className={`flex-shrink-0 ${onWhite}`}>
               {copied === 'address' ? t('paymentActionPanel.copied') : t('qrPaymentPanel.copy')}
             </Button>
           </div>
 
           <div className="mt-3 flex gap-2">
-            <Button variant="outline" onClick={() => copy(transferUri, 'link')} className="flex-1">
+            <Button variant="outline" onClick={() => copy(transferUri, 'link')} className={`flex-1 ${onWhite}`}>
               {copied === 'link' ? t('addFunds.linkCopied') : t('addFunds.copyPaymentLink')}
             </Button>
-            <Button variant="outline" onClick={() => setShowTransfer(false)} className="flex-1">{t('addFundsModal.back')}</Button>
+            <Button variant="outline" onClick={() => setShowTransfer(false)} className={`flex-1 ${onWhite}`}>{t('addFundsModal.back')}</Button>
           </div>
 
           <p className="mt-4 text-xs text-secondary-500">

@@ -1,7 +1,7 @@
 /**
- * "Pay with Kraken": Kraken's purchase sent straight to the payment address, offered to everyone
- * and greyed out, with the reason, unless Kraken can deliver this token here and the amount
- * reaches its minimum.
+ * Paying through Kraken: its purchase sent straight to the payment address. It is one of the
+ * providers behind "Pay by card or bank transfer": a button there when Kraken can deliver this
+ * token here and the amount reaches its minimum, and otherwise a line saying why not.
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import PaymentActionPanel from '@/components/contracts/PaymentActionPanel';
@@ -35,9 +35,18 @@ const props = (overrides: Record<string, unknown> = {}) => ({
   onPay: jest.fn(),
   onPayFromExternalWallet,
   resolveEscrowAddress: async () => ESCROW,
+  elsewherePanel: <div>the payment address panel</div>,
   ...overrides,
 });
-const kraken = () => screen.getByRole('button', { name: /Pay with Kraken/ });
+/** Providers live behind "Pay by card or bank transfer": open it, then look. */
+const openCard = () => {
+  if (!screen.queryByRole('dialog')) fireEvent.click(screen.getByRole('button', { name: /Pay by card or bank transfer/ }));
+};
+const offered = (name: RegExp) => {
+  openCard();
+  return screen.queryByRole('button', { name });
+};
+const kraken = () => offered(/Continue with Kraken/)!;
 
 describe('PaymentActionPanel: pay with Kraken', () => {
   let tab: { opener: unknown; location: { href: string }; close: jest.Mock };
@@ -67,18 +76,20 @@ describe('PaymentActionPanel: pay with Kraken', () => {
     // The new tab cannot reach back into this page.
     expect(tab.opener).toBeNull();
     expect(onPayFromExternalWallet).toHaveBeenCalled();
+    // Where "I have paid" is: pressing it is what secures the money.
+    expect(await screen.findByText('the payment address panel')).toBeInTheDocument();
   });
 
-  it('sits beside the Coinbase card option, not in place of it', () => {
+  it('is offered beside Coinbase, not in place of it, with the fact that tells them apart', () => {
     render(<PaymentActionPanel {...props()} />);
-    expect(screen.getByRole('button', { name: /Pay by card or bank transfer/ })).toBeEnabled();
-    expect(kraken()).toBeEnabled();
+    expect(offered(/Continue with Coinbase.*Card or bank transfer/)).toBeEnabled();
+    expect(offered(/Continue with Kraken.*Card, from 11 USD/)).toBeEnabled();
   });
 
-  it("is greyed out below Kraken's minimum, with the reason", () => {
+  it("is not a button below Kraken's minimum, and the reason is given", () => {
     render(<PaymentActionPanel {...props({ amountLabel: '5 USDC', amountInTokens: 5 })} />);
-    expect(kraken()).toBeDisabled();
-    expect(screen.getByText(/below Kraken's minimum purchase of 11 USD/)).toBeInTheDocument();
+    expect(offered(/Continue with Kraken/)).toBeNull();
+    expect(screen.getByText('Kraken: this amount is below its minimum of 11 USD.')).toBeInTheDocument();
   });
 
   it('is offered at exactly the minimum', () => {
@@ -86,16 +97,16 @@ describe('PaymentActionPanel: pay with Kraken', () => {
     expect(kraken()).toBeEnabled();
   });
 
-  it('is greyed out for a token Kraken does not deliver on Base, under the one line that says so', () => {
+  it('is not shown at all for a token it can never deliver (USDT): it sends straight to the payment address', () => {
     render(<PaymentActionPanel {...props({ amountLabel: '32 USDT', amountInTokens: 32, tokenSymbol: 'USDT' })} />);
-    expect(kraken()).toBeDisabled();
-    expect(screen.getAllByText(/can't support USDT yet/)).toHaveLength(1);
-    expect(screen.queryByText(/Kraken can't deliver/)).toBeNull();
+    // No card route at all: none of them could deliver it.
+    expect(screen.queryByRole('button', { name: /Pay by card/ })).toBeNull();
+    expect(screen.queryByText(/Kraken/)).toBeNull();
   });
 
-  it('is greyed out on a network Kraken does not deliver to, with the reason', () => {
+  it('is not a button on a network Kraken does not deliver to, and the reason is given', () => {
     render(<PaymentActionPanel {...props({ chainId: 1, networkName: 'Ethereum' })} />);
-    expect(kraken()).toBeDisabled();
+    expect(offered(/Continue with Kraken/)).toBeNull();
     expect(screen.getByText("Kraken can't deliver USDC on Ethereum yet.")).toBeInTheDocument();
   });
 
@@ -109,6 +120,6 @@ describe('PaymentActionPanel: pay with Kraken', () => {
 
   it('is not offered where there is no payment address to send to', () => {
     render(<PaymentActionPanel {...props({ resolveEscrowAddress: undefined })} />);
-    expect(screen.queryByRole('button', { name: /Pay with Kraken/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Pay by card/ })).toBeNull();
   });
 });

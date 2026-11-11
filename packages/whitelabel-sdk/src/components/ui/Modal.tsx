@@ -7,9 +7,18 @@ interface ModalProps {
   title: string;
   children: React.ReactNode;
   size?: 'small' | 'medium' | 'large' | 'xl';
+  /**
+   * Follow the page's light or dark theme, for content written with `dark:` classes (anything
+   * that also appears on a page, such as the payment address panel).
+   *
+   * ⚠️ OFF BY DEFAULT, AND THE TWO DO NOT MIX. The panel is otherwise white in dark mode too, and
+   *    most modals are written for that, in fixed greys. Content with `dark:` classes put in a
+   *    white panel turns light-on-white in dark mode: pale text, pale borders, dark blocks.
+   */
+  themed?: boolean;
 }
 
-export default function Modal({ isOpen, onClose, title, children, size = 'medium' }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, size = 'medium', themed = false }: ModalProps) {
   const sizeClasses = {
     small: 'max-w-md',
     medium: 'max-w-lg', 
@@ -28,7 +37,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'medium
           leaveFrom="opacity-100"
           leaveTo="opacity-0"
         >
-          <div className="fixed inset-0 bg-black bg-opacity-25" />
+          <div className={`fixed inset-0 bg-black ${themed ? 'bg-opacity-25 dark:bg-opacity-60' : 'bg-opacity-25'}`} />
         </Transition.Child>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -44,10 +53,17 @@ export default function Modal({ isOpen, onClose, title, children, size = 'medium
             >
               {/* The panel is white in dark mode too, and html.dark's color-scheme turns the browser's
                   default text white, so it sets its own text colour for whatever inherits it. */}
-              <Dialog.Panel className={`w-full ${sizeClasses[size]} transform overflow-hidden rounded-2xl bg-white p-6 text-left text-gray-900 align-middle shadow-xl transition-all`}>
+              <Dialog.Panel
+                data-themed={themed || undefined}
+                className={`w-full ${sizeClasses[size]} transform overflow-hidden rounded-2xl p-6 text-left align-middle shadow-xl transition-all ${
+                  themed
+                    ? 'bg-white text-secondary-900 dark:bg-secondary-900 dark:text-white dark:border dark:border-secondary-700'
+                    : 'bg-white text-gray-900'
+                }`}
+              >
                 <Dialog.Title
                   as="h3"
-                  className="text-lg font-medium leading-6 text-gray-900"
+                  className={`text-lg font-medium leading-6 ${themed ? 'text-secondary-900 dark:text-white' : 'text-gray-900'}`}
                 >
                   {title}
                 </Dialog.Title>

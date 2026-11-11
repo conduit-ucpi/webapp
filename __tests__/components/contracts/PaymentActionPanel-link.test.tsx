@@ -38,7 +38,15 @@ const props = (overrides: Record<string, unknown> = {}) => ({
   resolveEscrowAddress: async () => ESCROW,
   ...overrides,
 });
-const link = () => screen.getByRole('button', { name: /Pay with Link/ });
+/** Providers live behind "Pay by card or bank transfer": open it, then look. */
+const openCard = () => {
+  if (!screen.queryByRole('dialog')) fireEvent.click(screen.getByRole('button', { name: /Pay by card or bank transfer/ }));
+};
+const offered = (name: RegExp) => {
+  openCard();
+  return screen.queryByRole('button', { name });
+};
+const link = () => offered(/Continue with Link by Stripe/)!;
 
 describe('PaymentActionPanel: pay with Link', () => {
   let tab: { opener: unknown; location: { href: string }; close: jest.Mock };
@@ -55,11 +63,18 @@ describe('PaymentActionPanel: pay with Link', () => {
   });
   afterEach(() => open.mockRestore());
 
-  it('sits beside the Coinbase and Kraken card options, not in place of them', () => {
+  it('is offered beside Coinbase and Kraken, best first, each with the fact that tells it apart', () => {
     render(<PaymentActionPanel {...props({ amountLabel: '32 USDC', amountInTokens: 32 })} />);
-    expect(screen.getByRole('button', { name: /Pay by card or bank transfer/ })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /Pay with Kraken/ })).toBeEnabled();
-    expect(link()).toBeEnabled();
+    openCard();
+    const within = screen.getByRole('dialog');
+    const names = Array.from(within.querySelectorAll('button'))
+      .map((button) => button.textContent)
+      .filter((text) => /^Continue with/.test(text ?? ''));
+    expect(names).toEqual([
+      'Continue with CoinbaseCard or bank transfer',
+      'Continue with KrakenCard, from 11 USD. Come back here and press "I have paid".',
+      "Continue with Link by StripeCard. You paste this payment's address there (copied for you).",
+    ]);
   });
 
   it('asks Link for the whole amount in tokens, copies the payment address, and shows the panel that has it', async () => {
@@ -87,24 +102,23 @@ describe('PaymentActionPanel: pay with Link', () => {
     expect(onPayFromExternalWallet).toHaveBeenCalled();
   });
 
-  it('is greyed out for a token Link does not deliver, under the one line that says so', () => {
+  it('is not shown at all for a token it can never deliver (USDT): it sends straight to the payment address', () => {
     render(<PaymentActionPanel {...props({ amountLabel: '32 USDT', amountInTokens: 32, tokenSymbol: 'USDT' })} />);
-    expect(link()).toBeDisabled();
-    expect(screen.queryByText(/Link can't deliver/)).toBeNull();
-    expect(screen.getAllByText(/can't support USDT yet/)).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /Pay by card/ })).toBeNull();
+    expect(screen.queryByText(/Link/)).toBeNull();
   });
 
-  it('is greyed out on a network Link does not deliver to, with the reason', () => {
+  it('is not a button on a network Link does not deliver to, and the reason is given', () => {
     render(<PaymentActionPanel {...props({ chainId: 1, networkName: 'Ethereum' })} />);
-    expect(link()).toBeDisabled();
+    expect(offered(/Continue with Link/)).toBeNull();
     expect(screen.getByText("Link can't deliver USDC on Ethereum yet.")).toBeInTheDocument();
   });
 
-  it('is greyed out outside the United States, says why, and lets the buyer overrule the country', () => {
+  it('is not a button outside the United States; the reason is given, and the buyer can overrule the country', () => {
     const overrule = jest.fn();
     (useLinkAvailability as jest.Mock).mockReturnValue({ unavailable: true, countryName: 'United Kingdom', overrule });
     render(<PaymentActionPanel {...props()} />);
-    expect(link()).toBeDisabled();
+    expect(offered(/Continue with Link/)).toBeNull();
     expect(screen.getByText(/Link only sells in the United States, not in United Kingdom/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Not in United Kingdom?' }));
     expect(overrule).toHaveBeenCalled();

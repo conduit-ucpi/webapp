@@ -57,6 +57,9 @@ export function transformCombinedContractItem(item: any): UnifiedContract | null
     sellerAddress: item.blockchainSellerAddress || contract.sellerAddress || '',
     amount: parseFloat(item.blockchainAmount || contract.amount || '0'), // microUSDC
     expiryTimestamp: item.blockchainExpiryTimestamp || contract.expiryTimestamp || 0,
+    // Which token it holds: what any figure put in front of the user has to be stated in.
+    tokenAddress: item.blockchainTokenAddress || contract.tokenAddress || undefined,
+    currencySymbol: contract.currencySymbol || undefined,
     description: contract.description || '',
     status: item.status || 'UNKNOWN',
     blockchainStatus: item.blockchainStatus,

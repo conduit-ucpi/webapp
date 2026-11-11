@@ -102,7 +102,13 @@ describe('Confirming a cash settlement', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Confirm and sign' }));
 
-    await waitFor(() => expect(submitSettlementVote).toHaveBeenCalledWith('0xescrow', 100));
+    await waitFor(() =>
+      expect(submitSettlementVote).toHaveBeenCalledWith('0xescrow', 100, {
+        // The wallet's own screen: the whole payment goes back to the buyer, now.
+        walletDescription:
+          'Settle the dispute on the payment for "Fit-out": 100% refunded to the buyer, 0% to you. This matches the figure the buyer is holding, so the payment is paid out this way immediately.'
+      })
+    );
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     const [url, init] = (global.fetch as jest.Mock).mock.calls[0];
     expect(url).toBe('/api/contracts/contract-1/dispute');

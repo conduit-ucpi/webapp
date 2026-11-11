@@ -42,4 +42,18 @@ describe('PaymentTermsForm and a token that is harder to buy', () => {
     render(form({ tokenSymbol: 'USDC' }));
     expect(screen.queryByRole('note')).toBeNull();
   });
+
+  it('tells the seller buyers can pay with USDC where it converts', () => {
+    render(form({ payableWith: 'USDC' }));
+    expect(screen.getByRole('note')).toHaveTextContent(
+      'USDT can be harder for buyers to get from exchanges than USDC. Buyers without USDT can pay with USDC, which is converted when they pay.'
+    );
+  });
+
+  it('tells the payer the same in their own terms', () => {
+    render(form({ payableWith: 'USDC', showFeeGuidance: false }));
+    expect(screen.getByRole('note')).toHaveTextContent(
+      "USDT can be harder to get from exchanges than USDC. If you don't hold USDT, you can pay with USDC, which is converted when you pay."
+    );
+  });
 });

@@ -50,6 +50,8 @@ interface PaymentTermsFormProps {
   networkLabel?: string;
   /** e.g. "Balance: 342.10 USDC" - omitted while loading */
   balanceText?: string;
+  /** The token a buyer could pay with instead, converted on payment (lib/stablecoinSwap). */
+  payableWith?: string | null;
 }
 
 const DESCRIPTION_MAX = 160;
@@ -73,6 +75,7 @@ export default function PaymentTermsForm({
   onTokenChange,
   networkLabel,
   balanceText,
+  payableWith,
 }: PaymentTermsFormProps) {
   const t = useT();
   return (
@@ -97,7 +100,9 @@ export default function PaymentTermsForm({
             buying routes are simply greyed out. showFeeGuidance is the seller's view. */}
         {!canBuyToken(tokenSymbol) && (
           <p role="note" className="mt-2 text-sm text-amber-700 dark:text-amber-400">
-            {t(showFeeGuidance ? 'paymentTerms.harderTokenSeller' : 'paymentTerms.harderTokenPayer', { token: tokenSymbol })}
+            {payableWith
+              ? t(showFeeGuidance ? 'paymentTerms.convertibleTokenSeller' : 'paymentTerms.convertibleTokenPayer', { token: tokenSymbol, from: payableWith })
+              : t(showFeeGuidance ? 'paymentTerms.harderTokenSeller' : 'paymentTerms.harderTokenPayer', { token: tokenSymbol })}
           </p>
         )}
 

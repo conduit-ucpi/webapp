@@ -7,6 +7,7 @@
 import { ethers } from 'ethers';
 import { Web3Service } from '@/lib/web3';
 import { Config } from '@/types';
+import { SWAP_VENUES, encodeSwap } from '@/lib/stablecoinSwap';
 
 const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const USDT = '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2';
@@ -79,5 +80,36 @@ describe('the notice over the wallet prompt', () => {
     const summary = describe_(UNLISTED, erc20.encodeFunctionData('transfer', [ESCROW, '1000000']));
     expect(summary).toBe('submitting a transaction to 0x4200…0006');
     expect(summary).not.toMatch(/USDC|USDT/);
+  });
+
+  describe('a conversion', () => {
+    const venue = SWAP_VENUES[8453];
+    const swap = (tokenIn: string, tokenOut: string) =>
+      encodeSwap(venue, {
+        tokenIn,
+        tokenOut,
+        recipient: ESCROW,
+        amountOut: BigInt(20_000_000),
+        amountInMaximum: BigInt(20_100_000),
+      });
+
+    it('says what is converted into what, with the most it can take', () => {
+      expect(describe_(venue.router, swap(USDC, USDT))).toBe(
+        'converting up to 20.1 USDC into 20.0 USDT in your own wallet'
+      );
+    });
+
+    it('says an approval to the router is for a conversion, not just "to be spent by" an address', () => {
+      const summary = describe_(USDC, erc20.encodeFunctionData('approve', [venue.router, '20100000']));
+      expect(summary).toBe('allowing up to 20.1 USDC to be converted for this payment');
+    });
+
+    it('states no figures for a token it does not list', () => {
+      expect(describe_(venue.router, swap(UNLISTED, USDT))).toBe('submitting a transaction to 0x2626…e481');
+    });
+
+    it('states no figures for the same call sent anywhere but the router', () => {
+      expect(describe_(ESCROW, swap(USDC, USDT))).toBe('submitting a transaction to 0x7b0e…F51B');
+    });
   });
 });

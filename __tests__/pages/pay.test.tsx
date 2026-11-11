@@ -275,7 +275,13 @@ describe('/pay', () => {
     await screen.findByText('Payment protected', { selector: 'h2' });
     // The token, the address the factory confirmed, and the amount in base units.
     expect(mockTransfer).toHaveBeenCalledTimes(1);
-    expect(mockTransfer).toHaveBeenCalledWith(USDC, ESCROW, '10000000');
+    expect(mockTransfer).toHaveBeenCalledWith(
+      USDC,
+      ESCROW,
+      '10000000',
+      // For the wallet's own prompt: how much, of what, for whom, and what happens to it. No address.
+      'Pay 10 USDC into the payment contract for seller@example.com. It is held there and released to them on the payout date unless you raise a dispute.'
+    );
     const [, prepareArgs] = mockCall.mock.calls[0];
     const [tool, settleArgs] = mockCall.mock.calls[1];
     expect(tool).toBe('settle_escrow_payment');
@@ -298,8 +304,21 @@ describe('/pay', () => {
     fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
 
     await screen.findByText('Payment protected', { selector: 'h2' });
-    expect(mockTransfer).toHaveBeenCalledWith(USDC, ESCROW, '10000000');
+    expect(mockTransfer).toHaveBeenCalledWith(USDC, ESCROW, '10000000', expect.any(String));
     expect(screen.queryByText(/can't be signed for/)).toBeNull();
+  });
+
+  it("tells the wallet's prompt an instant payment is passed straight on, and shortens a seller given as a wallet", async () => {
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({ status: 'settled' });
+    render(<PayPage />);
+    fireEvent.click(screen.getByRole('radio', { name: 'Instantly' }));
+    fill(SELLER_WALLET);
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await waitFor(() => expect(mockTransfer).toHaveBeenCalled());
+    expect(mockTransfer.mock.calls[0][3]).toBe(
+      'Pay 10 USDC into the payment contract for 0xc9D0…f942. It is released to them straight away.'
+    );
   });
 
   it('settles nothing when the wallet did not send the transfer', async () => {

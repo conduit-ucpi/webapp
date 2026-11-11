@@ -35,10 +35,17 @@ export default function WalletSignaturePrompt({ prompt }: { prompt: WalletPrompt
         <p className="text-sm font-medium text-secondary-900 dark:text-white">{t('walletSignaturePrompt.checkYourWallet')}</p>
         {prompt.kind === 'signature' ? (
           <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">{t('walletSignaturePrompt.approveTheSignatureTo')}</p>
+        ) : prompt.movesFunds === false && prompt.walletDescription ? (
+          // Nothing moves and nothing is final, so only what is being approved is said.
+          <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">{prompt.walletDescription}</p>
         ) : (
           <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-400">
             <span className="font-medium text-secondary-900 dark:text-white">{t('walletSignaturePrompt.thisOneMovesFunds')}</span>{' '}
-            {t('walletSignaturePrompt.approvingIsFinal', { summary: prompt.summary })}
+            {/* The caller's own sentence when it gave one: it names people and purposes, where the
+                summary read back from the calldata can only name addresses. */}
+            {prompt.walletDescription
+              ? `${prompt.walletDescription} ${t('walletSignaturePrompt.final')}`
+              : t('walletSignaturePrompt.approvingIsFinal', { summary: prompt.summary })}
           </p>
         )}
       </div>

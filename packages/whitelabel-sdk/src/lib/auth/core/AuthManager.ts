@@ -1089,8 +1089,20 @@ export class AuthManager {
     hasBackendAuth: boolean
   ): Promise<void> {
     if (info.isConnected) {
-      // If we already have a connected provider and it's this one, ignore.
+      // If we already have a connected provider and it's this one, there is nothing to connect.
       if (this.currentProvider === provider && this.state.isConnected) {
+        // ⚠️ BUT ITS ADDRESS CAN CHANGE, AND THAT IS NOT IGNORED. The provider can name one
+        //    wallet and then, once its own has loaded, another. Kept at the first, the page
+        //    builds transactions for an address the wallet is not signing as.
+        if (info.address && info.address.toLowerCase() !== (this.state.address ?? '').toLowerCase()) {
+          try {
+            await provider.getEthersProviderAsync();
+          } catch {
+            // The address is still the truth; the ethers provider is fetched again on demand.
+          }
+          this.setState({ address: info.address });
+          mLog.info('AuthManager', 'Provider changed address while connected', { address: info.address });
+        }
         return;
       }
 

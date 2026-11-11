@@ -113,7 +113,12 @@ describe('Submitting a settlement figure', () => {
     composeFigure(25);
     fireEvent.click(screen.getByRole('button', { name: /Confirm and sign/i }));
 
-    await waitFor(() => expect(submitSettlementVote).toHaveBeenCalledWith('0xescrow', 25));
+    await waitFor(() => expect(submitSettlementVote).toHaveBeenCalledWith('0xescrow', 25, {
+        // For the wallet's own screen. Matching nobody, it pays nothing out and says so.
+        walletDescription:
+          'Record your figure for the payment for "Fit-out": 25% refunded to the buyer, 75% to you. Nothing is paid out unless another voter holds the same figure. You can change yours later.',
+        movesFunds: false
+      }));
   });
 
   it('sends a figure that matches the other party', async () => {
@@ -121,7 +126,11 @@ describe('Submitting a settlement figure', () => {
     composeFigure(40);
     fireEvent.click(screen.getByRole('button', { name: /Confirm and sign/i }));
 
-    await waitFor(() => expect(submitSettlementVote).toHaveBeenCalledWith('0xescrow', 40));
+    await waitFor(() => expect(submitSettlementVote).toHaveBeenCalledWith('0xescrow', 40, {
+        // Matching the buyer's figure, approving pays out: the screen says that, and whose figure.
+        walletDescription:
+          'Settle the dispute on the payment for "Fit-out": 40% refunded to the buyer, 60% to you. This matches the figure the buyer is holding, so the payment is paid out this way immediately.'
+      }));
   });
 
   it('warns that a matching figure settles, before asking for the signature', async () => {

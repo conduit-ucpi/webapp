@@ -377,7 +377,16 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
           ethers.parseUnits(order.amount, token.decimals),
         ]);
 
-        const txHash = await fundAndSendTransaction({ to: token.address, data, value: '0' });
+        // Said in the wallet's own screen, which otherwise shows only Coinbase's deposit address
+        // for this one sale: nothing a person could recognise. No cash figure: Coinbase's order
+        // says what is sold and in which currency it pays, not how much arrives.
+        const selling = `${order.amount.includes('.') ? order.amount.replace(/\.?0+$/, '') : order.amount} ${order.currency}`;
+        const paid = order.fiatCurrency ? `the ${order.fiatCurrency}` : 'the money';
+        const walletDescription =
+          `Send ${selling} to Coinbase to complete your cash-out. Coinbase sells it and pays ${paid} ` +
+          (order.paymentMethod === 'ACH_BANK_ACCOUNT' ? 'to your bank account.' : 'by the method you chose there.');
+
+        const txHash = await fundAndSendTransaction({ to: token.address, data, value: '0', walletDescription });
 
         rememberSentOrder(order.transactionId);
         // Describe the order that actually went, using Coinbase's own view of it.

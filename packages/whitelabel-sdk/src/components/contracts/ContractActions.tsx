@@ -40,6 +40,9 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   const [showDisputeManagementModal, setShowDisputeManagementModal] = useState(false);
 
   const isPending = !('contractAddress' in contract);
+  // For the wallet's own prompt, which has little room. Old records can lack a description.
+  const described = contract.description || '';
+  const shortDescription = described.length > 60 ? `${described.slice(0, 57)}…` : described;
   
   // Debug contract data when status is ERROR
   if ((contract as Contract).status === 'ERROR') {
@@ -119,6 +122,13 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         userAddress,
         reason,
         refundPercent,
+        // The wallet asks twice, and left to itself says the same unexplained thing both times.
+        prompts: {
+          open: t('contractActions.promptDisputeOpen', {
+            description: shortDescription,
+          }),
+          vote: (figure: number) => t('contractActions.promptDisputeVote', { buyer: figure, seller: 100 - figure }),
+        },
         // Pass the enhanced contract object with email fallbacks
         contract: enhancedContract,
         config,
@@ -178,10 +188,23 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       }
 
       // Use the abstracted claimFunds method (works for both Web3Auth and Farcaster)
-      const txHash = await claimFunds(
-        (contract as Contract).contractAddress,
-        userAddress
+      // Said in the wallet's own prompt, which otherwise gives no amount and no payment.
+      // The token is named only when the record says which it is: a guessed symbol or guessed
+      // decimals would put a wrong figure in front of someone about to approve.
+      const record = contract as Contract;
+      const token = config.supportedTokens?.find(
+        (listed) =>
+          (!!record.tokenAddress && listed.address.toLowerCase() === record.tokenAddress.toLowerCase()) ||
+          (!record.tokenAddress && !!record.currencySymbol && listed.symbol.toUpperCase() === record.currencySymbol.toUpperCase())
       );
+      const about = shortDescription;
+      const txHash = await claimFunds((contract as Contract).contractAddress, userAddress, {
+        decimals: token?.decimals,
+        describe: (amount: string | null) =>
+          amount && token
+            ? t('contractActions.promptCollect', { amount, token: token.symbol, description: about })
+            : t('contractActions.promptCollectNoAmount', { description: about }),
+      });
 
       console.log('✅ Claim funds successful! Transaction hash:', txHash);
       onAction(); // Refresh contracts
@@ -301,9 +324,10 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
               {loadingMessage}
             </>
           ) : isClaimingInProgress ? (
-            'Another claim in progress...'
+            t('contractActions.anotherCollecting')
           ) : (
-            contract.ctaLabel || 'Claim Funds'
+            // The backend's label for this is "Claim Funds"; the wallet prompt says "collect".
+            t('contractActions.collectFunds')
           )}
         </Button>
       );

@@ -87,13 +87,21 @@ export function useMarketplaceActions() {
    * the money (§15.6b).
    */
   const send = useCallback(
-    async (to: string, abi: ethers.Interface, fn: string, args: unknown[] = []): Promise<string> => {
+    async (
+      to: string,
+      abi: ethers.Interface,
+      fn: string,
+      args: unknown[] = [],
+      /** What the wallet's own screen says, and whether anything moves (walletPromptChannel). */
+      prompt?: { walletDescription?: string; movesFunds?: boolean }
+    ): Promise<string> => {
       const web3Service = await getWeb3Service();
       try {
         return await web3Service.fundAndSendTransaction({
           to,
           data: abi.encodeFunctionData(fn, args),
-          value: '0'
+          value: '0',
+          ...prompt
         });
       } catch (error) {
         throw decodeRefusal(error) ?? error;
@@ -113,8 +121,8 @@ export function useMarketplaceActions() {
    *    transaction. Callers must present it that way before asking for the signature.
    */
   const submitSettlementVote = useCallback(
-    (escrowAddress: string, buyerPercentage: number) =>
-      send(escrowAddress, escrowInterface, 'submitResolutionVote', [Math.round(buyerPercentage)]),
+    (escrowAddress: string, buyerPercentage: number, prompt?: { walletDescription?: string; movesFunds?: boolean }) =>
+      send(escrowAddress, escrowInterface, 'submitResolutionVote', [Math.round(buyerPercentage)], prompt),
     [send]
   );
 

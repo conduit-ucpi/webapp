@@ -14,7 +14,29 @@
 
 export type WalletPrompt =
   | { kind: 'signature' }
-  | { kind: 'transaction'; summary: string };
+  | {
+      kind: 'transaction';
+      summary: string;
+      /**
+       * A full sentence for the wallet's OWN prompt, where the wallet lets us set one (Privy's
+       * embedded wallet does; see withTransactionPrompt in PrivyHost). Without it the wallet
+       * writes its own, which for an approval is "…permission for 0x… to spend tokens on your
+       * behalf": true, and no use to someone deciding whether to press the button.
+       */
+      walletDescription?: string;
+      /**
+       * False for a transaction that moves nothing, such as opening a dispute: the notice then
+       * does not say "This one moves funds" or "Approving is final", neither of which is true.
+       * Unsaid, it is taken to move funds, which is the safe thing to be wrong about.
+       */
+      movesFunds?: boolean;
+      /**
+       * The wallet's own screen is saying `walletDescription`, so our notice has nothing to add
+       * and is not shown. Set by the wallet integration that put it there (walletSaysIt), never
+       * by a caller: only that integration knows the sentence really reached the wallet's screen.
+       */
+      saidByWallet?: boolean;
+    };
 
 let current: WalletPrompt | null = null;
 const listeners = new Set<(prompt: WalletPrompt | null) => void>();
@@ -35,6 +57,19 @@ export function subscribeWalletPrompt(listener: (prompt: WalletPrompt | null) =>
   return () => {
     listeners.delete(listener);
   };
+}
+
+/**
+ * The open transaction's description is now on the wallet's own screen: stop showing ours.
+ *
+ * ⚠️ ONLY WHERE THE WALLET LETS US WRITE ITS SCREEN (Privy's embedded wallet). MetaMask and every
+ *    other external wallet word their own prompt and we cannot change it, so for them the notice
+ *    is still the only place the truth is said, and stays.
+ */
+export function walletSaysIt(): void {
+  if (current?.kind !== 'transaction' || !current.walletDescription || current.saidByWallet) return;
+  current = { ...current, saidByWallet: true };
+  emit();
 }
 
 export function getWalletPrompt(): WalletPrompt | null {

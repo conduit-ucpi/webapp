@@ -28,6 +28,7 @@ import {
 import ReleaseDateField from '@/components/contracts/ReleaseDateField';
 import AdvancedOptions from '@/components/contracts/AdvancedOptions';
 import PaymentTermsForm from '@/components/contracts/PaymentTermsForm';
+import { convertibleFrom } from '@/lib/stablecoinSwap';
 import CreateProgressSteps from '@/components/contracts/CreateProgressSteps';
 import ReviewRequest from '@/components/contracts/ReviewRequest';
 import SendRequestScreen from '@/components/contracts/SendRequestScreen';
@@ -442,6 +443,7 @@ export default function CreateContractWizard() {
                 tokenSymbol={selectedTokenSymbol}
                 tokenOptions={availableTokens.map(t => t.symbol)}
                 onTokenChange={setSelectedTokenSymbol}
+                payableWith={convertibleFrom(config?.chainId, selectedTokenSymbol)}
                 networkLabel={config ? getNetworkName(config.chainId) : undefined}
                 balanceText={isLoadingBalance ? undefined : `Balance: ${tokenBalance} ${selectedTokenSymbol}`}
               />

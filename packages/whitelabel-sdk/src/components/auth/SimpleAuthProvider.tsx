@@ -261,7 +261,11 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     },
 
     // Blockchain operations using fundAndSendTransaction
-    claimFunds: async (contractAddress: string, userAddress: string): Promise<string> => {
+    claimFunds: async (
+      contractAddress: string,
+      userAddress: string,
+      prompt?: { decimals?: number; describe: (amount: string | null) => string }
+    ): Promise<string> => {
       console.log('🔧 SimpleAuthProvider: claimFunds called', { contractAddress, userAddress });
 
       if (!contractAddress || !userAddress) {
@@ -296,11 +300,22 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
         await web3Service.initialize(ethersProvider);
       }
 
+      // What arrives is the amount less the fee, which only the contract knows (usePayoutAmounts).
+      let payout: string | null = null;
+      if (prompt?.decimals !== undefined) {
+        try {
+          payout = ethers.formatUnits(await web3Service.getPayoutAmount(contractAddress), prompt.decimals).replace(/\.0$/, '');
+        } catch {
+          // Unreadable: the prompt goes without a figure.
+        }
+      }
+
       // Use Web3Service directly for the blockchain operation
       return await web3Service.fundAndSendTransaction({
         to: contractAddress,
         data,
-        value: '0' // No value needed for claiming
+        value: '0', // No value needed for claiming
+        walletDescription: prompt?.describe(payout)
       });
     },
 
@@ -309,6 +324,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       userAddress: string;
       reason: string;
       refundPercent: number;
+      prompts?: { open: string; vote: (figure: number) => string };
       contract?: any;
       config?: any;
       utils?: any;
@@ -362,7 +378,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
             }
           }
         },
-        { contractAddress: params.contractAddress, reason: params.reason, refundPercent: params.refundPercent, contractId: params.contract?.id }
+        { contractAddress: params.contractAddress, reason: params.reason, refundPercent: params.refundPercent, contractId: params.contract?.id, prompts: params.prompts }
       );
     }
   }), [
@@ -387,7 +403,10 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={authValue}>
-      {walletPrompt && <WalletSignaturePrompt prompt={walletPrompt} />}
+      {/* Not when the wallet's own screen already says it (walletSaysIt): then ours only repeats it. */}
+      {walletPrompt && !(walletPrompt.kind === 'transaction' && walletPrompt.saidByWallet) && (
+        <WalletSignaturePrompt prompt={walletPrompt} />
+      )}
       {children}
     </AuthContext.Provider>
   );

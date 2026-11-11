@@ -76,7 +76,8 @@ export default function ContractCard({ contract, onAction, onAccept, isClaimingI
                 ? ((contract as PendingContract).chainAddress ? 'ACTIVE' : 'PENDING')
                 : (contract as Contract).status || 'UNKNOWN'
               }
-              label={contract.ctaLabel}
+              // "Collect", as the button and the wallet prompt say; the backend's label is "Claim Funds".
+              label={contract.ctaType === 'CLAIM_FUNDS' ? t('contractActions.collectFunds') : contract.ctaLabel}
               color={contract.ctaVariant?.toLowerCase() === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : undefined}
               size="sm"
             />

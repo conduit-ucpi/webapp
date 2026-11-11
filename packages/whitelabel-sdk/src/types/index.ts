@@ -97,6 +97,9 @@ export interface Contract {
   arbiterAddress?: string;
   amount: number;
   expiryTimestamp: number;
+  /** The token the contract holds, when the record says: its address on chain, and its symbol. */
+  tokenAddress?: string;
+  currencySymbol?: string;
   description: string;
   status: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED' | 'SANCTIONS_REFUSED' | 'REFUNDED';
   createdAt: number;

@@ -4,6 +4,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import AddFundsModal from '@/components/contracts/AddFundsModal';
 import { openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
 import { canBuyToken } from '@/utils/buyableToken';
+import { purchaseAmountFor } from '@/lib/stablecoinSwap';
 import { linkDelivers, linkOnrampUrl } from '@/lib/stripeLinkOnramp';
 import { useLinkAvailability } from '@/hooks/useLinkAvailability';
 import { KRAKEN_MINIMUM_USD, krakenDelivers, krakenRampUrl } from '@/lib/krakenRamp';
@@ -12,6 +13,21 @@ import { reportFundingEvent } from '@/lib/reportFundingEvent';
 import { useOnrampMinimum } from '@/hooks/useOnrampMinimum';
 import { useCoinbaseAvailability } from '@/hooks/useCoinbaseAvailability';
 import { useT } from '../../i18n';
+
+/**
+ * Paying with the other stablecoin in the wallet: the shortfall is converted, then paid as usual
+ * (lib/stablecoinSwap). The page works this out; the panel only shows it.
+ */
+export interface PaymentConversion {
+  fromSymbol: string;
+  fromTokenAddress: string;
+  fromTokenDecimals: number;
+  fromBalance: number;
+  /** What converting the shortfall costs right now, in fromSymbol; null while not known. */
+  cost: number | null;
+  /** ready: the wallet holds enough to convert. short: it does not. unavailable: no usable quote. */
+  status: 'quoting' | 'ready' | 'short' | 'unavailable';
+}
 
 interface PaymentActionPanelProps {
   /** Formatted for display, e.g. "1.0000 USDC". */
@@ -53,6 +69,8 @@ interface PaymentActionPanelProps {
   resolveEscrowAddress?: () => Promise<string | null>;
   /** A seller's preview: everything is off, and the preview says so, so no reasons are given. */
   preview?: boolean;
+  /** Present when the wallet's other stablecoin could pay this; see PaymentConversion. */
+  conversion?: PaymentConversion;
 }
 
 /**
@@ -93,6 +111,7 @@ export default function PaymentActionPanel({
   addFundsReturnPath,
   resolveEscrowAddress,
   preview = false,
+  conversion,
 }: PaymentActionPanelProps) {
   const t = useT();
   const { config } = useConfig();
@@ -220,15 +239,24 @@ export default function PaymentActionPanel({
 
   // The exchange refuses less than its minimum. Into the contract that rules the route out, since
   // the escrow takes the exact amount; into the wallet they buy the minimum and pay from it.
-  const minimum = useOnrampMinimum(tokenSymbol, showCoinbasePay);
-  const minimumLabel = minimum ? `${minimum.amount} ${minimum.currency}` : '';
-  const coinbase = useCoinbaseAvailability(showCoinbasePay);
-  const belowMinimumForContract = !!minimum && amountInTokens < minimum.inTokens;
   // No onramp delivers this token (utils/buyableToken): paying by card is greyed out, and that
   // reason replaces the exchange's own, which say nothing to a buyer it cannot serve at all.
   const buyable = canBuyToken(tokenSymbol);
+  // A token nobody sells is funded by buying the one that converts into it. What is bought is
+  // what the conversion costs, plus a margin, less what the wallet already holds of it.
+  const converting = !!conversion && hasInsufficientBalance;
+  const viaConversion = !buyable && !!conversion && canBuyToken(conversion.fromSymbol);
+  const fundingSymbol = viaConversion ? conversion.fromSymbol : tokenSymbol;
+  const fundingShortfall = viaConversion
+    ? Math.max(purchaseAmountFor(conversion.cost ?? shortfall) - conversion.fromBalance, 0)
+    : shortfall;
+  const minimum = useOnrampMinimum(fundingSymbol, showCoinbasePay);
+  const minimumLabel = minimum ? `${minimum.amount} ${minimum.currency}` : '';
+  const coinbase = useCoinbaseAvailability(showCoinbasePay);
+  const belowMinimumForContract = !!minimum && amountInTokens < minimum.inTokens;
   // Coinbase's minimum says nothing to a buyer it cannot serve.
-  const belowMinimumForWallet = buyable && !!minimum && !coinbase.unavailable && shortfall > 0 && shortfall < minimum.inTokens;
+  const belowMinimumForWallet =
+    (buyable || viaConversion) && !!minimum && !coinbase.unavailable && fundingShortfall > 0 && fundingShortfall < minimum.inTokens;
   const shortAddress = walletAddress
     ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
     : '';
@@ -246,8 +274,9 @@ export default function PaymentActionPanel({
   };
 
   // Balance gates both wallet-dependent actions, in opposite directions.
+  const canConvertAndPay = converting && conversion.status === 'ready';
   const canPayFromThisWallet =
-    !hasInsufficientBalance && !isSameAddress && !isLoadingBalance && !isPreparing;
+    (!hasInsufficientBalance || canConvertAndPay) && !isSameAddress && !isLoadingBalance && !isPreparing;
   // Every way of adding funds buys the token or sends it to this wallet first; for a token no
   // onramp delivers the buyer is pointed at what does work instead (their own holding, or USDC).
   // Kraken into the payment address: only what it has been seen to deliver, and never below its
@@ -257,7 +286,13 @@ export default function PaymentActionPanel({
   const linkCanDeliver = linkDelivers(tokenSymbol, chainId);
   // Link sells in the United States only; the country is advice, so it can be overruled.
   const linkCountry = useLinkAvailability();
-  const canAddFunds = hasInsufficientBalance && !isLoadingBalance && buyable;
+  // With enough of the other token already in the wallet there is nothing to add: it pays.
+  const canAddFunds =
+    hasInsufficientBalance && !isLoadingBalance && (buyable || (viaConversion && !canConvertAndPay));
+  // Rounded up, so the figure on the button is never less than what leaves the wallet.
+  // (Less a hair first: 20.01 * 100 is 2001.0000000000002 in floating point, and must not become 20.02.)
+  const upToCent = (value: number) => (Math.ceil(value * 100 - 1e-7) / 100).toFixed(2);
+  const costLabel = conversion?.cost != null ? upToCent(conversion.cost) : '';
   const cannotBuyReason = t('addFunds.cannotBuyToken', { token: tokenSymbol });
 
   const actionButton = 'w-full rounded-lg justify-center';
@@ -319,6 +354,11 @@ export default function PaymentActionPanel({
               {t('paymentActionPanel.short', { amount: shortfall.toFixed(4), token: tokenSymbol })}
             </p>
           )}
+          {!isLoadingBalance && converting && (
+            <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+              {`${conversion.fromBalance.toFixed(4)} ${conversion.fromSymbol}`}
+            </p>
+          )}
         </div>
       </div>
 
@@ -349,11 +389,47 @@ export default function PaymentActionPanel({
               {t('pay.preparing')}
             </>
           ) : (
-            t('pay.payFromThisWallet', { amount: amountLabel })
+            canConvertAndPay
+              ? t('pay.payUsingOther', { amount: amountLabel, cost: costLabel, from: conversion.fromSymbol })
+              : t('pay.payFromThisWallet', { amount: amountLabel })
           )}
         </Button>
-        {hasInsufficientBalance && !isSameAddress &&
+        {hasInsufficientBalance && !isSameAddress && !converting &&
           reason(t('paymentActionPanel.whyNoPay', { amount: shortfall.toFixed(4), token: tokenSymbol }))}
+        {converting && !isSameAddress && conversion.status === 'ready' &&
+          reason(t('paymentActionPanel.convertNote', { from: conversion.fromSymbol, token: tokenSymbol }))}
+        {converting && !isSameAddress && conversion.status === 'quoting' &&
+          reason(t('paymentActionPanel.convertQuoting', { from: conversion.fromSymbol }))}
+        {converting && !isSameAddress && conversion.status === 'unavailable' &&
+          reason(t('paymentActionPanel.convertUnavailable', { from: conversion.fromSymbol, token: tokenSymbol }))}
+        {converting && !isSameAddress && conversion.status === 'short' &&
+          reason(
+            t('paymentActionPanel.whyNoConvert', {
+              amount: upToCent(Math.max((conversion.cost ?? shortfall) - conversion.fromBalance, 0)),
+              from: conversion.fromSymbol,
+              token: tokenSymbol,
+            })
+          )}
+
+        {/* Both rows always on screen: the buyer sees that nobody sells this token here, and why
+            they are being sent to the other one. The first row lights up when a supplier does. */}
+        {viaConversion && hasInsufficientBalance && !isSameAddress && !preview && !isLoadingBalance && (
+          <div role="radiogroup" aria-label={t('paymentActionPanel.howToBuy', { token: tokenSymbol })} className="rounded-lg border border-secondary-200 dark:border-secondary-700 divide-y divide-secondary-200 dark:divide-secondary-700 text-sm">
+            <div role="radio" aria-checked="false" aria-disabled="true" className="flex items-start gap-3 p-3 opacity-60">
+              <span aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 rounded-full border border-secondary-400" />
+              <span>
+                <span className="block font-medium text-secondary-700 dark:text-secondary-300">{t('paymentActionPanel.buyDirect', { token: tokenSymbol })}</span>
+                <span className="block text-xs text-secondary-500 dark:text-secondary-400">{t('paymentActionPanel.buyDirectUnavailable', { token: tokenSymbol })}</span>
+              </span>
+            </div>
+            <div role="radio" aria-checked="true" className="flex items-start gap-3 p-3">
+              <span aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 rounded-full border-4 border-primary-600" />
+              <span className="font-medium text-secondary-900 dark:text-white">
+                {t('paymentActionPanel.buyAndConvert', { from: conversion.fromSymbol, token: tokenSymbol })}
+              </span>
+            </div>
+          </div>
+        )}
 
         <Button
           type="button"
@@ -365,10 +441,12 @@ export default function PaymentActionPanel({
         >
           {belowMinimumForWallet
             ? t('paymentActionPanel.addFundsBelowMinimum', { minimum: minimumLabel })
-            : t('paymentActionPanel.addFundsToThis')}
+            : viaConversion
+              ? t('paymentActionPanel.addOtherToThis', { from: conversion.fromSymbol })
+              : t('paymentActionPanel.addFundsToThis')}
         </Button>
         {!hasInsufficientBalance && !isSameAddress && reason(t('paymentActionPanel.whyNoAddFunds'))}
-        {hasInsufficientBalance && !isSameAddress && !buyable && reason(cannotBuyReason)}
+        {hasInsufficientBalance && !isSameAddress && !buyable && !viaConversion && reason(cannotBuyReason)}
 
         {/* Never gated on balance: this route bypasses the connected wallet. */}
         <Button
@@ -406,8 +484,11 @@ export default function PaymentActionPanel({
           </Button>
         )}
         {/* Said once: under Add funds when that is greyed out for the same reason, else here. */}
-        {resolveEscrowAddress && showCoinbasePay && !buyable && !preview && !(hasInsufficientBalance && !isSameAddress) &&
+        {resolveEscrowAddress && showCoinbasePay && !buyable && !preview && !viaConversion && !(hasInsufficientBalance && !isSameAddress) &&
           reason(cannotBuyReason)}
+        {/* These never pass through the wallet, so there is nothing to convert what they send. */}
+        {resolveEscrowAddress && showCoinbasePay && viaConversion && !preview &&
+          reason(t('paymentActionPanel.directCannotConvert', { token: tokenSymbol }))}
         {resolveEscrowAddress && showCoinbasePay && buyable && coinbase.unavailable && !preview && (
           <p className="-mt-2 text-xs text-secondary-500 dark:text-secondary-400">
             {coinbaseUnavailableReason}{' '}
@@ -469,12 +550,12 @@ export default function PaymentActionPanel({
         isOpen={showAddFunds}
         onClose={() => setShowAddFunds(false)}
         walletAddress={walletAddress}
-        tokenAddress={tokenAddress}
-        tokenSymbol={tokenSymbol}
-        tokenDecimals={tokenDecimals}
+        tokenAddress={viaConversion ? conversion.fromTokenAddress : tokenAddress}
+        tokenSymbol={fundingSymbol}
+        tokenDecimals={viaConversion ? conversion.fromTokenDecimals : tokenDecimals}
         chainId={chainId}
         networkName={networkName}
-        shortfall={shortfall}
+        shortfall={fundingShortfall}
         minimumPurchase={minimum?.inTokens}
         coinbaseUnavailable={coinbase.unavailable ? coinbaseUnavailableReason : undefined}
         returnPath={addFundsReturnPath}

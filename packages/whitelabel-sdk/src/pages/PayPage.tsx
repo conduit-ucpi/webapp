@@ -8,6 +8,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import PaymentOptions from '@/components/contracts/PaymentOptions';
+import type { PaymentConversion } from '@/components/contracts/PaymentActionPanel';
 import { useToast } from '@/components/ui/Toast';
 import PaymentTermsForm from '@/components/contracts/PaymentTermsForm';
 import ReviewRequest from '@/components/contracts/ReviewRequest';
@@ -18,6 +19,8 @@ import { useTokenSelection } from '@/hooks/useTokenSelection';
 import { useFeeQuote } from '@/hooks/useFeeQuote';
 import { useQrPayment } from '@/hooks/useQrPayment';
 import { usePaymentSteps } from '@/hooks/usePaymentSteps';
+import { useSwapQuote } from '@/hooks/useSwapQuote';
+import { convertibleFrom, maxAmountIn, swapVenue, withinPremium, type SwapVenue } from '../lib/stablecoinSwap';
 import { isValidEmail, isValidWalletAddress, isValidDescription, addressesEqual, getDefaultTimestamp, formatDateTimeWithTZ } from '@/utils/validation';
 import { getNetworkName } from '@/utils/networkUtils';
 import { MIN_AMOUNT, TEST_AMOUNT, formatUsd, isAllowedAmount, parseAmount } from '@/utils/escrowFees';
@@ -137,6 +140,7 @@ export function paidEscrowFrom(settled: Settled | null, fallbackAddress: string)
 }
 
 /** How long a wallet payment waits to see its own transfer at the escrow address before settling. */
+const ZERO = BigInt(0);
 const ESCROW_FUNDS_POLLS = 15;
 const ESCROW_FUNDS_POLL_MS = 2000;
 
@@ -161,14 +165,14 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
   // The partner this payment is made under, recorded on the contract. Not a term: it moves no address.
   const brandId = usePartnerBrand()?.id;
   const attribution = brandId ? { brand: brandId } : {};
-  const { getTokenBalance, transferToContract, prewarmTransferToContract } = useSimpleEthers();
+  const { getTokenBalance, transferToContract, prewarmTransferToContract, quoteSwap, swapForExactOutput } = useSimpleEthers();
   const { showToast } = useToast();
 
   // A checkout's terms are the merchant's, a request's the seller's: either way not the payer's to edit.
   const locked = checkout?.terms ?? request?.terms;
   const [tokenSymbol, setTokenSymbol] = useState<string | undefined>(locked?.tokenSymbol);
   const { selectedToken, selectedTokenSymbol, availableTokens } = useTokenSelection(config, tokenSymbol);
-  const { tokenBalance, isLoadingBalance } = useTokenBalance({
+  const { tokenBalance, isLoadingBalance, refetch: refetchBalance } = useTokenBalance({
     enabled: !!config?.rpcUrl,
     address,
     tokenAddress: selectedToken?.address,
@@ -259,6 +263,64 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
 
   /** Why a checkout's payment could not be set up: its terms have no form to show an error on. */
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  /*
+   * Paying with the wallet's other stablecoin (lib/stablecoinSwap): short of the token asked for,
+   * the wallet converts exactly the shortfall and then pays the ordinary way. Looked at only on
+   * the review screen of a payment that can be made, so nothing is read or quoted before then.
+   */
+  const otherSymbol = convertibleFrom(config?.chainId, selectedTokenSymbol);
+  const otherToken = otherSymbol
+    ? availableTokens.find((token) => token.symbol.toUpperCase() === otherSymbol)
+    : undefined;
+  const venue = otherToken ? swapVenue(config?.chainId, otherToken.symbol, selectedTokenSymbol) : null;
+  const unitsOf = (value: string, decimals: number): bigint => {
+    try {
+      return ethers.parseUnits(value || '0', decimals);
+    } catch {
+      return ZERO;
+    }
+  };
+  const owedUnits = BigInt(Math.max(Math.round(baseUnits), 0));
+  const heldUnits = unitsOf(tokenBalance, selectedToken?.decimals ?? 6);
+  const shortfallUnits = owedUnits > heldUnits ? owedUnits - heldUnits : ZERO;
+  const conversionOffered =
+    !!venue && !!otherToken && stage === 'review' && transferOffered && !ownRequest && !isLoadingBalance && shortfallUnits > ZERO;
+  const {
+    tokenBalance: otherBalance,
+    isLoadingBalance: isLoadingOtherBalance,
+    refetch: refetchOtherBalance,
+  } = useTokenBalance({
+    enabled: conversionOffered && !!config?.rpcUrl,
+    address,
+    tokenAddress: otherToken?.address,
+    getTokenBalance,
+  });
+  const swapQuote = useSwapQuote({
+    venue: conversionOffered ? venue : null,
+    tokenIn: otherToken?.address,
+    tokenOut: selectedToken?.address,
+    amountOut: shortfallUnits,
+    quoteSwap,
+  });
+  const conversion: PaymentConversion | undefined = (() => {
+    if (!conversionOffered || !otherToken) return undefined;
+    const quoted = swapQuote.amountIn;
+    let status: PaymentConversion['status'] = 'quoting';
+    if (swapQuote.state === 'failed') status = 'unavailable';
+    else if (quoted !== null && !isLoadingOtherBalance) {
+      if (!withinPremium(quoted, shortfallUnits, otherToken.decimals, selectedToken?.decimals ?? 6)) status = 'unavailable';
+      else status = unitsOf(otherBalance, otherToken.decimals) >= quoted ? 'ready' : 'short';
+    }
+    return {
+      fromSymbol: otherToken.symbol,
+      fromTokenAddress: otherToken.address,
+      fromTokenDecimals: otherToken.decimals,
+      fromBalance: parseFloat(otherBalance) || 0,
+      cost: quoted !== null && status !== 'unavailable' ? Number(ethers.formatUnits(quoted, otherToken.decimals)) : null,
+      status,
+    };
+  })();
 
   /** Why the payment was refused on sanctions grounds, once it has been. */
   const [refusal, setRefusal] = useState<string | null>(null);
@@ -404,13 +466,86 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     // ⚠️ ONLY TO AN ADDRESS ON FILE. If settle fails after the money has moved, the sweep is what
     //    finishes the payment, and it only knows about escrows on file.
     if (!prepared || !transferOffered || !selectedToken?.address) return fail(t('push.cannotPay'));
-    const payment = payFromWallet(prepared, selectedToken.address);
+    const payment =
+      conversion?.status === 'ready' && venue && otherToken
+        ? convertThenPay(prepared, { address: selectedToken.address, symbol: selectedTokenSymbol, decimals: selectedToken.decimals }, otherToken, venue)
+        : payFromWallet(prepared, selectedToken.address);
     walletPayment.current = payment;
     try {
       await payment;
     } finally {
       walletPayment.current = null;
+      // What the wallet holds has changed, whichever way that went.
+      void refetchBalance();
+      void refetchOtherBalance();
     }
+  };
+
+  /**
+   * Convert what the wallet is short of from its other stablecoin, then pay the ordinary way.
+   * The swap is from the wallet to itself: until payFromWallet runs, nothing has gone anywhere.
+   */
+  const convertThenPay = async (
+    prepared: Prepared,
+    token: { address: string; symbol: string; decimals: number },
+    other: { address: string; symbol: string; decimals: number },
+    venue: SwapVenue
+  ): Promise<boolean> => {
+    setBusy('pay');
+    setSteps([
+      { id: 'convert', label: t('push.converting', { from: other.symbol, token: token.symbol }), status: 'active' },
+      { id: 'transfer', label: t('push.signing'), status: 'pending' },
+      { id: 'settle', label: t('push.settling'), status: 'pending' },
+    ]);
+    const stop = (message: string) => {
+      updateStep('convert', 'error');
+      fail(message);
+      setBusy(null);
+      return false;
+    };
+    try {
+      // ⚠️ NEVER CONVERTED TWICE. A payment that failed after its conversion leaves the wallet
+      //    holding the token and this button live again; pressing it must pay with that, not
+      //    convert more. So the shortfall is read now, not taken from what the screen last showed,
+      //    and an address that already holds the payment is only settled.
+      const held = unitsOf(await getTokenBalance(address!, token.address), token.decimals);
+      const short = owedUnits > held ? owedUnits - held : ZERO;
+      if (short > ZERO && !(await escrowHoldsFunds(prepared.escrow_address, token.address))) {
+        // A fresh quote: the one on the button was for showing, and may be minutes old.
+        const quoted = await quoteSwap(venue, other.address, token.address, short);
+        if (!withinPremium(quoted, short, other.decimals, token.decimals)) {
+          return stop(t('push.convertTooDear', { token: token.symbol }));
+        }
+        const otherHeld = unitsOf(await getTokenBalance(address!, other.address), other.decimals);
+        if (otherHeld < quoted) return stop(t('push.convertShort', { from: other.symbol }));
+        // Room for the price to move, but never more than the wallet holds.
+        const ceiling = maxAmountIn(quoted);
+        const amountInMaximum = ceiling < otherHeld ? ceiling : otherHeld;
+        // Said inside the wallet's own prompt, which otherwise only names the router's address.
+        const figures = {
+          max: ethers.formatUnits(amountInMaximum, other.decimals),
+          from: other.symbol,
+          amount: ethers.formatUnits(short, token.decimals),
+          token: token.symbol,
+        };
+        await swapForExactOutput(
+          venue,
+          { tokenIn: other.address, tokenInDecimals: other.decimals, tokenOut: token.address, amountOut: short, amountInMaximum },
+          { approve: t('push.promptApproveConvert', figures), convert: t('push.promptConvert', figures) }
+        );
+        // Sent is not mined: the transfer that follows needs the token to be in the wallet.
+        let arrived = false;
+        for (let attempt = 0; attempt < ESCROW_FUNDS_POLLS && !arrived; attempt++) {
+          arrived = unitsOf(await getTokenBalance(address!, token.address).catch(() => '0'), token.decimals) >= owedUnits;
+          if (!arrived) await new Promise((resolve) => setTimeout(resolve, ESCROW_FUNDS_POLL_MS));
+        }
+        if (!arrived) return stop(t('push.convertNotArrived', { token: token.symbol }));
+      }
+      updateStep('convert', 'completed');
+    } catch (error: any) {
+      return stop(error.message);
+    }
+    return payFromWallet(prepared, token.address, true);
   };
 
   /**
@@ -435,12 +570,15 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     }
   };
 
-  const payFromWallet = async (prepared: Prepared, tokenAddress: string): Promise<boolean> => {
+  const payFromWallet = async (prepared: Prepared, tokenAddress: string, afterConversion = false): Promise<boolean> => {
     setBusy('pay');
-    setSteps([
-      { id: 'transfer', label: t('push.signing'), status: 'active' },
-      { id: 'settle', label: t('push.settling'), status: 'pending' },
-    ]);
+    // After a conversion its step stays on screen, completed, above these two.
+    if (afterConversion) updateStep('transfer', 'active');
+    else
+      setSteps([
+        { id: 'transfer', label: t('push.signing'), status: 'active' },
+        { id: 'settle', label: t('push.settling'), status: 'pending' },
+      ]);
     try {
       // ⚠️ NEVER SENT TWICE. A settle that failed after the transfer leaves the money at the
       //    address and this button live again; pressing it must finish that payment, not send
@@ -448,7 +586,15 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
       if (!(await escrowHoldsFunds(prepared.escrow_address, tokenAddress))) {
         // The address was checked against the pinned factory when prepare answered.
         // transferToContract asks for the gas first (fund-wallet), then the wallet sends.
-        await transferToContract(tokenAddress, prepared.escrow_address, String(baseUnits));
+        // Said in the wallet's own prompt: how much, of what, for whom and what happens to it. An
+        // address means nothing to the person approving, so the seller is named as the page names them.
+        const paying = request?.sellerLabel || seller.trim();
+        const says = t(instant ? 'push.promptTransferInstant' : 'push.promptTransferHeld', {
+          amount: amount.trim(),
+          token: selectedTokenSymbol,
+          seller: isValidWalletAddress(paying) ? `${paying.slice(0, 6)}…${paying.slice(-4)}` : paying,
+        });
+        await transferToContract(tokenAddress, prepared.escrow_address, String(baseUnits), says);
         updateStep('settle', 'active');
         await waitForEscrowFunds(prepared.escrow_address, tokenAddress);
       }
@@ -754,6 +900,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
               tokenOptions={availableTokens.map((token) => token.symbol)}
               onTokenChange={setTokenSymbol}
               networkLabel={networkLabel}
+              payableWith={otherToken?.symbol}
               balanceText={isLoadingBalance ? undefined : `Balance: ${tokenBalance} ${selectedTokenSymbol}`}
             />
             <div className="mt-8 flex justify-center">
@@ -822,6 +969,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
                   hasInsufficientBalance={balanceFloat < amountInTokens}
                   isSameAddress={false}
                   preview={ownRequest}
+                  conversion={conversion}
                   isPaymentInProgress={busy === 'pay'}
                   onPay={handleWalletPay}
                   onPayFromExternalWallet={() => {

@@ -102,12 +102,23 @@ export interface AuthMethods {
   
   // High-level contract operations
   createContract?: (contract: ContractFundingParams['contract'], userAddress: string, config: ContractFundingParams['config'], utils: ContractFundingParams['utils']) => Promise<string>;
-  claimFunds?: (contractAddress: string, userAddress: string) => Promise<string>;
+  /**
+   * `prompt` words the wallet's own screen (walletPromptChannel). It is handed what the seller
+   * will actually receive, formatted with `decimals`, or null when the token is not known or it could not be read: a
+   * sentence without a figure is safe, a wrong figure is not.
+   */
+  claimFunds?: (
+    contractAddress: string,
+    userAddress: string,
+    prompt?: { decimals?: number; describe: (amount: string | null) => string }
+  ) => Promise<string>;
   raiseDispute?: (params: {
     contractAddress: string;
     userAddress: string;
     reason: string;
     refundPercent: number;
+    /** What the wallet's own screen says at each step; see raiseDisputeAndVote. */
+    prompts?: { open: string; vote: (figure: number) => string };
     // Contract data for database updates and email notifications
     contract?: any;
     // Configuration and utilities for email processing

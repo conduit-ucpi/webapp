@@ -13,7 +13,7 @@ export interface DisputeEntry {
 
 export interface RaiseDisputeDeps {
   /** Sends one transaction from the buyer's own wallet and resolves with its hash. */
-  send: (tx: { to: string; data: string; value: string }) => Promise<string>;
+  send: (tx: { to: string; data: string; value: string; walletDescription?: string; movesFunds?: boolean }) => Promise<string>;
   /** Records the entry with contractservice. A failure here never undoes what is on-chain. */
   record: (contractId: string, entry: DisputeEntry) => Promise<void>;
 }
@@ -32,12 +32,25 @@ export interface RaiseDisputeDeps {
  */
 export async function raiseDisputeAndVote(
   deps: RaiseDisputeDeps,
-  params: { contractAddress: string; reason: string; refundPercent: number; contractId?: string }
+  params: {
+    contractAddress: string;
+    reason: string;
+    refundPercent: number;
+    contractId?: string;
+    /**
+     * What the wallet's own screen says at each of the two steps. The vote's is built from the
+     * rounded figure, so the sentence and the vote cannot differ.
+     */
+    prompts?: { open: string; vote: (figure: number) => string };
+  }
 ): Promise<string> {
   const txHash = await deps.send({
     to: params.contractAddress,
     data: escrowInterface.encodeFunctionData('raiseDispute', []),
     value: '0',
+    walletDescription: params.prompts?.open,
+    // Opening a dispute holds the payment where it is; it moves nothing.
+    movesFunds: false,
   });
 
   const figure = Math.round(params.refundPercent);
@@ -47,6 +60,8 @@ export async function raiseDisputeAndVote(
       to: params.contractAddress,
       data: escrowInterface.encodeFunctionData('submitResolutionVote', [figure]),
       value: '0',
+      // Left as moving funds: a vote that matches one already cast pays the payment out.
+      walletDescription: params.prompts?.vote(figure),
     });
   } catch (error) {
     console.error('Dispute raised, but the vote did not land:', error);

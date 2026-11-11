@@ -67,15 +67,15 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
   /** The figures held by everyone other than the connected wallet — what this submission could match. */
   const othersFigures = (() => {
     const state = settlement.data;
-    if (!state) return [] as Array<{ role: string; percent: number }>;
+    if (!state) return [] as Array<{ key: 'buyer' | 'recipient' | 'arbiter'; role: string; percent: number }>;
     const me = user?.walletAddress?.toLowerCase();
     return [
-      { role: t('disputeManagementModal.roleBuyer'), address: state.buyer, percent: state.buyerVote },
-      { role: t('disputeManagementModal.roleRecipient'), address: state.recipient, percent: state.recipientVote },
-      { role: t('disputeManagementModal.roleThirdVoter'), address: state.arbiter, percent: state.arbiterVote }
+      { key: 'buyer' as const, role: t('disputeManagementModal.roleBuyer'), address: state.buyer, percent: state.buyerVote },
+      { key: 'recipient' as const, role: t('disputeManagementModal.roleRecipient'), address: state.recipient, percent: state.recipientVote },
+      { key: 'arbiter' as const, role: t('disputeManagementModal.roleThirdVoter'), address: state.arbiter, percent: state.arbiterVote }
     ]
       .filter((f) => f.percent !== null && f.address && f.address.toLowerCase() !== me)
-      .map((f) => ({ role: f.role, percent: f.percent as number }));
+      .map((f) => ({ key: f.key, role: f.role, percent: f.percent as number }));
   })();
 
   /**
@@ -162,7 +162,31 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
 
       // 1. The figure goes on-chain first. If this throws — a declined signature, a revert, an
       //    out-of-gas — nothing happened, and nothing is recorded anywhere.
-      await submitSettlementVote(contract.contractAddress, figure);
+      // Said in the wallet's own screen: the split, in the voter's own terms, and above all
+      // whether approving pays the money out there and then.
+      const described = contract.description || '';
+      const split = t(
+        viewerRole === 'buyer'
+          ? 'disputeManagementModal.promptSplitBuyer'
+          : viewerRole === 'recipient'
+            ? 'disputeManagementModal.promptSplitRecipient'
+            : 'disputeManagementModal.promptSplitOther',
+        { buyer: figure, recipient: 100 - figure }
+      );
+      const about = { description: described.length > 60 ? `${described.slice(0, 57)}…` : described, split };
+      await submitSettlementVote(
+        contract.contractAddress,
+        figure,
+        wouldSettleWith
+          ? {
+              walletDescription: t('disputeManagementModal.promptSettle', {
+                ...about,
+                role: wouldSettleWith.role,
+              }),
+            }
+          : // Matching nobody, it pays nothing out and can be changed: the notice must not say otherwise.
+            { walletDescription: t('disputeManagementModal.promptRecord', about), movesFunds: false }
+      );
 
       // 2. Only now record it with contractservice, alongside the reasoning. This is a record of
       //    the conversation; it decides nothing and gates nothing.

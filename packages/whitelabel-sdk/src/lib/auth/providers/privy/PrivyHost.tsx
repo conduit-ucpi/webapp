@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo } from 'react';
-import { PrivyProvider, useDepositFunds, useLogin, useLogout, usePrivy, useSignTypedData, useWallets } from '@privy-io/react-auth';
-import type { ConnectedWallet, SignTypedDataParams, User } from '@privy-io/react-auth';
+import { PrivyProvider, useDepositFunds, useLogin, useLogout, usePrivy, useSendTransaction, useSignTypedData, useWallets } from '@privy-io/react-auth';
+import type { ConnectedWallet, SignTypedDataParams, UnsignedTransactionRequest, User } from '@privy-io/react-auth';
 import type { ethers } from 'ethers';
 
 import { termsUrl } from '@/lib/auth/siwe-statement';
+import { getWalletPrompt, walletSaysIt } from '@/lib/auth/walletPromptChannel';
 import type { AuthConfig } from '@/lib/auth/types';
 import { depositFundsOptions, fundWalletResult } from './fundingRequest';
 import { privyBridge, type PrivyUserInfo } from './privyBridge';
@@ -54,13 +55,43 @@ export function chainFromConfig(config: AuthConfig): PrivyChain {
  * wallet, then to whatever is first.
  */
 export function pickWallet(user: User | null, wallets: ConnectedWallet[]): ConnectedWallet | null {
-  if (wallets.length === 0) return null;
-  const primary = user?.wallet?.address?.toLowerCase();
-  return (
-    wallets.find((w) => w.address.toLowerCase() === primary) ??
-    wallets.find((w) => w.walletClientType === 'privy') ??
-    wallets[0]
+  // ⚠️ ONLY A WALLET THAT BELONGS TO THE ACCOUNT SIGNED IN. Privy's list is every wallet connected
+  //    to this BROWSER: a browser wallet stays in it after logout, and on a page load it is
+  //    listed before the embedded wallet has loaded. Falling back to "whatever is first" named
+  //    that leftover wallet as the user's (dev, 11 Nov 2026): the page read its balance and
+  //    nonce, the embedded wallet signed, and the transaction could never confirm.
+  //    While the account's own wallet has not loaded yet, there is no wallet: wait for it.
+  const own = new Set(
+    (user?.linkedAccounts ?? [])
+      .filter((account) => account.type === 'wallet' || account.type === 'smart_wallet')
+      .map((account) => (account as { address?: string }).address?.toLowerCase())
+      .filter(Boolean)
   );
+  const primary = user?.wallet?.address?.toLowerCase();
+  if (primary) own.add(primary);
+  const mine = wallets.filter((w) => own.has(w.address.toLowerCase()));
+  if (mine.length === 0) return null;
+  return (
+    mine.find((w) => w.address.toLowerCase() === primary) ??
+    mine.find((w) => w.walletClientType === 'privy') ??
+    mine[0]
+  );
+}
+
+/**
+ * Sign out, and let go of any browser wallet first. Privy's logout ends the account's session
+ * but leaves a browser wallet connected to the page, where the next account to sign in finds it.
+ */
+export async function logoutAndDisconnect(wallets: ConnectedWallet[], logout: () => Promise<void>): Promise<void> {
+  for (const wallet of wallets) {
+    if (wallet.walletClientType === 'privy') continue;
+    try {
+      wallet.disconnect();
+    } catch {
+      // Some wallets cannot be disconnected from the page's side; signing out still goes ahead.
+    }
+  }
+  await logout();
 }
 
 /**
@@ -122,6 +153,58 @@ export function withSignPrompt(
   });
 }
 
+type SendTransaction = (
+  input: UnsignedTransactionRequest,
+  options: { address: string; uiOptions: { description: string } }
+) => Promise<{ hash: string }>;
+
+/**
+ * The embedded wallet's provider, with a transaction that carries its own description sent
+ * through Privy's `sendTransaction`, so Privy's prompt says it. Left to itself Privy describes
+ * an approval as "…would like your permission for 0x… to spend tokens on your behalf", which
+ * names an address and neither how much nor why.
+ *
+ * ⚠️ ONLY A TRANSACTION THAT ASKS FOR IT. The description comes from the caller through
+ *    walletPromptChannel (Web3Service puts it there for exactly as long as the wallet call is in
+ *    flight). Everything else goes to the provider untouched, as it always has.
+ */
+export function withTransactionPrompt(
+  provider: ethers.Eip1193Provider,
+  sendTransaction: SendTransaction,
+  address: string
+): ethers.Eip1193Provider {
+  const request: ethers.Eip1193Provider['request'] = async (args) => {
+    if (args.method !== 'eth_sendTransaction') return provider.request(args);
+    // ⚠️ NEVER SIGN FOR A DIFFERENT ADDRESS THAN THE ONE THE TRANSACTION WAS BUILT FOR. The nonce
+    //    and the gas were worked out for `from`; signed by another wallet the transaction is
+    //    accepted and then never confirms, and the page waits on it for minutes. Refused here,
+    //    it fails at once and says so.
+    const from = ((args.params ?? []) as Array<{ from?: string }>)[0]?.from;
+    if (from && from.toLowerCase() !== address.toLowerCase()) {
+      throw new Error('This page is out of step with your wallet. Nothing was sent. Reload the page and try again.');
+    }
+    const prompt = getWalletPrompt();
+    const description = prompt?.kind === 'transaction' ? prompt.walletDescription : undefined;
+    if (!description) return provider.request(args);
+    // JSON-RPC calls the gas limit `gas`; Privy, like ethers, calls it `gasLimit`.
+    const [{ gas, ...tx }] = (args.params ?? []) as [Record<string, unknown> & { gas?: string }];
+    // Privy's screen is about to say it; our notice over the top would only repeat it.
+    walletSaysIt();
+    const { hash } = await sendTransaction({ ...tx, ...(gas ? { gasLimit: gas } : {}) } as UnsignedTransactionRequest, {
+      address,
+      uiOptions: { description }
+    });
+    return hash;
+  };
+  return new Proxy(provider, {
+    get(target, prop, receiver) {
+      if (prop === 'request') return request;
+      const value = Reflect.get(target, prop, receiver);
+      return typeof value === 'function' ? value.bind(target) : value;
+    }
+  });
+}
+
 function PrivyBridge({ config }: { config: AuthConfig }) {
   const { ready, authenticated, user, exportWallet } = usePrivy();
   const { wallets, ready: walletsReady } = useWallets();
@@ -132,6 +215,7 @@ function PrivyBridge({ config }: { config: AuthConfig }) {
   const { logout } = useLogout();
   const { depositFunds } = useDepositFunds();
   const { signTypedData } = useSignTypedData();
+  const { sendTransaction } = useSendTransaction();
   // Memoised: a fresh chain object every render would re-register the API every render.
   const chain = useMemo(() => chainFromConfig(config), [config.chainId, config.rpcUrl, config.explorerBaseUrl]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -141,12 +225,14 @@ function PrivyBridge({ config }: { config: AuthConfig }) {
   useEffect(() => {
     privyBridge.registerApi({
       login: (options) => login({ loginMethods: [...options.loginMethods] }),
-      logout,
+      logout: () => logoutAndDisconnect(wallets, logout),
       getEthereumProvider: async () => {
         if (!active) return null;
         const provider = await active.getEthereumProvider();
         // Only Privy's own wallet shows Privy's prompt; an external wallet shows its own.
-        return active.walletClientType === 'privy' ? withSignPrompt(provider, signTypedData, active.address) : provider;
+        return active.walletClientType === 'privy'
+          ? withTransactionPrompt(withSignPrompt(provider, signTypedData, active.address), sendTransaction, active.address)
+          : provider;
       },
       switchChain: async (chainId) => {
         if (active) await active.switchChain(chainId);
@@ -157,7 +243,7 @@ function PrivyBridge({ config }: { config: AuthConfig }) {
       exportWallet: (address) => exportWallet({ address })
     });
     return () => privyBridge.registerApi(null);
-  }, [login, logout, active, depositFunds, exportWallet, chain, signTypedData]);
+  }, [login, logout, wallets, active, depositFunds, exportWallet, chain, signTypedData, sendTransaction]);
 
   useEffect(() => {
     privyBridge.publish({

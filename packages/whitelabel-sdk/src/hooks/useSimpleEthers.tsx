@@ -3,6 +3,11 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { ethers } from 'ethers';
 import { useCallback } from 'react';
 import { mLog } from '@/utils/mobileLogger';
+import { encodeSwap, type SwapVenue } from '@/lib/stablecoinSwap';
+
+/** How long to wait for an approval to be mined before the swap that needs it is sent. */
+const ALLOWANCE_POLLS = 15;
+const ALLOWANCE_POLL_MS = 2000;
 
 /**
  * Simple hook that provides Web3Service for ALL blockchain operations
@@ -63,7 +68,7 @@ export function useSimpleEthers() {
     getWeb3Service,
 
     // Transaction methods
-    fundAndSendTransaction: async (txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }) => {
+    fundAndSendTransaction: async (txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; walletDescription?: string; movesFunds?: boolean; }) => {
       console.log('🔧 useSimpleEthers: fundAndSendTransaction via Web3Service');
       const web3Service = await getWeb3Service();
       return await web3Service.fundAndSendTransaction(txParams);
@@ -175,6 +180,70 @@ export function useSimpleEthers() {
       });
     },
 
+    /**
+     * What converting to exactly `amountOut` would cost, in `tokenIn`'s base units. Read-only: no
+     * wallet access. Memoised for the same reason as prewarmTransferToContract.
+     */
+    quoteSwap: useCallback(async (venue: SwapVenue, tokenIn: string, tokenOut: string, amountOut: bigint) => {
+      if (!config) throw new Error('Config not available');
+      const { Web3Service } = await import('@/lib/web3');
+      return await Web3Service.getInstance(config).quoteStablecoinSwap(venue, tokenIn, tokenOut, amountOut);
+    }, [config]),
+
+    /**
+     * Convert in the user's own wallet: exactly `amountOut` of `tokenOut` arrives in it, and at
+     * most `amountInMaximum` of `tokenIn` leaves it. Both transactions are gas sponsored like any
+     * other. Nothing is sent anywhere but the wallet itself.
+     *
+     * ⚠️ THE APPROVAL IS FOR THIS SWAP'S MAXIMUM, NOT UNLIMITED, and is skipped when the router may
+     *    already spend enough. The send returns on submission, so the swap waits for the approval
+     *    to show on chain: sent early, its gas estimate reverts.
+     */
+    swapForExactOutput: async (
+      venue: SwapVenue,
+      swap: { tokenIn: string; tokenInDecimals: number; tokenOut: string; amountOut: bigint; amountInMaximum: bigint },
+      /** What the wallet's own prompt says for each of the two steps, in the buyer's language. */
+      prompts?: { approve?: string; convert?: string }
+    ) => {
+      const web3Service = await getWeb3Service();
+      const owner = await web3Service.getUserAddress();
+      const allowed = async () =>
+        ethers.parseUnits(await web3Service.getTokenAllowance(owner, venue.router, swap.tokenIn), swap.tokenInDecimals) >=
+        swap.amountInMaximum;
+
+      if (!(await allowed())) {
+        const approve = new ethers.Interface(['function approve(address spender, uint256 amount) external returns (bool)']);
+        await web3Service.fundAndSendTransaction({
+          to: swap.tokenIn,
+          data: approve.encodeFunctionData('approve', [venue.router, swap.amountInMaximum]),
+          value: '0',
+          walletDescription: prompts?.approve,
+          // An approval spends nothing, and the notice must not say it does next to a sentence
+          // that says it does not.
+          movesFunds: false,
+        });
+        let seen = false;
+        for (let attempt = 0; attempt < ALLOWANCE_POLLS && !seen; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, ALLOWANCE_POLL_MS));
+          seen = await allowed().catch(() => false);
+        }
+        if (!seen) throw new Error('The approval has not shown up yet. Nothing was converted; try again in a moment.');
+      }
+
+      return await web3Service.fundAndSendTransaction({
+        to: venue.router,
+        data: encodeSwap(venue, {
+          tokenIn: swap.tokenIn,
+          tokenOut: swap.tokenOut,
+          recipient: owner,
+          amountOut: swap.amountOut,
+          amountInMaximum: swap.amountInMaximum,
+        }),
+        value: '0',
+        walletDescription: prompts?.convert,
+      });
+    },
+
     // Direct ERC20 transfer to a contract address (no approve step needed)
     /**
      * Get the unavoidable preliminaries out of the way before the user asks to pay.
@@ -195,7 +264,13 @@ export function useSimpleEthers() {
       await web3Service.prewarmTransaction({ to: tokenAddress, data, value: '0' });
     }, [getWeb3Service]),
 
-    transferToContract: async (tokenAddress: string, contractAddress: string, amount: string) => {
+    transferToContract: async (
+      tokenAddress: string,
+      contractAddress: string,
+      amount: string,
+      /** What the wallet's own prompt says, where the wallet lets us set it (walletPromptChannel). */
+      walletDescription?: string
+    ) => {
       console.log('');
       console.log('='.repeat(80));
       console.log('💸 DIRECT TOKEN TRANSFER');
@@ -222,7 +297,8 @@ export function useSimpleEthers() {
       return await web3Service.fundAndSendTransaction({
         to: tokenAddress, // Send tx TO the token contract
         data,
-        value: '0' // No ETH value needed for ERC20 transfer
+        value: '0', // No ETH value needed for ERC20 transfer
+        walletDescription
       });
     }
   };

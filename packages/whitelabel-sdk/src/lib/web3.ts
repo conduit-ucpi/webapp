@@ -9,6 +9,8 @@ import { withWalletPrompt } from '@/lib/auth/walletPromptChannel';
 import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement';
 
 // ERC20 ABI for USDC interactions
+import { decodeQuote, decodeSwap, encodeQuote, isSwapRouter, type SwapVenue } from './stablecoinSwap';
+
 export const ERC20_ABI = [
   'function balanceOf(address owner) view returns (uint256)',
   'function allowance(address owner, address spender) view returns (uint256)',
@@ -708,6 +710,29 @@ export class Web3Service {
     return await this.rpcClient.getTokenAllowance(userAddress, spenderAddress, tokenAddress);
   }
 
+  /** What the escrow at this address pays its recipient: the amount less the fee. Read without the wallet. */
+  async getPayoutAmount(contractAddress: string): Promise<bigint> {
+    return await this.rpcClient.getPayoutAmount(contractAddress);
+  }
+
+  /** Allowance of any token, read without the wallet. Formatted in the token's own decimals. */
+  async getTokenAllowance(userAddress: string, spenderAddress: string, tokenAddress: string): Promise<string> {
+    return await this.rpcClient.getTokenAllowance(userAddress, spenderAddress, tokenAddress);
+  }
+
+  /**
+   * What converting to exactly `amountOut` of `tokenOut` would cost in `tokenIn`, in base units.
+   * A read-only call to Uniswap's quoter: no wallet, no gas, nothing moves. Throws when the pool
+   * cannot supply the amount.
+   */
+  async quoteStablecoinSwap(venue: SwapVenue, tokenIn: string, tokenOut: string, amountOut: bigint): Promise<bigint> {
+    const result = await this.rpcClient.getProvider().call({
+      to: venue.quoter,
+      data: encodeQuote(venue, tokenIn, tokenOut, amountOut),
+    });
+    return decodeQuote(result);
+  }
+
   // Hash description for smart contract compatibility
   hashDescription(description: string): string {
     return ethers.keccak256(ethers.toUtf8Bytes(description));
@@ -1221,6 +1246,10 @@ export class Web3Service {
     value?: string;
     gasLimit?: bigint;
     gasPrice?: bigint;
+    /** What the wallet's own prompt should say, where the wallet lets us (walletPromptChannel). */
+    walletDescription?: string;
+    /** False when nothing moves, so the notice does not claim it does (walletPromptChannel). */
+    movesFunds?: boolean;
   }): Promise<string> {
     if (!this.provider) {
       throw new Error('Provider not initialized');
@@ -1607,7 +1636,7 @@ export class Web3Service {
       // transfer of real money. Announce what is actually being approved while
       // the prompt is open; see lib/auth/walletPromptChannel.ts.
       const returnedHash: string = await withWalletPrompt(
-        { kind: 'transaction', summary: this.describeTransactionForPrompt(rpcTxParams) },
+        { kind: 'transaction', summary: this.describeTransactionForPrompt(rpcTxParams), walletDescription: txParams.walletDescription, movesFunds: txParams.movesFunds },
         async () => {
           if (provider.request && typeof provider.request === 'function') {
             // EIP-1193 interface
@@ -1999,6 +2028,10 @@ export class Web3Service {
             '0x' + (tx.data || '').slice(10)
           );
           const amount = ethers.formatUnits(value, token.decimals);
+          // An approval to a swap router is the first half of a conversion, and is said as one.
+          if (type === 'approve' && isSwapRouter(counterparty)) {
+            return `allowing up to ${amount} ${token.symbol} to be converted for this payment`;
+          }
           return type === 'transfer'
             ? `sending ${amount} ${token.symbol} to ${shorten(counterparty)}`
             : `approving ${amount} ${token.symbol} to be spent by ${shorten(counterparty)}`;
@@ -2010,6 +2043,20 @@ export class Web3Service {
 
     if (type === 'claimFunds') {
       return `claiming funds from the contract at ${shorten(tx.to)}`;
+    }
+
+    // A conversion between two listed tokens, sent only to a router we list. Anything else that
+    // happens to share the selector gets the warning without figures.
+    if (isSwapRouter(tx.to)) {
+      const swap = decodeSwap(tx.data || '');
+      const tokenIn = swap && this.tokenForPrompt(swap.tokenIn);
+      const tokenOut = swap && this.tokenForPrompt(swap.tokenOut);
+      if (swap && tokenIn && tokenOut) {
+        return (
+          `converting up to ${ethers.formatUnits(swap.amountInMaximum, tokenIn.decimals)} ${tokenIn.symbol} ` +
+          `into ${ethers.formatUnits(swap.amountOut, tokenOut.decimals)} ${tokenOut.symbol} in your own wallet`
+        );
+      }
     }
 
     return `submitting a transaction to ${shorten(tx.to)}`;

@@ -34,7 +34,7 @@ describe('raiseDisputeAndVote', () => {
 
     expect(hash).toBe('0xhash1');
     expect(sent).toHaveLength(2);
-    expect(sent[0]).toEqual({ to: '0xEscrow', data: escrow.encodeFunctionData('raiseDispute', []), value: '0' });
+    expect(sent[0]).toEqual({ to: '0xEscrow', data: escrow.encodeFunctionData('raiseDispute', []), value: '0', movesFunds: false });
     expect(sent[1]).toEqual({ to: '0xEscrow', data: escrow.encodeFunctionData('submitResolutionVote', [100]), value: '0' });
     expect(recorded).toEqual([{ contractId: 'c1', entry: expect.objectContaining({ reason: 'Never arrived', refundPercent: 100 }) }]);
   });
@@ -68,5 +68,28 @@ describe('raiseDisputeAndVote', () => {
     await raiseDisputeAndVote(d, { contractAddress: '0xEscrow', reason: 'x', refundPercent: 0 });
     expect(sent).toHaveLength(2);
     expect(recorded).toHaveLength(0);
+  });
+
+  it("words the wallet's own screen at each step, the second from the figure actually voted", async () => {
+    const { d, sent } = deps();
+    await raiseDisputeAndVote(d, {
+      contractAddress: '0xEscrow',
+      reason: 'Half broken',
+      refundPercent: 59.6,
+      prompts: { open: 'Step 1 of 2: open a dispute', vote: (figure) => `Step 2 of 2: ${figure}% to you, ${100 - figure}% to the seller` },
+    });
+
+    expect(sent[0]).toMatchObject({ walletDescription: 'Step 1 of 2: open a dispute' });
+    // 59.6 is voted as 60, so 60 is what the screen says.
+    expect(sent[1]).toMatchObject({ walletDescription: 'Step 2 of 2: 60% to you, 40% to the seller' });
+  });
+
+  it('says opening a dispute moves nothing, and leaves the vote as something that can', async () => {
+    const { d, sent } = deps();
+    await raiseDisputeAndVote(d, { contractAddress: '0xEscrow', reason: 'x', refundPercent: 50 });
+
+    expect((sent[0] as any).movesFunds).toBe(false);
+    // A vote matching one already cast pays the payment out.
+    expect((sent[1] as any).movesFunds).toBeUndefined();
   });
 });

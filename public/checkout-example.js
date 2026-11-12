@@ -14,7 +14,7 @@
   'use strict';
 
   var DEMO_SELLER = '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d';
-  var DEMO_TOTAL = 0.01;
+  var DEMO_TOTAL = 0.001;
   var EXPRESS_SHIPPING = 12;
   var SIZES = ['7', '8', '9', '10', '11', '12'];
   var DEMO_CODE = 'DEMO';

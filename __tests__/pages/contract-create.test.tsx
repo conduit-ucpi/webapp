@@ -204,6 +204,9 @@ describe('/contract-create: paid', () => {
       orderId: '456',
       transactionHash: TX,
       contractAddress: ESCROW,
+      // Where the merchant's script looks the payment up: the API, which is not the site's host
+      // on the static build. No API_BASE under test, so it is this page's own origin.
+      apiOrigin: window.location.origin,
     });
     expect(closeSpy).toHaveBeenCalled();
   });

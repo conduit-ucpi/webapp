@@ -53,6 +53,7 @@
       verifyPayment: true, // Enable backend verification
       verificationTimeout: 30000, // 30 seconds max polling
       verificationInterval: 2000, // Poll every 2 seconds
+      apiUrl: null, // Optional: where the payment API is. Normally the checkout page says.
       webhookUrl: null, // Optional: Auto-send verified data to your backend
       webhookSecret: null, // Optional: HMAC secret for webhook signature
       onSuccess: function(data) { console.log('Payment success:', data); },
@@ -62,6 +63,7 @@
     },
 
     popup: null,
+    apiOrigin: null, // The API's address as the checkout page reported it with the payment
     messageListener: null,
     currentPayment: null, // Store expected payment data
 
@@ -232,6 +234,18 @@
      * @returns {Promise<Object>} Verified payment data
      * @private
      */
+    /**
+     * Where /api/results is. The site and its API can be on different hosts (stabledrop.me and
+     * api.stabledrop.me), and `baseUrl` is the site: asking it for the API gets a 405 on every
+     * poll until verification times out. The checkout page knows its own API and says so with
+     * the payment; `apiUrl` overrides that, and `baseUrl` is the fallback for a deployment that
+     * serves both from one host.
+     * @private
+     */
+    apiBase: function() {
+      return (this.config.apiUrl || this.apiOrigin || this.config.baseUrl).replace(/\/$/, '');
+    },
+
     verifyPayment: async function(contractId) {
       const startTime = Date.now();
       const timeout = this.config.verificationTimeout || 30000;
@@ -251,7 +265,7 @@
       while (Date.now() - startTime < timeout) {
         try {
           const response = await fetch(
-            `${this.config.baseUrl}/api/results`,
+            `${this.apiBase()}/api/results`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -598,6 +612,13 @@
             if (this.config.verifyPayment !== false) {
               try {
                 console.log('🔍 Payment completed postMessage received, starting verification...');
+
+                // Only from the checkout page itself (the origin was checked above), and only a
+                // plain https address: this is where the payment is about to be looked up.
+                const reported = message.data && message.data.apiOrigin;
+                if (typeof reported === 'string' && /^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(reported)) {
+                  this.apiOrigin = reported;
+                }
 
                 const verifiedData = await this.verifyPayment(message.data.contractId);
 

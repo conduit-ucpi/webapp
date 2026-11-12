@@ -1,4 +1,4 @@
-import { apiFetch } from '@/lib/apiFetch';
+import { apiFetch, API_BASE } from '@/lib/apiFetch';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import Head from 'next/head';
@@ -201,6 +201,11 @@ function Checkout({ seller, amount, description }: { seller: string; amount: str
           orderId,
           transactionHash: txHash,
           contractAddress: paid.escrowAddress,
+          // ⚠️ WHERE THE MERCHANT'S PAGE CAN LOOK THE PAYMENT UP. The checkout script only knows
+          //    the site's address, and on the static site the API is on another host: polling the
+          //    site for /api/results got 405 until it timed out, and every paid order was
+          //    reported to the shop as failed (12 Nov 2026).
+          apiOrigin: API_BASE || window.location.origin,
         },
       });
 

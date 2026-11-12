@@ -168,10 +168,10 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
     'Recibe un aviso cuando se completa un pago y luego confírmalo tú mismo. El webhook dice que algo pasó; {results} es la fuente de verdad, y es un endpoint público que puedes consultar desde tu servidor sin clave y sin configuración.',
   'integrate.webhook.step1.title': 'Configura el SDK con un webhook',
   'integrate.webhook.step1.body':
-    'El SDK se encarga automáticamente de la verificación y del envío del webhook. No necesitas llamadas manuales a {fetch}.',
+    'El SDK envía el webhook por ti, sin llamadas manuales a {fetch}. El webhook solo te avisa de que se intentó un pago. Debes tener un proceso que compruebe la billetera pagada, el monto, el estado y la fecha de pago antes de enviar cualquier pedido; el paso 2 muestra uno.',
   'integrate.webhook.step2.title': 'Confírmalo y luego entrega',
   'integrate.webhook.step2.body':
-    'Pregunta a {results} qué pasó realmente antes de enviar cualquier cosa. Lee el mismo registro que consulta el checkout, así que confirma el monto, la moneda y a quién se pagó; y una solicitud que nunca llega no cambia nada.',
+    'Pregunta a {results} qué pasó realmente antes de enviar cualquier cosa. Lee el mismo registro que consulta el checkout, así que confirma el monto, la moneda y a quién se pagó; y una solicitud que nunca llega no cambia nada. Todo aquello con lo que se abrió el checkout pasó por el navegador del comprador, así que comprueba las cuatro cosas: la billetera pagada es la tuya, el monto es el del pedido, el estado es uno con fondos y la fecha de pago no es posterior a la que pediste.',
   'integrate.webhook.step3.title': 'Verifica un pago tú mismo',
   'integrate.webhook.step3.body':
     'La misma consulta, por sí sola. Pública, sin autenticación, sin clave que solicitar: dale un {contractid} y te dice qué se pagó y a quién. Útil para conciliaciones, para soporte y para volver a procesar cualquier cosa que un webhook no haya entregado.',
@@ -220,7 +220,7 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'integrate.verified.chainAddress':
     'Dirección del contrato en la blockchain (registro permanente)',
   'integrate.verified.note':
-    'Una vez que recibes datos verificados, puedes entregar el pedido con seguridad. El SDK ya confirmó todo on-chain.',
+    'Estas comprobaciones se hacen en el navegador del comprador, así que bastan para mostrar una página de agradecimiento y nada más. Antes de entregar el pedido, confirma las mismas cuatro cosas en tu servidor: billetera, monto, estado y fecha de pago.',
 
   'integrate.platform.ariaLabel': 'Funciones y seguridad',
   'integrate.platform.eyebrow': 'Plataforma',

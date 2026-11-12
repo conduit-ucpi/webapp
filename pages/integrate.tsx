@@ -733,11 +733,17 @@ app.post('/api/conduit-webhook', async (req, res) => {
       ? Number(payment.amount) / 1000000
       : Number(payment.amount);
 
+    // \`maturity\` is when the money is released to you (Unix seconds). The buyer's
+    // browser sent it, like everything else, so check it is no later than the
+    // date you asked for: a payment that matures in ten years is not a payment.
+    const maturesOnTime = payment.maturity <= order.payoutBy;
+
     if (!paidToYou)                           return res.status(400).json({ error: 'Not your wallet' });
     if (!FUNDED_STATES.includes(payment.state)) return res.status(409).json({ error: 'Not funded yet' });
     if (Math.abs(amount - order.total) > 0.001) {
       return res.status(400).json({ error: 'Amount mismatch' });
     }
+    if (!maturesOnTime)                       return res.status(400).json({ error: 'Payout date changed' });
 
     // 3. NOW IT IS SAFE TO FULFIL
     await db.orders.update({

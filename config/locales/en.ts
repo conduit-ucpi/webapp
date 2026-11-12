@@ -172,10 +172,10 @@ export const pagesEn = {
     'Get told when a payment completes, then confirm it yourself. The webhook says something happened; {results} is the source of truth, and it is a public endpoint you can query from your server with no key and no setup.',
   'integrate.webhook.step1.title': 'Configure SDK with webhook',
   'integrate.webhook.step1.body':
-    'The SDK handles verification and webhook delivery automatically. No manual {fetch} calls needed.',
+    'The SDK sends the webhook for you, with no manual {fetch} calls. The webhook only tells you that a payment was attempted. You must have a process that checks the wallet paid, the amount, the state and the payout date before any order goes out; step 2 shows one.',
   'integrate.webhook.step2.title': 'Confirm it, then fulfil',
   'integrate.webhook.step2.body':
-    'Ask {results} what really happened before you ship anything. It reads the same record the checkout polls, so it settles the amount, the currency and who was paid — and a request that never arrives changes nothing.',
+    'Ask {results} what really happened before you ship anything. It reads the same record the checkout polls, so it settles the amount, the currency and who was paid — and a request that never arrives changes nothing. Everything the checkout was opened with passed through the buyer\'s browser, so check all four: the wallet paid is yours, the amount is the order\'s, the state is a funded one, and the payout date is no later than the one you asked for.',
   'integrate.webhook.step3.title': 'Check a payment yourself',
   'integrate.webhook.step3.body':
     'The same query, on its own. Public, unauthenticated, no key to request — give it a {contractid} and it tells you what was paid and to whom. Useful for reconciliation, for support, and for replaying anything a webhook missed.',
@@ -221,7 +221,7 @@ export const pagesEn = {
   'integrate.verified.amount': 'Matches expected amount (verified by SDK)',
   'integrate.verified.chainAddress': 'Blockchain contract address (permanent record)',
   'integrate.verified.note':
-    'Once you receive verified data, it is safe to fulfil the order. The SDK has confirmed everything on-chain.',
+    'These checks run in the buyer\'s browser, so they are enough to show a thank-you page and no more. Before you fulfil the order, confirm the same four things on your server: wallet, amount, state and payout date.',
 
   'integrate.platform.ariaLabel': 'Features and security',
   'integrate.platform.eyebrow': 'Platform',

@@ -52,7 +52,15 @@ function fakeApi(overrides: Partial<PrivyBridgeApi> = {}) {
 }
 
 const ready = (extra: Partial<ReturnType<typeof privyBridge.getSnapshot>> = {}) =>
-  privyBridge.publish({ ready: true, authenticated: false, address: null, embedded: false, user: null, ...extra });
+  privyBridge.publish({
+    ready: true,
+    authenticated: false,
+    address: null,
+    embedded: false,
+    modalOpen: false,
+    user: null,
+    ...extra
+  });
 
 /**
  * The modal is open — i.e. the class has called `login` and is now listening for an outcome.
@@ -130,6 +138,21 @@ describe('connect', () => {
 });
 
 describe('signing', () => {
+  it("holds a signature until Privy's login modal has closed", async () => {
+    // A new account's wallet exists while Privy still shows "wallet created". Asking Privy to
+    // sign then crashes its modal ("Cannot destructure property 'onSuccess' of 'd.createWallet'").
+    const { request } = fakeApi();
+    ready({ authenticated: true, address: ADDRESS, modalOpen: true });
+
+    const signing = new PrivyProvider(config).signMessage('hello');
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(request).not.toHaveBeenCalled();
+
+    ready({ authenticated: true, address: ADDRESS, modalOpen: false });
+    await expect(signing).resolves.toBe('0xsig');
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+
   it('signs with personal_sign over the hex-encoded message, as the Reown adapter does', async () => {
     const { request } = fakeApi();
     ready({ authenticated: true, address: ADDRESS });
@@ -193,7 +216,7 @@ describe('state', () => {
     ready({ authenticated: true, address: null }); // authenticated but no wallet yet: not connected
     ready({ authenticated: true, address: ADDRESS });
     ready({ authenticated: true, address: ADDRESS, user: { email: 'a@b.c' } }); // user only: no change
-    privyBridge.publish({ ready: true, authenticated: false, address: null, embedded: false, user: null });
+    ready();
 
     expect(seen).toEqual([
       { isConnected: true, address: ADDRESS },

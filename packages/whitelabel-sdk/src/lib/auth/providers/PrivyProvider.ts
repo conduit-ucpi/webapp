@@ -190,6 +190,10 @@ export class PrivyProvider implements UnifiedProvider {
     const eip1193 = await privyBridge.getApi()?.getEthereumProvider();
     if (!eip1193) throw new Error('No provider available - not connected');
 
+    // The page can ask for the backend signature the moment a new wallet exists, which is
+    // before Privy has closed its login modal. See whenModalIdle.
+    await privyBridge.whenModalIdle();
+
     const hexMessage = '0x' + Buffer.from(message, 'utf8').toString('hex');
     const signature = await eip1193.request({ method: 'personal_sign', params: [hexMessage, address] });
     return signature as string;

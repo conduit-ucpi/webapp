@@ -28,6 +28,8 @@ export interface PrivySnapshot {
   address: string | null;
   /** Whether the active wallet is a Privy embedded wallet (exportable), not an external one. */
   embedded: boolean;
+  /** Privy's own modal (login, wallet creation, a prompt) is on screen. */
+  modalOpen: boolean;
   user: PrivyUserInfo | null;
 }
 
@@ -50,12 +52,25 @@ export type LoginOutcome = { ok: true } | { ok: false; code: string };
 
 type Listener = (snapshot: PrivySnapshot) => void;
 
-const EMPTY: PrivySnapshot = { ready: false, authenticated: false, address: null, embedded: false, user: null };
+const EMPTY: PrivySnapshot = {
+  ready: false,
+  authenticated: false,
+  address: null,
+  embedded: false,
+  modalOpen: false,
+  user: null
+};
+
+/** How long Privy's modal takes to leave the page once closed (its transition is 200ms). */
+const MODAL_LEAVE_MS = 400;
+/** A modal still open after this long is not one a login left behind; stop waiting on it. */
+const MODAL_IDLE_TIMEOUT_MS = 60_000;
 
 let snapshot: PrivySnapshot = EMPTY;
 let api: PrivyBridgeApi | null = null;
 const listeners = new Set<Listener>();
 let pendingLogin: ((outcome: LoginOutcome) => void) | null = null;
+let modalClosedAt = 0;
 
 export const privyBridge = {
   getSnapshot(): PrivySnapshot {
@@ -77,10 +92,12 @@ export const privyBridge = {
       next.authenticated !== snapshot.authenticated ||
       next.address !== snapshot.address ||
       next.embedded !== snapshot.embedded ||
+      next.modalOpen !== snapshot.modalOpen ||
       next.user?.email !== snapshot.user?.email ||
       next.user?.name !== snapshot.user?.name ||
       next.user?.authProvider !== snapshot.user?.authProvider;
     if (!changed) return;
+    if (snapshot.modalOpen && !next.modalOpen) modalClosedAt = Date.now();
     snapshot = next;
     listeners.forEach((listener) => listener(snapshot));
   },
@@ -123,6 +140,28 @@ export const privyBridge = {
     });
   },
 
+  /**
+   * Resolves once Privy's modal is closed and gone from the page. Await it before asking Privy
+   * for anything that opens a prompt.
+   *
+   * ⚠️ A PROMPT MUST NOT START WHILE THE LOGIN MODAL IS STILL UP. A new account's wallet exists
+   *    — and so the app is "connected" — a second or two before Privy closes its "wallet created"
+   *    screen. A signature asked for in that gap replaces the modal's data under that screen and
+   *    Privy throws "Cannot destructure property 'onSuccess' of 'd.createWallet'" (prod, 12 Nov
+   *    2026). The same holds while the closed modal is still animating out, hence the pause.
+   */
+  async whenModalIdle(): Promise<void> {
+    if (snapshot.modalOpen) {
+      try {
+        await privyBridge.waitFor((s) => !s.modalOpen, MODAL_IDLE_TIMEOUT_MS, "Privy's modal to close");
+      } catch {
+        return; // Some other modal the person left open; let Privy deal with the request.
+      }
+    }
+    const remaining = modalClosedAt + MODAL_LEAVE_MS - Date.now();
+    if (remaining > 0) await new Promise((resolve) => setTimeout(resolve, remaining));
+  },
+
   /** The class calls this BEFORE opening the modal, so the outcome cannot be missed. */
   nextLoginOutcome(): Promise<LoginOutcome> {
     return new Promise((resolve) => {
@@ -146,5 +185,6 @@ export const privyBridge = {
     api = null;
     listeners.clear();
     pendingLogin = null;
+    modalClosedAt = 0;
   }
 };

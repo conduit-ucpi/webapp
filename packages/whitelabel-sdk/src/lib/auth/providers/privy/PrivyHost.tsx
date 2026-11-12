@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react';
-import { PrivyProvider, useDepositFunds, useLogin, useLogout, usePrivy, useSendTransaction, useSignTypedData, useWallets } from '@privy-io/react-auth';
+import { PrivyProvider, useDepositFunds, useLogin, useLogout, useModalStatus, usePrivy, useSendTransaction, useSignTypedData, useWallets } from '@privy-io/react-auth';
 import type { ConnectedWallet, SignTypedDataParams, UnsignedTransactionRequest, User } from '@privy-io/react-auth';
 import type { ethers } from 'ethers';
 
@@ -213,6 +213,7 @@ function PrivyBridge({ config }: { config: AuthConfig }) {
     onError: (code) => privyBridge.loginFailed(String(code))
   });
   const { logout } = useLogout();
+  const { isOpen: modalOpen } = useModalStatus();
   const { depositFunds } = useDepositFunds();
   const { signTypedData } = useSignTypedData();
   const { sendTransaction } = useSendTransaction();
@@ -251,9 +252,10 @@ function PrivyBridge({ config }: { config: AuthConfig }) {
       authenticated,
       address: activeAddress,
       embedded: active?.walletClientType === 'privy',
+      modalOpen,
       user: userInfoFrom(user)
     });
-  }, [ready, walletsReady, authenticated, activeAddress, active?.walletClientType, user]);
+  }, [ready, walletsReady, authenticated, activeAddress, active?.walletClientType, modalOpen, user]);
 
   return null;
 }

@@ -30,6 +30,10 @@
   };
 
   var PRODUCTS = [
+    // ⚠️ THE ONE PAIR ANYONE CAN AFFORD TO TEST WITH. A real payment of a tenth of a cent, so the
+    //    whole checkout can be run end to end without the DEMO code. Keep it first in the grid.
+    { id: 'tester-mint', name: 'The Tester', colour: 'Mint', category: 'Lifestyle', price: 0.001, tag: 'Try the checkout',
+      c: { tile: '#e2f4ec', upper: '#b9ead6', panel: '#7fcfb0', accent: '#16150f', sole: '#ffffff', outsole: '#16150f', lace: '#ffffff' } },
     { id: 'drift-white', name: 'Drift Runner', colour: 'Cloud White', category: 'Running', price: 128, tag: 'New',
       c: { tile: '#eef0f3', upper: '#ffffff', panel: '#dfe3ea', accent: '#e4572e', sole: '#f7f7f5', outsole: '#2a2a2a', lace: '#c9ced8' } },
     { id: 'drift-ember', name: 'Drift Runner', colour: 'Ember', category: 'Running', price: 128,
@@ -60,7 +64,14 @@
     return node;
   }
 
-  function money(n) { return '$' + n.toFixed(2); }
+  /** Sums of prices, without the dust binary arithmetic leaves on a figure like 0.001. */
+  function round(n) { return Math.round(n * 1000) / 1000; }
+
+  /** Dollars and cents, or to the tenth of a cent for the one price that needs it. */
+  function money(n) {
+    var value = round(n);
+    return '$' + (Math.abs(value * 100 - Math.round(value * 100)) > 1e-9 ? value.toFixed(3) : value.toFixed(2));
+  }
 
   function productById(id) {
     return PRODUCTS.filter(function (p) { return p.id === id; })[0] || null;
@@ -437,7 +448,7 @@
 
     // The address is not passed on: nothing ships, so the payment page has no use for it.
     window.ConduitCheckout.open({
-      amount: total.toFixed(2),
+      amount: String(round(total)),
       description: 'Tread & Co. order ' + orderId + ' (' + pairs + (pairs === 1 ? ' pair' : ' pairs') + ')',
       orderId: orderId,
       // The made-up address the form opens with is not a buyer's email; leave it out.
@@ -482,7 +493,7 @@
     lines.textContent = '';
     paid.lines.forEach(function (line) { lines.appendChild(lineNode(line, false)); });
 
-    var amount = data && data.amount != null ? data.amount : paid.total.toFixed(2);
+    var amount = data && data.amount != null ? data.amount : String(round(paid.total));
     var symbol = (data && data.currencySymbol) || chosenToken();
     $('cPaid').textContent = amount + ' ' + symbol;
     $('cStatus').textContent = 'Paid and protected' + (data && data.state ? ' (' + data.state + ')' : '');

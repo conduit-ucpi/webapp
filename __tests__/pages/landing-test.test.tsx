@@ -153,15 +153,12 @@ describe('homepage', () => {
     }
   });
 
-  it('F6: the live demo opens the real checkout and offers the video and the calculator', () => {
+  it('F6: the live demo opens the demo shop and offers the video and the calculator', () => {
     render(<Page />);
     fireEvent.click(screen.getByRole('button', { name: 'See what your customers see' }));
     expect(openSpy).toHaveBeenCalledTimes(1);
-    const url = String(openSpy.mock.calls[0][0]);
-    expect(url).toContain('/contract-create?seller=0x4f118f99a4e8bb384061bcfe081e3bbdec28482d');
-    expect(url).toContain('amount=0.001');
+    expect(openSpy.mock.calls[0][0]).toBe('/checkout-example.html');
     expect(openSpy.mock.calls[0][1]).toBe('_blank');
-    // No opener: Privy would treat the checkout as its sign-in popup and never finish a Google login.
     expect(openSpy.mock.calls[0][2]).toBe('noopener');
     // The video plays in place: the thumbnail swaps for the embedded player on click.
     fireEvent.click(screen.getByRole('button', { name: 'Play the walkthrough video' }));

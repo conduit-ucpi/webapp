@@ -165,19 +165,12 @@ export default function Merchant() {
                 See what your customers see.
               </h2>
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
-                This opens the actual Stabledrop checkout — the same experience your customers get when they click &ldquo;Pay&rdquo; on your site.
+                This opens a demo shop. Add a pair of sneakers to the cart and pay through the actual Stabledrop checkout — the same experience your customers get when they click &ldquo;Pay&rdquo; on your site.
               </p>
               <div className="flex flex-wrap gap-3">
                 <button
                   className={btnPrimary}
-                  onClick={() => {
-                    const origin = window.location.origin;
-                    const returnUrl = encodeURIComponent(`${origin}/checkout-example.html`);
-                    window.open(
-                      `${origin}/contract-create?seller=0x4f118f99a4e8bb384061bcfe081e3bbdec28482d&amount=0.001&description=Basic+Product+-+One-time+Payment&tokenSymbol=USDC&order_id=BASIC-1772027291139&epoch_expiry=1772632091&return=${returnUrl}`,
-                      '_blank'
-                    );
-                  }}
+                  onClick={() => window.open('/checkout-example.html', '_blank', 'noopener')}
                 >
                   See what your customers see
                 </button>

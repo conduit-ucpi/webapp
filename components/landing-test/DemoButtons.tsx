@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { demoCheckoutUrl } from './content';
+import { DEMO_STORE_HREF } from './content';
 import VideoEmbed from './VideoEmbed';
 import { lt } from './theme';
 
@@ -20,9 +20,7 @@ export default function DemoButtons({ className = '', primaryClass = lt.btnPrima
         <button
           type="button"
           className={primaryClass}
-          // ⚠️ noopener. With this page as a same-origin opener, Privy takes the checkout for its
-          //    own sign-in popup and posts the Google result back here instead of logging in.
-          onClick={() => window.open(demoCheckoutUrl(window.location.origin), '_blank', 'noopener')}
+          onClick={() => window.open(DEMO_STORE_HREF, '_blank', 'noopener')}
         >
           See what your customers see
         </button>

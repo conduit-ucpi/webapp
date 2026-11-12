@@ -23,15 +23,11 @@ export const CONTACT_EMAIL = 'info@stabledrop.me';
  */
 export const MAKE_PAYMENT_HREF = '/pay';
 
-/** The live checkout: a real $0.001 USDC payment to the demo seller. */
-export function demoCheckoutUrl(origin: string): string {
-  const returnUrl = encodeURIComponent(`${origin}/checkout-example.html`);
-  return (
-    `${origin}/contract-create?seller=${DEMO_SELLER}&amount=0.001` +
-    `&description=Basic+Product+-+One-time+Payment&tokenSymbol=USDC` +
-    `&order_id=BASIC-1772027291139&epoch_expiry=1772632091&return=${returnUrl}`
-  );
-}
+/**
+ * The demo shop (public/checkout-example.html): a made-up sneaker store whose Pay button opens
+ * the live checkout, so a merchant sees the whole journey their customer takes, not one screen.
+ */
+export const DEMO_STORE_HREF = '/checkout-example.html';
 
 export interface NavLink {
   label: string;

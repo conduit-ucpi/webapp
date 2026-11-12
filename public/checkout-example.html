@@ -3,524 +3,546 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Conduit Checkout Integration Example</title>
+  <title>Tread &amp; Co. — Sneakers (Stabledrop checkout demo)</title>
+  <meta name="description" content="A demo sneaker shop showing the Stabledrop checkout: browse, add to cart, and pay with USDC or USDT with buyer protection.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Archivo:wght@700;800&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --bg: #faf9f7;
+      --surface: #ffffff;
+      --tile: #f1efea;
+      --ink: #16150f;
+      --muted: #6b6a63;
+      --line: #e4e1da;
+      --accent: #e4572e;
+      --accent-ink: #ffffff;
+      --ok: #1f7a4d;
+      --ok-bg: #e8f5ee;
+      --warn-bg: #fff4e5;
+      --warn-ink: #8a4b00;
+      --err-bg: #fdecea;
+      --err-ink: #9b1c1c;
+      --radius: 14px;
+      --shadow: 0 10px 30px rgba(22, 21, 15, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 40px 20px;
-      line-height: 1.6;
-      color: #333;
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
     }
-    h1 {
-      color: #2563eb;
-      border-bottom: 2px solid #2563eb;
-      padding-bottom: 10px;
+    h1, h2, h3 { font-family: 'Archivo', 'Inter', sans-serif; letter-spacing: -0.02em; margin: 0; }
+    button { font: inherit; color: inherit; cursor: pointer; }
+    a { color: inherit; }
+    [hidden] { display: none !important; }
+    .wrap { max-width: 1160px; margin: 0 auto; padding: 0 20px; }
+
+    /* Demo strip */
+    .demo-strip {
+      background: var(--ink);
+      color: #f4f2ec;
+      font-size: 13px;
+      text-align: center;
+      padding: 8px 16px;
     }
-    h2 {
-      color: #1e40af;
-      margin-top: 40px;
+    .demo-strip strong { color: #ffd9a8; font-weight: 600; }
+
+    /* Header */
+    .site-header {
+      position: sticky; top: 0; z-index: 20;
+      background: rgba(250, 249, 247, 0.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--line);
     }
-    .button {
-      display: inline-block;
-      padding: 12px 24px;
-      margin: 10px 10px 10px 0;
-      background: #2563eb;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 16px;
-      font-weight: 500;
-      cursor: pointer;
-      text-decoration: none;
-      transition: background 0.2s;
+    .site-header .wrap { display: flex; align-items: center; gap: 24px; height: 64px; }
+    .brand {
+      font-family: 'Archivo', sans-serif; font-weight: 800; font-size: 20px;
+      letter-spacing: -0.03em; text-decoration: none; background: none; border: 0; padding: 0;
     }
-    .button:hover {
-      background: #1d4ed8;
+    .brand span { color: var(--accent); }
+    .nav { display: flex; gap: 4px; flex: 1; overflow-x: auto; }
+    .nav button {
+      background: none; border: 0; padding: 8px 12px; border-radius: 999px;
+      color: var(--muted); font-weight: 500; white-space: nowrap;
     }
-    .button-outline {
-      background: white;
-      color: #2563eb;
-      border: 2px solid #2563eb;
+    .nav button:hover { color: var(--ink); }
+    .nav button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+    .cart-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--surface); border: 1px solid var(--line);
+      padding: 8px 14px; border-radius: 999px; font-weight: 600;
     }
-    .button-outline:hover {
-      background: #eff6ff;
+    .cart-btn:hover { border-color: var(--ink); }
+    .cart-count {
+      min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px;
+      background: var(--accent); color: var(--accent-ink);
+      font-size: 12px; display: inline-flex; align-items: center; justify-content: center;
     }
-    .code-block {
-      background: #1e293b;
-      color: #e2e8f0;
-      padding: 20px;
-      border-radius: 6px;
-      overflow-x: auto;
-      margin: 20px 0;
+
+    /* Hero */
+    .hero {
+      margin: 28px 0 8px;
+      background: var(--ink); color: #f6f4ee;
+      border-radius: 22px; overflow: hidden;
+      display: grid; grid-template-columns: 1.1fr 1fr; align-items: center;
     }
-    .code-block code {
-      font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
-      font-size: 14px;
+    .hero-copy { padding: 44px 44px; }
+    .hero-kicker { font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #ffb38a; font-weight: 600; }
+    .hero h1 { font-size: clamp(30px, 4.2vw, 50px); line-height: 1.02; margin: 12px 0 14px; }
+    .hero p { color: #c9c6bd; max-width: 40ch; margin: 0 0 24px; }
+    .hero-art { padding: 20px 24px 20px 0; }
+    .hero-art svg { width: 100%; height: auto; display: block; transform: rotate(-8deg); }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      border: 1px solid transparent; border-radius: 999px;
+      padding: 12px 22px; font-weight: 600; text-decoration: none;
+      transition: transform 0.08s ease, background 0.15s ease, border-color 0.15s ease;
     }
-    .success {
-      background: #dcfce7;
-      border: 1px solid #22c55e;
-      color: #166534;
-      padding: 12px;
-      border-radius: 6px;
-      margin: 10px 0;
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--accent); color: var(--accent-ink); }
+    .btn-primary:hover { background: #cf4a24; }
+    .btn-dark { background: var(--ink); color: #fff; }
+    .btn-dark:hover { background: #33312a; }
+    .btn-ghost { background: transparent; border-color: var(--line); }
+    .btn-ghost:hover { border-color: var(--ink); }
+    .btn-block { width: 100%; }
+    .btn[disabled] { opacity: 0.55; cursor: not-allowed; }
+
+    /* Perks */
+    .perks {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+      margin: 16px 0 36px;
     }
-    .error {
-      background: #fee2e2;
-      border: 1px solid #ef4444;
-      color: #991b1b;
-      padding: 12px;
-      border-radius: 6px;
-      margin: 10px 0;
+    .perk {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start;
     }
-    .info {
-      background: #dbeafe;
-      border: 1px solid #3b82f6;
-      color: #1e40af;
-      padding: 12px;
-      border-radius: 6px;
-      margin: 10px 0;
+    .perk svg { flex: none; margin-top: 2px; }
+    .perk b { display: block; font-size: 14px; }
+    .perk small { color: var(--muted); font-size: 13px; }
+
+    /* Grid */
+    .section-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
+    .section-head h2 { font-size: 24px; }
+    .section-head span { color: var(--muted); font-size: 13px; }
+    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 64px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+      overflow: hidden; display: flex; flex-direction: column;
+      transition: box-shadow 0.2s ease, transform 0.2s ease;
     }
-    .product-card {
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 20px;
-      margin: 20px 0;
-      background: #f9fafb;
+    .card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+    .card-art { position: relative; aspect-ratio: 4 / 3; display: flex; align-items: center; justify-content: center; padding: 18px; }
+    .card-art svg { width: 100%; height: 100%; transition: transform 0.25s ease; }
+    .card:hover .card-art svg { transform: rotate(-6deg) scale(1.04); }
+    .tag {
+      position: absolute; top: 12px; left: 12px;
+      background: var(--ink); color: #fff; font-size: 11px; font-weight: 600;
+      letter-spacing: 0.06em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px;
     }
-    .product-card h3 {
-      margin-top: 0;
+    .card-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; flex: 1; }
+    .card-title { display: flex; justify-content: space-between; gap: 12px; }
+    .card-title h3 { font-size: 17px; }
+    .card-title .price { font-weight: 700; }
+    .card-meta { color: var(--muted); font-size: 13px; margin-top: -6px; }
+    .sizes { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sizes button {
+      min-width: 40px; padding: 6px 0; border-radius: 8px;
+      background: var(--surface); border: 1px solid var(--line); font-size: 13px; font-weight: 500;
     }
-    #status {
-      display: none;
+    .sizes button:hover { border-color: var(--ink); }
+    .sizes button[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .size-label { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; }
+    .size-label.need { color: var(--accent); font-weight: 600; }
+    .card .btn { margin-top: auto; }
+
+    /* Cart drawer */
+    .scrim { position: fixed; inset: 0; background: rgba(22, 21, 15, 0.45); z-index: 40; }
+    .drawer {
+      position: fixed; top: 0; right: 0; bottom: 0; width: min(420px, 100%); z-index: 50;
+      background: var(--surface); display: flex; flex-direction: column;
+      box-shadow: -20px 0 50px rgba(22, 21, 15, 0.18);
+      transform: translateX(100%); transition: transform 0.25s ease; visibility: hidden;
+    }
+    .drawer.open { transform: none; visibility: visible; }
+    .drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+    .drawer-head h2 { font-size: 20px; }
+    .icon-btn { background: none; border: 0; width: 36px; height: 36px; border-radius: 999px; font-size: 22px; line-height: 1; }
+    .icon-btn:hover { background: var(--tile); }
+    .drawer-body { flex: 1; overflow-y: auto; padding: 8px 20px; }
+    .drawer-foot { padding: 18px 20px; border-top: 1px solid var(--line); }
+    .empty { text-align: center; color: var(--muted); padding: 60px 0; }
+
+    .line { display: grid; grid-template-columns: 72px 1fr auto; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); align-items: center; }
+    .line:last-child { border-bottom: 0; }
+    .line-art { width: 72px; height: 60px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 6px; }
+    .line-art svg { width: 100%; height: 100%; }
+    .line-name { font-weight: 600; font-size: 14px; }
+    .line-sub { color: var(--muted); font-size: 13px; }
+    .line-price { font-weight: 600; text-align: right; }
+    .qty { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; margin-top: 6px; }
+    .qty button { background: none; border: 0; width: 28px; height: 28px; font-size: 16px; line-height: 1; }
+    .qty span { min-width: 20px; text-align: center; font-size: 13px; font-weight: 600; }
+    .remove { background: none; border: 0; padding: 0; color: var(--muted); font-size: 12px; text-decoration: underline; margin-left: 10px; }
+
+    .totals { display: grid; gap: 8px; font-size: 14px; }
+    .totals .row { display: flex; justify-content: space-between; gap: 12px; }
+    .totals .row.muted { color: var(--muted); }
+    .totals .row.discount { color: var(--ok); }
+    .totals .row.total { font-size: 18px; font-weight: 700; padding-top: 12px; border-top: 1px solid var(--line); margin-top: 4px; }
+    .totals small { font-weight: 500; color: var(--muted); font-size: 12px; }
+    .code-pill { display: inline-block; background: var(--ok-bg); color: var(--ok); border-radius: 6px; padding: 1px 7px; font-size: 12px; font-weight: 600; letter-spacing: 0.04em; }
+
+    /* Checkout */
+    .back { background: none; border: 0; padding: 0; color: var(--muted); margin: 26px 0 14px; font-weight: 500; }
+    .back:hover { color: var(--ink); }
+    .checkout { display: grid; grid-template-columns: 1.25fr 1fr; gap: 32px; align-items: start; margin-bottom: 72px; }
+    .checkout h1 { font-size: 30px; margin-bottom: 20px; }
+    .panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; margin-bottom: 16px; }
+    .panel h2 { font-size: 17px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+    .step { width: 24px; height: 24px; border-radius: 999px; background: var(--ink); color: #fff; font: 600 12px 'Inter', sans-serif; display: inline-flex; align-items: center; justify-content: center; }
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field.full { grid-column: 1 / -1; }
+    .field label { font-size: 12px; font-weight: 600; color: var(--muted); }
+    .field input, .field select {
+      font: inherit; color: var(--ink); background: var(--surface);
+      border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px; width: 100%;
+    }
+    .field input:focus, .field select:focus { outline: 2px solid var(--ink); outline-offset: 1px; border-color: var(--ink); }
+    .link-btn { background: none; border: 0; padding: 0; text-decoration: underline; color: var(--muted); font-size: 13px; }
+    .link-btn:hover { color: var(--ink); }
+    .panel-head { display: flex; justify-content: space-between; align-items: baseline; }
+
+    .choice {
+      display: flex; align-items: center; gap: 12px;
+      border: 1px solid var(--line); border-radius: 12px; padding: 13px 14px; margin-bottom: 8px; cursor: pointer;
+    }
+    .choice:last-child { margin-bottom: 0; }
+    .choice:has(input:checked) { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+    .choice input { accent-color: var(--ink); width: 16px; height: 16px; margin: 0; }
+    .choice-main { flex: 1; }
+    .choice-main b { display: block; font-size: 14px; }
+    .choice-main small { color: var(--muted); font-size: 13px; }
+    .choice-side { font-weight: 600; font-size: 14px; }
+
+    .pay-method { border: 1px solid var(--ink); box-shadow: inset 0 0 0 1px var(--ink); border-radius: 12px; padding: 16px; }
+    .pay-method-head { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+    .shield { width: 30px; height: 30px; border-radius: 9px; background: var(--ok-bg); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+    .pay-method p { color: var(--muted); font-size: 13px; margin: 8px 0 12px; }
+    .tokens { display: flex; gap: 8px; }
+    .tokens label {
+      flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px;
+      border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-weight: 600; cursor: pointer;
+    }
+    .tokens label:has(input:checked) { background: var(--ink); border-color: var(--ink); color: #fff; }
+    .tokens input { position: absolute; opacity: 0; pointer-events: none; }
+    .coin { width: 18px; height: 18px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: #fff; font-weight: 700; }
+    .coin.usdc { background: #2775ca; }
+    .coin.usdt { background: #26a17b; }
+
+    .summary { position: sticky; top: 84px; }
+    .summary .line { grid-template-columns: 60px 1fr auto; }
+    .summary .line-art { width: 60px; height: 50px; }
+    .summary .totals { margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .promo { display: flex; gap: 8px; margin-top: 14px; }
+    .promo input { flex: 1; min-width: 0; font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+    .promo input:disabled { background: var(--tile); color: var(--muted); }
+    .promo .btn { padding: 10px 16px; }
+    .promo-msg { font-size: 12px; color: var(--muted); min-height: 18px; margin-top: 6px; }
+    .fineprint { color: var(--muted); font-size: 12px; text-align: center; margin: 12px 0 0; }
+
+    .notice { border-radius: 12px; padding: 12px 14px; font-size: 14px; margin-bottom: 16px; }
+    .notice.info { background: var(--warn-bg); color: var(--warn-ink); }
+    .notice.error { background: var(--err-bg); color: var(--err-ink); }
+    .notice.progress { background: var(--ok-bg); color: var(--ok); display: flex; align-items: center; gap: 10px; }
+    .spinner { width: 16px; height: 16px; border-radius: 999px; border: 2px solid currentColor; border-right-color: transparent; animation: spin 0.8s linear infinite; flex: none; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Confirmation */
+    .confirm { max-width: 720px; margin: 44px auto 72px; }
+    .confirm-head { text-align: center; margin-bottom: 26px; }
+    .tick { width: 64px; height: 64px; border-radius: 999px; background: var(--ok-bg); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+    .confirm-head h1 { font-size: 32px; margin-bottom: 8px; }
+    .confirm-head p { color: var(--muted); margin: 0; }
+    .kv { display: grid; grid-template-columns: 150px 1fr; gap: 8px 16px; font-size: 14px; margin: 0; }
+    .kv dt { color: var(--muted); }
+    .kv dd { margin: 0; word-break: break-word; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+    .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+    .steps li { display: flex; gap: 12px; font-size: 14px; }
+    .steps li b { display: block; }
+    .steps li span { color: var(--muted); }
+    .confirm-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 22px; }
+
+    /* Footer */
+    footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 13px; }
+    footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px);
+      background: var(--ink); color: #fff; padding: 11px 18px; border-radius: 999px;
+      font-size: 14px; font-weight: 500; opacity: 0; pointer-events: none; z-index: 60;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 960px) {
+      .grid { grid-template-columns: repeat(2, 1fr); }
+      .checkout { grid-template-columns: 1fr; }
+      .summary { position: static; order: -1; }
+      .hero { grid-template-columns: 1fr; }
+      .hero-art { padding: 0 24px 24px; max-width: 420px; }
+      .hero-copy { padding: 32px 26px 12px; }
+    }
+    @media (max-width: 620px) {
+      .grid { grid-template-columns: 1fr; }
+      .perks { grid-template-columns: 1fr; }
+      .fields { grid-template-columns: 1fr; }
+      .site-header .wrap { gap: 12px; }
+      .cart-btn .cart-label { display: none; }
+      .kv { grid-template-columns: 1fr; gap: 2px 0; }
+      .kv dd { margin-bottom: 8px; }
     }
   </style>
 </head>
 <body>
-  <h1>🚀 Conduit Checkout Integration Example</h1>
-
-  <p>This page demonstrates how to integrate Conduit's protected payments into your website. Click the buttons below to see different integration modes.</p>
-
-  <div id="status"></div>
-
-  <h2>Live Examples</h2>
-
-  <div class="product-card">
-    <h3>Basic Product - $10.00</h3>
-    <p>Simple one-time payment with popup checkout</p>
-    <button class="button" onclick="openBasicCheckout()">
-      Pay $10 with USDC
-    </button>
+  <div class="demo-strip">
+    <strong>Demo store.</strong> Nothing ships, but the checkout is live and payments are real. Enter code <strong>DEMO</strong> at checkout to pay $0.01.
   </div>
 
-  <div class="product-card">
-    <h3>Enterprise Plan - $200.00</h3>
-    <p>Full page redirect checkout with USDT option</p>
-    <button class="button button-outline" onclick="openRedirectCheckout()">
-      Pay $200 with USDT
-    </button>
-  </div>
+  <header class="site-header">
+    <div class="wrap">
+      <button class="brand" id="brand" type="button" aria-label="Tread &amp; Co. home">Tread<span>&amp;</span>Co.</button>
+      <nav class="nav" id="nav" aria-label="Categories"></nav>
+      <button class="cart-btn" id="cartBtn" type="button" aria-label="Open cart">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 7h12l1.2 12.2a1.6 1.6 0 0 1-1.6 1.8H6.4a1.6 1.6 0 0 1-1.6-1.8L6 7z"/><path d="M9 7V6a3 3 0 0 1 6 0v1"/></svg>
+        <span class="cart-label">Cart</span>
+        <span class="cart-count" id="cartCount">0</span>
+      </button>
+    </div>
+  </header>
 
-  <div class="product-card">
-    <h3>Custom Amount</h3>
-    <p>Let users choose their own amount</p>
-    <input type="number" id="customAmount" placeholder="Enter amount" value="25" step="0.01" min="1.001" style="padding: 8px; border: 1px solid #d1d5db; border-radius: 4px; margin-right: 10px;">
-    <button class="button" onclick="openCustomAmountCheckout()">
-      Pay Custom Amount
-    </button>
-  </div>
+  <!-- Shop -->
+  <main class="wrap" id="view-shop">
+    <section class="hero">
+      <div class="hero-copy">
+        <div class="hero-kicker">Autumn drop</div>
+        <h1>Built for the long way home.</h1>
+        <p>Light, cushioned, and made to be worn every day. Free shipping and 30-day returns on every pair.</p>
+        <a class="btn btn-primary" href="#products">Shop the collection</a>
+      </div>
+      <div class="hero-art" id="heroArt" aria-hidden="true"></div>
+    </section>
 
-  <h2>Integration Code</h2>
+    <section class="perks" aria-label="Why shop here">
+      <div class="perk">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="18" r="1.8"/><circle cx="17.5" cy="18" r="1.8"/></svg>
+        <div><b>Free shipping</b><small>On every order, tracked.</small></div>
+      </div>
+      <div class="perk">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.5-5.8"/><path d="M4 4v4h4"/></svg>
+        <div><b>30-day returns</b><small>Wrong size? Send them back.</small></div>
+      </div>
+      <div class="perk">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.6-3 8.3-7 10-4-1.700-7-5.400-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+        <div><b>Buyer protection</b><small>Your payment is held until your order is right.</small></div>
+      </div>
+    </section>
 
-  <h3>1. Include the Script</h3>
-  <div class="code-block"><code>&lt;script src="https://app.instantescrow.nz/conduit-checkout.js"&gt;&lt;/script&gt;</code></div>
+    <section id="products">
+      <div class="section-head">
+        <h2 id="gridTitle">All sneakers</h2>
+        <span id="gridCount"></span>
+      </div>
+      <div class="grid" id="grid"></div>
+    </section>
+  </main>
 
-  <h3>2. Initialize with Your Config</h3>
-  <div class="code-block"><code>&lt;script&gt;
-  ConduitCheckout.init({
-    // REQUIRED: Your wallet address to receive payments
-    sellerAddress: '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d',
+  <!-- Checkout -->
+  <main class="wrap" id="view-checkout" hidden>
+    <button class="back" id="backToShop" type="button">&larr; Continue shopping</button>
+    <form class="checkout" id="checkoutForm" novalidate>
+      <div>
+        <h1>Checkout</h1>
+        <div id="checkoutNotice" role="status" aria-live="polite"></div>
 
-    // REQUIRED: Base URL of Conduit checkout page
-    baseUrl: 'https://app.instantescrow.nz',
+        <section class="panel">
+          <div class="panel-head">
+            <h2><span class="step">1</span>Contact</h2>
+          </div>
+          <div class="fields">
+            <div class="field full">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" required>
+            </div>
+          </div>
+        </section>
 
-    // RECOMMENDED: Auto-send verified payments to your backend
-    webhookUrl: 'https://yoursite.com/api/conduit-webhook',
-    webhookSecret: 'your-secret-key',  // Store securely!
+        <section class="panel">
+          <div class="panel-head">
+            <h2><span class="step">2</span>Shipping address</h2>
+            <span class="fineprint" style="margin:0">Filled in with made-up details</span>
+          </div>
+          <div class="fields">
+            <div class="field">
+              <label for="firstName">First name</label>
+              <input id="firstName" name="firstName" autocomplete="given-name" required>
+            </div>
+            <div class="field">
+              <label for="lastName">Last name</label>
+              <input id="lastName" name="lastName" autocomplete="family-name" required>
+            </div>
+            <div class="field full">
+              <label for="address">Address</label>
+              <input id="address" name="address" autocomplete="street-address" required>
+            </div>
+            <div class="field">
+              <label for="city">City</label>
+              <input id="city" name="city" autocomplete="address-level2" required>
+            </div>
+            <div class="field">
+              <label for="postcode">Postcode</label>
+              <input id="postcode" name="postcode" autocomplete="postal-code" required>
+            </div>
+            <div class="field full">
+              <label for="country">Country</label>
+              <select id="country" name="country" autocomplete="country-name">
+                <option>United States</option>
+                <option>United Kingdom</option>
+                <option>Canada</option>
+                <option>Australia</option>
+                <option>New Zealand</option>
+                <option>Germany</option>
+                <option>France</option>
+                <option>Spain</option>
+                <option>Mexico</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+          <p class="fineprint" style="text-align:left">This is a demo: the address stays in this browser tab and is not sent anywhere.</p>
+        </section>
 
-    // Optional: Default token (USDC or USDT)
-    tokenSymbol: 'USDC',
+        <section class="panel">
+          <h2><span class="step">3</span>Delivery</h2>
+          <label class="choice">
+            <input type="radio" name="shipping" value="standard" checked>
+            <span class="choice-main"><b>Standard</b><small>4–6 business days, tracked</small></span>
+            <span class="choice-side">Free</span>
+          </label>
+          <label class="choice">
+            <input type="radio" name="shipping" value="express">
+            <span class="choice-main"><b>Express</b><small>1–2 business days, tracked</small></span>
+            <span class="choice-side">$12.00</span>
+          </label>
+        </section>
 
-    // Optional: Days until auto-release to seller (default: 7)
-    expiryDays: 7,
+        <section class="panel">
+          <h2><span class="step">4</span>Payment</h2>
+          <div class="pay-method">
+            <div class="pay-method-head">
+              <span class="shield">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1f7a4d" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.6-3 8.3-7 10-4-1.700-7-5.400-7-10V6z"/><path d="M9 12l2 2 4-4"/></svg>
+              </span>
+              Protected payment with Stabledrop
+            </div>
+            <p>Pay in digital dollars. Your payment is held for 7 days after you pay, so if something is wrong with your order you can raise a dispute before the shop receives it.</p>
+            <div class="tokens" role="radiogroup" aria-label="Pay with">
+              <label><input type="radio" name="token" value="USDC" checked><span class="coin usdc">$</span>USDC</label>
+              <label><input type="radio" name="token" value="USDT"><span class="coin usdt">₮</span>USDT</label>
+            </div>
+          </div>
+        </section>
+      </div>
 
-    // Optional: Display mode ('popup' or 'redirect')
-    mode: 'popup',
+      <aside class="panel summary" aria-label="Order summary">
+        <h2>Order summary</h2>
+        <div id="summaryLines"></div>
+        <div class="promo">
+          <input id="promo" name="promo" type="text" placeholder="Discount code" aria-label="Discount code" autocomplete="off" autocapitalize="characters">
+          <button class="btn btn-ghost" id="promoBtn" type="button">Apply</button>
+        </div>
+        <div class="promo-msg" id="promoMsg" role="status" aria-live="polite"></div>
+        <div class="totals" id="summaryTotals"></div>
+        <button class="btn btn-primary btn-block" id="payBtn" type="submit" style="margin-top:18px">Pay</button>
+        <p class="fineprint">A secure Stabledrop payment window will open to complete your order.</p>
+      </aside>
+    </form>
+  </main>
 
-    // Success callback (webhook already sent!)
-    onSuccess: function(data) {
-      console.log('Payment verified!', data);
-      // Webhook already sent to your backend!
-      // Just show UI confirmation
-      alert('Thank you! Order confirmed!');
-    },
+  <!-- Confirmation -->
+  <main class="wrap" id="view-confirmation" hidden>
+    <div class="confirm">
+      <div class="confirm-head">
+        <div class="tick">
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#1f7a4d" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.500 4.500L19 7.500"/></svg>
+        </div>
+        <h1>Thanks, <span id="cName">friend</span>. Your order is confirmed.</h1>
+        <p>Order <b id="cOrder"></b> · a confirmation would be emailed to <span id="cEmail"></span></p>
+      </div>
 
-    // Error callback
-    onError: function(error) {
-      console.error('Payment failed:', error);
-      alert('Payment failed: ' + error);
-    },
+      <section class="panel">
+        <h2>What you ordered</h2>
+        <div id="cLines"></div>
+      </section>
 
-    // Cancel callback
-    onCancel: function() {
-      console.log('Payment cancelled');
-      alert('Payment cancelled');
-    }
-  });
-&lt;/script&gt;</code></div>
+      <section class="panel">
+        <h2>Payment</h2>
+        <dl class="kv">
+          <dt>Paid</dt><dd id="cPaid"></dd>
+          <dt>Status</dt><dd id="cStatus"></dd>
+          <dt>Payment reference</dt><dd class="mono" id="cContract"></dd>
+          <dt>Payment contract</dt><dd class="mono" id="cChain"></dd>
+          <dt>Verified</dt><dd id="cVerified"></dd>
+        </dl>
+      </section>
 
-  <h3>3. Add Payment Buttons</h3>
-  <div class="code-block"><code>&lt;!-- Simple button --&gt;
-&lt;button onclick="ConduitCheckout.open({
-  amount: '50.00',
-  description: 'Premium Product'
-})"&gt;
-  Pay $50 with USDC
-&lt;/button&gt;
+      <section class="panel">
+        <h2>What happens next</h2>
+        <ul class="steps">
+          <li><span class="step">1</span><div><b>We pack and ship your order</b><span id="cShipTo"></span></div></li>
+          <li><span class="step">2</span><div><b>Your payment stays protected for 7 days</b><span>It is held in a payment contract, not in the shop's account.</span></div></li>
+          <li><span class="step">3</span><div><b>Something wrong? Raise a dispute</b><span>Do it any time before the 7 days are up. Otherwise the payment is released to the shop automatically.</span></div></li>
+        </ul>
+      </section>
 
-&lt;!-- Button with more options --&gt;
-&lt;button onclick="ConduitCheckout.open({
-  amount: '100.00',
-  description: 'Order #1234 - Widget Bundle',
-  orderId: '1234',
-  email: 'customer@example.com',
-  tokenSymbol: 'USDT',
-  expiryDays: 14,
-  webhookUrl: 'https://yoursite.com/webhook',
-  metadata: { sku: 'WIDGET-001', quantity: 2 }
-})"&gt;
-  Pay $100 with USDT
-&lt;/button&gt;</code></div>
+      <div class="confirm-actions">
+        <button class="btn btn-dark" id="shopAgain" type="button">Keep shopping</button>
+        <a class="btn btn-ghost" href="/integrate">Add this checkout to your shop</a>
+      </div>
+    </div>
+  </main>
 
-  <h2>API Reference</h2>
+  <footer>
+    <div class="wrap">
+      <span>Tread &amp; Co. is a fictional shop. Checkout by <a href="/">Stabledrop</a>.</span>
+      <span><a href="/integrate">How to add this checkout to your site</a></span>
+    </div>
+  </footer>
 
-  <h3>ConduitCheckout.init(options)</h3>
-  <p>Initialize the checkout widget with your configuration:</p>
-  <ul>
-    <li><code>sellerAddress</code> (required) - Your wallet address to receive payments</li>
-    <li><code>baseUrl</code> (required) - Base URL of the Conduit checkout page</li>
-    <li><code>webhookUrl</code> (recommended) - Your backend endpoint to receive verified payments</li>
-    <li><code>webhookSecret</code> (recommended) - Secret key for HMAC signature verification</li>
-    <li><code>tokenSymbol</code> (optional) - Default token: 'USDC' or 'USDT' (default: 'USDC')</li>
-    <li><code>expiryDays</code> (optional) - Days until auto-release (default: 7)</li>
-    <li><code>mode</code> (optional) - Display mode: 'popup' or 'redirect' (default: 'popup')</li>
-    <li><code>onSuccess</code> (optional) - Success callback function (webhook already sent!)</li>
-    <li><code>onError</code> (optional) - Error callback function</li>
-    <li><code>onCancel</code> (optional) - Cancel callback function</li>
-  </ul>
+  <!-- Cart drawer -->
+  <div class="scrim" id="scrim" hidden></div>
+  <aside class="drawer" id="drawer" aria-label="Cart" aria-hidden="true">
+    <div class="drawer-head">
+      <h2>Your cart</h2>
+      <button class="icon-btn" id="closeCart" type="button" aria-label="Close cart">&times;</button>
+    </div>
+    <div class="drawer-body" id="cartLines"></div>
+    <div class="drawer-foot" id="cartFoot"></div>
+  </aside>
 
-  <h3>ConduitCheckout.open(params)</h3>
-  <p>Open a checkout for a specific payment:</p>
-  <ul>
-    <li><code>amount</code> (required) - Payment amount (e.g., '50.00')</li>
-    <li><code>description</code> (required) - Payment description</li>
-    <li><code>orderId</code> (optional) - Your order/transaction ID</li>
-    <li><code>email</code> (optional) - Customer email address</li>
-    <li><code>tokenSymbol</code> (optional) - Override default token for this payment</li>
-    <li><code>expiryDays</code> (optional) - Override default expiry for this payment</li>
-    <li><code>expiryTimestamp</code> (optional) - Custom expiry Unix timestamp</li>
-    <li><code>webhookUrl</code> (optional) - Webhook URL for payment verification</li>
-    <li><code>metadata</code> (optional) - Custom metadata object</li>
-  </ul>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <h3>ConduitCheckout.close()</h3>
-  <p>Programmatically close any open checkout.</p>
-
-  <h2>🔐 Webhook Integration (RECOMMENDED)</h2>
-  <p>Configure <code>webhookUrl</code> and the SDK will automatically POST verified payment data to your backend:</p>
-
-  <h3>Webhook Payload:</h3>
-  <div class="code-block"><code>POST /api/conduit-webhook
-Headers:
-  Content-Type: application/json
-  X-Conduit-Signature: hmac-sha256-signature
-
-Body:
-{
-  "contractId": "abc123",
-  "chainAddress": "0x123abc...",
-  "seller": "0x4f118f...",
-  "amount": 50.0,
-  "currencySymbol": "USDC",
-  "state": "ACTIVE",
-  "verified": true,
-  "verifiedAt": "2025-12-30T14:30:00Z",
-  "orderId": "YOUR-ORDER-123",
-  "email": "customer@example.com",
-  "metadata": { "sku": "WIDGET-001" },
-  "timestamp": 1735568400
-}</code></div>
-
-  <h3>Verification Example (Node.js):</h3>
-  <div class="code-block"><code>const crypto = require('crypto');
-
-app.post('/api/conduit-webhook', async (req, res) => {
-  // 1. Verify HMAC signature
-  const signature = req.headers['x-conduit-signature'];
-  const payload = JSON.stringify(req.body);
-
-  const expectedSig = crypto
-    .createHmac('sha256', process.env.WEBHOOK_SECRET)
-    .update(payload)
-    .digest('hex');
-
-  if (signature !== expectedSig) {
-    return res.status(401).json({ error: 'Invalid signature' });
-  }
-
-  // 2. Process verified payment
-  const { contractId, amount, orderId } = req.body;
-  await db.orders.update(orderId, { status: 'PAID' });
-  await fulfillment.ship(orderId);
-
-  res.json({ received: true });
-});</code></div>
-
-  <!-- Load the Conduit Checkout library -->
   <script src="/conduit-checkout.js"></script>
-
-  <!-- Initialize for this demo -->
-  <script>
-    // Initialize with demo configuration
-    ConduitCheckout.init({
-      sellerAddress: '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d', // Replace with your address
-      baseUrl: window.location.origin, // Use same origin for demo
-      tokenSymbol: 'USDC',
-      expiryDays: 7,
-      mode: 'popup', // Will be overridden per button
-
-      onSuccess: function(data) {
-        console.log('✅ Payment verified!', data);
-
-        // WEBHOOK ALREADY SENT!
-        // If you configured webhookUrl, your backend already received the
-        // verified payment data. Just show UI confirmation here.
-
-        // IMPORTANT: In production with webhooks:
-        // 1. Configure webhookUrl in init()
-        // 2. Your backend receives verified data automatically
-        // 3. Backend marks order as PAID
-        // 4. Backend triggers fulfillment (ship goods)
-        // 5. Backend sends confirmation email to customer
-        // 6. onSuccess just shows UI: "Thank you! Order confirmed!"
-
-        showVerifiedPayment(data);
-      },
-
-      onError: function(error) {
-        console.error('❌ Payment verification failed:', error);
-        showError(error);
-      },
-
-      onCancel: function() {
-        console.log('🚫 Payment cancelled');
-        showCancelled();
-      },
-
-      onVerifying: function(data) {
-        console.log('🔍 Verifying payment...', data);
-        showVerifying(data.contractId);
-      },
-
-      onWebhookSuccess: function(data) {
-        console.log('✅ Webhook delivered!', data);
-        updateWebhookStatus('success', data);
-      },
-
-      onWebhookError: function(error) {
-        console.error('❌ Webhook failed!', error);
-        updateWebhookStatus('error', error);
-      }
-    });
-
-    function openBasicCheckout() {
-      ConduitCheckout.config.mode = 'popup';
-      ConduitCheckout.open({
-        amount: '10.00',
-        description: 'Basic Product - One-time Payment',
-        orderId: 'BASIC-' + Date.now(),
-        tokenSymbol: 'USDC'
-      });
-    }
-
-    function openRedirectCheckout() {
-      ConduitCheckout.config.mode = 'redirect';
-      ConduitCheckout.open({
-        amount: '200.00',
-        description: 'Enterprise Plan - Annual License',
-        orderId: 'ENTERPRISE-' + Date.now(),
-        expiryDays: 14,
-        tokenSymbol: 'USDT'
-      });
-    }
-
-    function openCustomAmountCheckout() {
-      const amount = document.getElementById('customAmount').value;
-      if (!amount || parseFloat(amount) < 1.001) {
-        alert('Please enter an amount of at least $1.001');
-        return;
-      }
-
-      ConduitCheckout.config.mode = 'popup';
-      ConduitCheckout.open({
-        amount: amount,
-        description: 'Custom Amount Payment',
-        orderId: 'CUSTOM-' + Date.now(),
-        tokenSymbol: 'USDC'
-      });
-    }
-
-    function showVerifying(contractId) {
-      const statusDiv = document.getElementById('status');
-      statusDiv.className = 'info';
-      statusDiv.innerHTML = `
-        <h3>🔍 Verifying Payment...</h3>
-        <p><strong>Contract ID:</strong> ${contractId}</p>
-        <p>Please wait while we verify your payment on the blockchain...</p>
-        <p><small>This may take 10-30 seconds while we poll the blockchain...</small></p>
-        <div id="webhook-status" style="margin-top: 15px; padding: 10px; background: #f0f0f0; border-radius: 4px; display: none;">
-          <strong>📡 Webhook Status:</strong>
-          <div id="webhook-details"></div>
-        </div>
-      `;
-      statusDiv.style.display = 'block';
-    }
-
-    function updateWebhookStatus(status, data) {
-      const webhookStatus = document.getElementById('webhook-status');
-      const webhookDetails = document.getElementById('webhook-details');
-
-      if (!webhookStatus || !webhookDetails) return;
-
-      webhookStatus.style.display = 'block';
-
-      if (status === 'success') {
-        webhookDetails.innerHTML = `
-          <p style="color: green; margin: 5px 0;">✅ Webhook delivered successfully!</p>
-          <p style="margin: 5px 0; font-size: 0.9em;"><strong>Payload:</strong></p>
-          <pre style="background: white; padding: 10px; border-radius: 4px; overflow: auto; max-height: 200px; font-size: 0.8em;">${JSON.stringify(data.payload, null, 2)}</pre>
-        `;
-      } else {
-        webhookDetails.innerHTML = `
-          <p style="color: red; margin: 5px 0;">❌ Webhook delivery failed</p>
-          <p style="margin: 5px 0; font-size: 0.9em;"><strong>Error:</strong> ${data.error || data.statusText || 'Unknown error'}</p>
-          <p style="margin: 5px 0; font-size: 0.85em; color: #666;"><em>Note: Payment was still verified successfully. This is just a webhook delivery issue.</em></p>
-        `;
-      }
-    }
-
-    function showVerifiedPayment(data) {
-      const statusDiv = document.getElementById('status');
-      statusDiv.className = 'success';
-      statusDiv.innerHTML = `
-        <h2>✅ Payment Verified Successfully!</h2>
-
-        <div class="payment-details">
-          <h3>Payment Details:</h3>
-          <table>
-            <tr>
-              <td><strong>Contract ID:</strong></td>
-              <td>${data.contractId}</td>
-            </tr>
-            <tr>
-              <td><strong>Amount:</strong></td>
-              <td>${data.amount} ${data.currencySymbol}</td>
-            </tr>
-            <tr>
-              <td><strong>Seller:</strong></td>
-              <td>${data.seller}</td>
-            </tr>
-            <tr>
-              <td><strong>Status:</strong></td>
-              <td><span class="badge ${data.state.toLowerCase()}">${data.state}</span></td>
-            </tr>
-            <tr>
-              <td><strong>Blockchain Address:</strong></td>
-              <td style="word-break: break-all; font-family: monospace; font-size: 0.85em;">${data.chainAddress || 'Pending'}</td>
-            </tr>
-            <tr>
-              <td><strong>Verified:</strong></td>
-              <td>${data.verified ? '✓ Yes (Backend Confirmed)' : '✗ No'}</td>
-            </tr>
-            <tr>
-              <td><strong>Verified At:</strong></td>
-              <td>${new Date(data.verifiedAt).toLocaleString()}</td>
-            </tr>
-          </table>
-        </div>
-
-        <div class="next-steps">
-          <h3>What Happens Next:</h3>
-          <ul>
-            <li>✓ Your payment is protected by a smart contract</li>
-            <li>✓ Merchant will ship your goods</li>
-            <li>✓ Your purchase is protected for ${data.expiryDays || 7} days</li>
-            <li>✓ Funds auto-release to seller after protection period (if no disputes)</li>
-            <li>✓ You can dispute before funds are released if there's a problem</li>
-          </ul>
-        </div>
-
-        <div id="webhook-status" style="margin-top: 20px; padding: 15px; background: #f0f0f0; border-radius: 4px; display: none;">
-          <strong>📡 Webhook Status:</strong>
-          <div id="webhook-details"></div>
-        </div>
-
-        <div class="merchant-note">
-          <h4>📦 For Merchants:</h4>
-          <p>Payment has been verified! You can now safely ship the goods.</p>
-          <p><strong>RECOMMENDED:</strong> Configure <code>webhookUrl</code> in the SDK init() and your backend will receive this data automatically. No manual fetch() calls needed!</p>
-          <p><strong>Alternative:</strong> You can manually send this data to your backend from onSuccess, but webhooks are more reliable (work even if user closes browser).</p>
-        </div>
-      `;
-      statusDiv.style.display = 'block';
-      // NO setTimeout - leave it visible permanently!
-    }
-
-    function showError(error) {
-      const statusDiv = document.getElementById('status');
-      statusDiv.className = 'error';
-      statusDiv.innerHTML = `
-        <h2>❌ Payment Verification Failed</h2>
-        <p><strong>Error:</strong> ${error}</p>
-        <div class="error-help">
-          <h3>What to do:</h3>
-          <ul>
-            <li>Check the browser console for more details</li>
-            <li>Verify you have sufficient USDC balance</li>
-            <li>Verify the payment amount matches exactly</li>
-            <li>Contact support with the error message above</li>
-          </ul>
-        </div>
-        <button class="button" onclick="location.reload()">Try Again</button>
-      `;
-      statusDiv.style.display = 'block';
-
-      // Prevent any automatic navigation away from error
-      console.log('🛑 Error displayed - staying on page for review');
-    }
-
-    function showCancelled() {
-      const statusDiv = document.getElementById('status');
-      statusDiv.className = 'info';
-      statusDiv.innerHTML = `
-        <h2>🚫 Payment Cancelled</h2>
-        <p>The payment was cancelled by the user.</p>
-        <button onclick="location.reload()">Start Over</button>
-      `;
-      statusDiv.style.display = 'block';
-    }
-  </script>
+  <script src="/checkout-example.js"></script>
 </body>
 </html>

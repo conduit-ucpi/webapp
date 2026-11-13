@@ -18,7 +18,7 @@ describe('reportPaymentLinkOpened', () => {
     await reportPaymentLinkOpened('6aec3ebd01a76609027a054b');
 
     const [url, init] = fetchMock.mock.calls[0];
-    expect(url).toMatch(/\/api\/contracts\/6aec3ebd01a76609027a054b\/link-opened$/);
+    expect(url).toMatch(/\/api\/contracts\/6aec3ebd01a76609027a054b\/link-opened\?framed=0$/);
     expect(init).toEqual({ method: 'POST', credentials: 'omit', keepalive: true });
   });
 

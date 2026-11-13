@@ -24,7 +24,33 @@ describe('POST /api/contracts/[id]/link-opened', () => {
 
     expect(res._getStatusCode()).toBe(204);
     expect(log).toHaveBeenCalledTimes(1);
-    expect(log).toHaveBeenCalledWith(`PAYMENT LINK OPENED: contract ${ID}`);
+    expect(log).toHaveBeenCalledWith(`PAYMENT LINK OPENED: contract ${ID} framed unknown agent "unknown"`);
+  });
+
+  it('says what opened the link: the browser, and whether it was in a frame', () => {
+    const agent = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_1 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 WhatsApp/2.24';
+    const { req, res } = createMocks({
+      method: 'POST',
+      query: { id: ID, framed: '1' },
+      headers: { 'x-forwarded-for': '203.0.113.5', 'user-agent': agent },
+    });
+    handler(req as any, res as any);
+
+    expect(log).toHaveBeenCalledWith(`PAYMENT LINK OPENED: contract ${ID} framed yes agent "${agent}"`);
+  });
+
+  it('cannot be made to forge a line through the User-Agent or the frame flag', () => {
+    const { req, res } = createMocks({
+      method: 'POST',
+      query: { id: ID, framed: 'yes\nPAYMENT LINK OPENED: contract forged' },
+      headers: { 'x-forwarded-for': '203.0.113.6', 'user-agent': 'a"\nPAYMENT LINK OPENED: contract forged ' + 'x'.repeat(400) },
+    });
+    handler(req as any, res as any);
+
+    const line = String(log.mock.calls[0][0]);
+    expect(line).not.toContain('\n');
+    expect(line).toContain('framed unknown agent "a??PAYMENT');
+    expect(line.length).toBeLessThan(330);
   });
 
   it.each(['abc\nPAYMENT LINK OPENED: contract forged', '../admin/x', '', 'a'.repeat(65)])(

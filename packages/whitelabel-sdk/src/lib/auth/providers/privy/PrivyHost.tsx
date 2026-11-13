@@ -6,7 +6,9 @@ import type { ethers } from 'ethers';
 import { termsUrl } from '@/lib/auth/siwe-statement';
 import { getWalletPrompt, walletSaysIt } from '@/lib/auth/walletPromptChannel';
 import type { AuthConfig } from '@/lib/auth/types';
+import { isInIframe } from '@/utils/deviceDetection';
 import { depositFundsOptions, fundWalletResult } from './fundingRequest';
+import { keepModalInView } from './keepModalInView';
 import { privyBridge, type PrivyUserInfo } from './privyBridge';
 
 /**
@@ -245,6 +247,13 @@ function PrivyBridge({ config }: { config: AuthConfig }) {
     });
     return () => privyBridge.registerApi(null);
   }, [login, logout, wallets, active, depositFunds, exportWallet, chain, signTypedData, sendTransaction]);
+
+  // In a partner's frame Privy's modal can open in a part of the frame that is scrolled out of
+  // sight. Only there: on our own site the frame's viewport is the window.
+  useEffect(() => {
+    if (!modalOpen || !isInIframe()) return;
+    return keepModalInView();
+  }, [modalOpen]);
 
   useEffect(() => {
     privyBridge.publish({

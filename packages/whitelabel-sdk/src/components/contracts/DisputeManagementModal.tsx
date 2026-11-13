@@ -2,7 +2,7 @@ import { apiFetch } from '@/lib/apiFetch';
 import { Fragment, useState } from 'react';
 import { Dialog, Transition } from '@headlessui/react';
 import { Contract, SubmitDisputeEntryRequest } from '@/types';
-import { formatTimestamp, displayCurrency } from '@/utils/validation';
+import { formatTimestamp, displayCurrency, contractTokenSymbol } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
@@ -61,7 +61,8 @@ export default function DisputeManagementModal({ isOpen, onClose, contract, onRe
   const settlement = useSettlementState(contract.contractAddress);
   const arbiter = useArbiterState(contract.contractAddress);
 
-  const tokenSymbol = config?.tokenSymbol || 'USDC';
+  // The token this contract is in, not the site's default: a USDT dispute is settled in USDT.
+  const tokenSymbol = contractTokenSymbol(contract);
   const figure = Math.round(refundPercent);
 
   /** The figures held by everyone other than the connected wallet — what this submission could match. */

@@ -41,6 +41,20 @@ const ACTIVE: Contract = {
 
 const header = () => screen.getByRole('heading', { name: 'UI test' }).parentElement!.parentElement!;
 
+describe('ContractDetailsModal — the token the contract is in', () => {
+  it('shows the contract\'s own token beside its amount', () => {
+    render(
+      <ContractDetailsModal isOpen contract={{ ...ACTIVE, currencySymbol: 'USDT' } as Contract} onClose={jest.fn()} onRefresh={jest.fn()} />
+    );
+    expect(screen.getByTestId('contract-token')).toHaveTextContent('USDT');
+  });
+
+  it('is USDC when the record names none', () => {
+    render(<ContractDetailsModal isOpen contract={ACTIVE} onClose={jest.fn()} onRefresh={jest.fn()} />);
+    expect(screen.getByTestId('contract-token')).toHaveTextContent('USDC');
+  });
+});
+
 describe('ContractDetailsModal — status badge', () => {
   it('shows the status of an active deal, not its call to action', () => {
     render(<ContractDetailsModal isOpen contract={ACTIVE} onClose={jest.fn()} onRefresh={jest.fn()} />);

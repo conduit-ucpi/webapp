@@ -129,6 +129,24 @@ export function toUSDCForWeb3(amount: string | number, currency: string = 'micro
 }
 
 /**
+ * The token a contract is in, for showing beside its amount: "USDT".
+ *
+ * From the record's own symbol; failing that, from its `currency` ("microUSDT"); failing that,
+ * USDC, which is what every record written before there was a second token was in.
+ *
+ * ⚠️ THE CONTRACT'S TOKEN, NOT THE SITE'S. The dashboard and the detail window used to show the
+ *    site's default token (or none), so a USDT payment looked like a USDC one.
+ */
+export function contractTokenSymbol(contract: { currencySymbol?: string | null; currency?: string | null }): string {
+  const symbol = contract.currencySymbol?.trim();
+  if (symbol && /^[A-Za-z][A-Za-z0-9]{1,9}$/.test(symbol)) return symbol;
+  const fromCurrency = contract.currency?.trim().replace(/^micro/i, '') ?? '';
+  // "USD" is how old records wrote dollars, not a token.
+  if (/^[A-Za-z][A-Za-z0-9]{1,9}$/.test(fromCurrency) && fromCurrency.toUpperCase() !== 'USD') return fromCurrency;
+  return 'USDC';
+}
+
+/**
  * Display currency with proper formatting (primary display function)
  */
 export function displayCurrency(amount: string | number, currency: string = 'microUSDC'): string {

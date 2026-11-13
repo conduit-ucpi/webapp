@@ -5,7 +5,7 @@ import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ExpandableHash from '@/components/ui/ExpandableHash';
-import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
+import { formatWalletAddress, displayCurrency, contractTokenSymbol, formatDateTimeWithTZ } from '@/utils/validation';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import ContractActions from './ContractActions';
@@ -127,7 +127,10 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
           </div>
           <div className="text-right">
             <p className="text-3xl font-bold text-secondary-900">
-              {displayCurrency(contract.amount, isPending ? ((contract as PendingContract).currency || 'microUSDC') : 'microUSDC')}
+              {displayCurrency(contract.amount, isPending ? ((contract as PendingContract).currency || 'microUSDC') : 'microUSDC')}{' '}
+              <span className="text-base font-medium text-secondary-500" data-testid="contract-token">
+                {contractTokenSymbol(contract)}
+              </span>
             </p>
             <p className="text-sm text-secondary-500 mt-1">
               {statusDisplay.label}

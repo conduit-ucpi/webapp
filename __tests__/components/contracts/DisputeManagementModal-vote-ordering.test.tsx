@@ -101,6 +101,23 @@ function composeFigure(percent: number) {
   fireEvent.click(screen.getByRole('button', { name: new RegExp(`Submit ${percent}% to buyer`) }));
 }
 
+describe('The token a dispute is settled in', () => {
+  it('is the contract\'s own, not the site\'s default', () => {
+    // The site's default token (mocked above) is USDC; this contract was paid in USDT.
+    const { container } = render(
+      <DisputeManagementModal isOpen onClose={jest.fn()} contract={{ ...contract, currencySymbol: 'USDT' }} onRefresh={jest.fn()} />
+    );
+    expect(document.body.textContent).toMatch(/\$10[\d.]* USDT/);
+    expect(document.body.textContent).not.toMatch(/\$10[\d.]* USDC/);
+    expect(container).toBeTruthy();
+  });
+
+  it('is USDC for a record that names no token', () => {
+    renderModal();
+    expect(document.body.textContent).toMatch(/\$10[\d.]* USDC/);
+  });
+});
+
 describe('Submitting a settlement figure', () => {
   beforeEach(() => {
     jest.clearAllMocks();

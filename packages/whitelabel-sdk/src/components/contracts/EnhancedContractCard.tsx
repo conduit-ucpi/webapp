@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { contractStatusDisplay, isInstantPayment } from '@/utils/contractStatusDisplay';
 import { Contract, PendingContract } from '@/types';
-import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
+import { formatWalletAddress, displayCurrency, contractTokenSymbol, formatDateTimeWithTZ } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth';
 import { useMemo, useState } from 'react';
@@ -203,7 +203,10 @@ export default function EnhancedContractCard({
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-secondary-900">
-            {displayCurrency(contract.amount, 'microUSDC')}
+            {displayCurrency(contract.amount, 'microUSDC')}{' '}
+            <span className="text-sm font-medium text-secondary-500" data-testid="contract-token">
+              {contractTokenSymbol(contract)}
+            </span>
           </p>
           <p className="text-xs text-secondary-500 mt-1">
             {isPending ? t('contractList.pending') : `#${formatWalletAddress(contract.contractAddress)}`}
@@ -355,7 +358,7 @@ function SendPaymentLinkModal({
           paymentLink={paymentLink}
           // The screen wants token units; the record stores microUSDC.
           amount={(contract.amount / 1_000_000).toString()}
-          tokenSymbol={config?.tokenSymbol || 'USDC'}
+          tokenSymbol={contractTokenSymbol(contract)}
           networkLabel={config ? getNetworkName(config.chainId) : undefined}
           description={contract.description || ''}
           payoutLabel={

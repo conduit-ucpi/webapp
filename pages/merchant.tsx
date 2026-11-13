@@ -8,6 +8,7 @@ import { GetStaticProps } from 'next';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { motion } from 'framer-motion';
 import { isr } from '@/utils/isr';
+import { VIDEO_URL } from '@/components/landing-test/content';
 
 // ---------------------------------------------------------------------------
 // Page
@@ -175,7 +176,7 @@ export default function Merchant() {
                   See what your customers see
                 </button>
                 <a
-                  href="https://youtu.be/uUSlf3FmazQ"
+                  href={VIDEO_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={btnOutline}

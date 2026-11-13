@@ -4,7 +4,7 @@
  */
 
 export const DEMO_SELLER = '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d';
-export const VIDEO_ID = 'uUSlf3FmazQ';
+export const VIDEO_ID = 'bRjJYbAOpB0';
 export const VIDEO_URL = `https://youtu.be/${VIDEO_ID}`;
 export const SOURCE_URL = 'https://github.com/conduit-ucpi/contracts';
 /**

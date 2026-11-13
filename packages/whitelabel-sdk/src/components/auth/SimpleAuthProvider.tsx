@@ -423,6 +423,7 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
     explorerBaseUrl: config.explorerBaseUrl,
     walletConnectProjectId: config.walletConnectProjectId,
     privyAppId: config.privyAppId,
+    showLegacyAuth: config.showLegacyAuth,
     serviceLink: config.serviceLink,
     termsVersion: config.termsVersion
   } : null;

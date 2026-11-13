@@ -45,6 +45,7 @@ export interface Config {
   coinbaseNetwork?: string; // Coinbase's network slug (e.g. "base") - see COINBASE_NETWORK
   walletConnectProjectId?: string;
   privyAppId?: string;
+  showLegacyAuth?: boolean; // SHOW_LEGACY_AUTH: offer the pre-Privy sign-in alongside Privy
   neynarApiKey?: string;
   // Gas configuration
   minGasWei: string;

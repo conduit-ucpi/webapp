@@ -191,6 +191,9 @@ async function buildConfig() {
     coinbaseNetwork: process.env.COINBASE_NETWORK || coinbaseNetworkForChainId(chainId),
     walletConnectProjectId: process.env.WALLETCONNECT_PROJECT_ID,
     privyAppId: process.env.PRIVY_APP_ID,
+    // Whether the sign-in card still offers the provider Privy replaced (the "old wallet" tick
+    // box). Off unless SHOW_LEGACY_AUTH is exactly "true".
+    showLegacyAuth: process.env.SHOW_LEGACY_AUTH === 'true',
     neynarApiKey: process.env.NEYNAR_API_KEY,
     // Gas configuration
     minGasWei: process.env.MIN_GAS_WEI || '5',

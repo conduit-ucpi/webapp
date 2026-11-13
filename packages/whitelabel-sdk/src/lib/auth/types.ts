@@ -69,6 +69,11 @@ export interface AuthConfig {
   walletConnectProjectId?: string;
   /** Set to route wallet connection through Privy instead of Reown. Served by /api/config. */
   privyAppId?: string;
+  /**
+   * SHOW_LEGACY_AUTH, from /api/config. With Privy configured, the provider it replaced is
+   * offered (the "old wallet" tick box) only when this is true. Without Privy it changes nothing.
+   */
+  showLegacyAuth?: boolean;
   /** The site, from /api/config. Its `/terms-of-service/` is what signing in accepts. */
   serviceLink?: string;
   /** The Terms of Service version, from /api/config. The SIWE statement names it. */

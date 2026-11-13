@@ -122,11 +122,23 @@ describe('the real manifest', () => {
     expect(superseded.length).toBeGreaterThan(0);
 
     const before = { walletConnectProjectId: 'p' } as any;
-    const after = { walletConnectProjectId: 'p', privyAppId: 'a' } as any;
+    const after = { walletConnectProjectId: 'p', privyAppId: 'a', showLegacyAuth: true } as any;
     for (const p of superseded) {
       expect(p.applies(before) && !p.legacy!(before)).toBe(true);
       expect(p.applies(after) && p.legacy!(after)).toBe(true);
     }
+  });
+
+  it('offers no old-wallet route unless SHOW_LEGACY_AUTH is on', async () => {
+    // The default. With Privy configured the provider it replaced does not apply at all: no
+    // tick box, nothing to load on request, and no old session restored at boot.
+    const superseded = PROVIDERS.filter((p) => p.legacy);
+    for (const showLegacyAuth of [undefined, false]) {
+      const config = { walletConnectProjectId: 'p', privyAppId: 'a', showLegacyAuth } as any;
+      for (const p of superseded) expect(p.applies(config)).toBe(false);
+    }
+    // Without Privy it is the only way in, and the flag is not consulted.
+    for (const p of superseded) expect(p.applies({ walletConnectProjectId: 'p' } as any)).toBe(true);
   });
 });
 

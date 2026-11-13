@@ -95,7 +95,13 @@ export const PROVIDERS: readonly ProviderDescriptor[] = [
     //    be torn down — for a user who will only ever see Privy's modal. But people who signed
     //    up under Reown have funds in Reown embedded wallets that only Reown can open, so it
     //    stays loadable on request: the sign-in card's "old wallet" tick box.
-    applies: (config) => Boolean(config.walletConnectProjectId),
+    //
+    // ⚠️ AND ONLY WHEN SHOW_LEGACY_AUTH SAYS SO. With Privy configured and that flag off (the
+    //    default), Reown does not apply at all: no tick box, no on-request load, and no restore
+    //    of an old Reown session at boot. Without Privy it is the only way in and the flag is
+    //    not consulted.
+    applies: (config) =>
+      Boolean(config.walletConnectProjectId) && (!config.privyAppId || config.showLegacyAuth === true),
     legacy: (config) => Boolean(config.privyAppId),
     priority: 10,
     required: true,

@@ -6,6 +6,7 @@ import { fetchBrand, BrandFetchResult } from '../config/remoteBrand';
 import { brandToVars, applyVars } from './cssVars';
 import { applyBrandHead } from './brandHead';
 import { useBrandResolution } from './useBrandResolution';
+import { setTermsPartnerName } from '../lib/auth/siwe-statement';
 
 /**
  * Holds the active brand and puts its theme variables on the document.
@@ -148,6 +149,14 @@ export function BrandProvider(props: BrandProviderProps) {
     applyVars(brandToVars(value.brand), document.documentElement);
     applyBrandHead(value.brand, document);
   }, [value.brand]);
+
+  // The sign-in message names whose terms are being accepted. A partner's page names the partner;
+  // our own sites (the default, or a domain of ours) name us, as usePartnerBrand decides it.
+  useEffect(() => {
+    const partner = value.source !== 'default' && value.source !== 'host';
+    setTermsPartnerName(partner ? value.brand.name : null);
+    return () => setTermsPartnerName(null);
+  }, [value.brand.name, value.source]);
 
   // Always the same wrapper, so toggling `loading` changes a style rather than
   // the tree: auth and wallet providers below must not remount. `display:

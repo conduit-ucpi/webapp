@@ -848,8 +848,6 @@ export const en = {
   'push.convertTooDear': "Converting to {token} costs too much right now. Nothing was converted.",
   'push.convertShort': "The conversion now costs more {from} than your wallet holds. Nothing was converted.",
   'push.convertNotArrived': "The converted {token} has not reached your wallet yet. Nothing was paid; try again in a moment.",
-  'paymentTerms.convertibleTokenSeller': "{token} can be harder for buyers to get from exchanges than {from}. Buyers without {token} can pay with {from}, which is converted when they pay.",
-  'paymentTerms.convertibleTokenPayer': "{token} can be harder to get from exchanges than {from}. If you don't hold {token}, you can pay with {from}, which is converted when you pay.",
   'addFunds.cannotBuyToken': "Some external suppliers can't support {token} yet. If your option is greyed out, use {token} you already hold or use USDC instead",
   'addFunds.addFromKraken': 'Add from Kraken',
   'addFunds.buyWithKraken': "Buy {token} with a card on Kraken. Kraken's minimum purchase is {minimum} USD.",

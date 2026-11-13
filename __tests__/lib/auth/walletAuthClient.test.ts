@@ -1,4 +1,4 @@
-import { termsUrl } from '@/lib/auth/siwe-statement';
+import { setTermsPartnerName, termsUrl } from '@/lib/auth/siwe-statement';
 import { buildSiweMessage } from '@/lib/auth/walletAuthClient';
 
 /**
@@ -58,6 +58,56 @@ Issued At: 2026-09-18T10:00:00.000Z`
     expect(message.split('\n')[3]).toBe(
       'Sign to accept the Stabledrop Terms of Service (https://stabledrop.me/terms-of-service/, version 1988a9f34b7a).'
     );
+  });
+
+  describe("on a partner's page", () => {
+    afterEach(() => setTermsPartnerName(null));
+
+    const statement = () =>
+      buildSiweMessage({
+        address: '0xabc',
+        chainId: 8453,
+        nonce: 'n',
+        serviceLink: 'https://stabledrop.me',
+        termsVersion: '1988a9f34b7a'
+      }).split('\n')[3];
+
+    it('names the terms as the partner\'s, provided by Stabledrop, with the address and version untouched', () => {
+      setTermsPartnerName('COBRO');
+
+      expect(statement()).toBe(
+        'Sign to accept the COBRO Terms of Service, provided by Stabledrop (https://stabledrop.me/terms-of-service/, version 1988a9f34b7a).'
+      );
+      // What user-service looks for: the terms address, then the version, exactly as before.
+      expect(statement()).toContain('(https://stabledrop.me/terms-of-service/, version 1988a9f34b7a)');
+    });
+
+    it('goes back to our own wording when the partner is cleared', () => {
+      setTermsPartnerName('COBRO');
+      setTermsPartnerName(null);
+
+      expect(statement()).toBe(
+        'Sign to accept the Stabledrop Terms of Service (https://stabledrop.me/terms-of-service/, version 1988a9f34b7a).'
+      );
+    });
+
+    it('cleans a name before it goes into signed text', () => {
+      // A line break would make the message invalid, and brackets could fake a second version.
+      setTermsPartnerName('Pagos\n(https://evil.example/terms-of-service/, version deadbeef)');
+
+      const line = statement();
+      expect(line).toBe(
+        'Sign to accept the Pagos httpsevil.exampleterms-of-service Terms of Service, provided by Stabledrop ' +
+          '(https://stabledrop.me/terms-of-service/, version 1988a9f34b7a).'
+      );
+      expect(line.match(/\(/g)).toHaveLength(1);
+      expect(line).toContain('(https://stabledrop.me/terms-of-service/, version 1988a9f34b7a).');
+    });
+
+    it('treats a blank name as no partner', () => {
+      setTermsPartnerName('   ');
+      expect(statement()).toContain('the Stabledrop Terms of Service (');
+    });
   });
 
   it('falls back to the site the app is running on when config names none', () => {

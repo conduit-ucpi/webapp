@@ -947,8 +947,6 @@ export const es: Catalogue = {
   'push.convertTooDear': "Convertir a {token} cuesta demasiado ahora mismo. No se convirtió nada.",
   'push.convertShort': "La conversión ahora cuesta más {from} de los que tiene tu billetera. No se convirtió nada.",
   'push.convertNotArrived': "Los {token} convertidos aún no han llegado a tu billetera. No se pagó nada; inténtalo de nuevo en un momento.",
-  'paymentTerms.convertibleTokenSeller': "Conseguir {token} en los exchanges puede ser más difícil para los compradores que conseguir {from}. Los compradores sin {token} pueden pagar con {from}, que se convierte al pagar.",
-  'paymentTerms.convertibleTokenPayer': "Conseguir {token} en los exchanges puede ser más difícil que conseguir {from}. Si no tienes {token}, puedes pagar con {from}, que se convierte al pagar.",
   'addFunds.cannotBuyToken': 'Algunos proveedores externos todavía no admiten {token}. Si tu opción aparece desactivada, usa {token} que ya tengas o usa USDC',
   'addFunds.addFromKraken': 'Agregar desde Kraken',
   'addFunds.buyWithKraken': 'Compra {token} con tarjeta en Kraken. La compra mínima de Kraken es de {minimum} USD.',

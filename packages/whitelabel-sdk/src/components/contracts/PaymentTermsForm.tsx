@@ -98,11 +98,12 @@ export default function PaymentTermsForm({
 
         {/* Said where the token is chosen, so it can still be changed: by the payment screen the
             buying routes are simply greyed out. showFeeGuidance is the seller's view. */}
-        {!canBuyToken(tokenSymbol) && (
+        {/* ⚠️ ONLY WHEN THERE IS SOMETHING TO WARN ABOUT. Where the token can be paid for with one
+            that is easy to buy (payableWith), nothing is said: any note here, however it was
+            worded, read as a problem and put people off choosing the token. */}
+        {!canBuyToken(tokenSymbol) && !payableWith && (
           <p role="note" className="mt-2 text-sm text-amber-700 dark:text-amber-400">
-            {payableWith
-              ? t(showFeeGuidance ? 'paymentTerms.convertibleTokenSeller' : 'paymentTerms.convertibleTokenPayer', { token: tokenSymbol, from: payableWith })
-              : t(showFeeGuidance ? 'paymentTerms.harderTokenSeller' : 'paymentTerms.harderTokenPayer', { token: tokenSymbol })}
+            {t(showFeeGuidance ? 'paymentTerms.harderTokenSeller' : 'paymentTerms.harderTokenPayer', { token: tokenSymbol })}
           </p>
         )}
 

@@ -29,6 +29,30 @@ export function setTermsServiceLink(serviceLink: string | null | undefined): voi
 }
 
 /**
+ * The white-label partner whose page is asking for the signature, or null on our own site. Set by
+ * BrandProvider as the brand in view changes; read here because the message is built by provider
+ * classes that live outside React and cannot ask a hook.
+ */
+let partnerName: string | null = null;
+
+/**
+ * Names the partner the sign-in sentence is worded for; null (or blank) for our own brand.
+ *
+ * The name goes into text a person signs, so it is cleaned first: one line, no brackets (the
+ * terms address and version sit in brackets, and user-service reads the version from them), and
+ * not long enough to push the address out of a wallet's prompt.
+ */
+export function setTermsPartnerName(name: string | null | undefined): void {
+  const clean = (name ?? '')
+    .replace(/\s+/g, ' ')
+    .replace(/[^\p{L}\p{N} .&'-]/gu, '')
+    .trim()
+    .slice(0, 40)
+    .trim();
+  partnerName = clean || null;
+}
+
+/**
  * The SIWE message statement shown in wallet signature prompts.
  *
  * EIP-4361 puts this between the `<domain> wants you to sign in...` header
@@ -45,11 +69,16 @@ export function setTermsServiceLink(serviceLink: string | null | undefined): voi
  *
  * Kept to one line on purpose: EIP-4361 forbids a newline in the statement, and wallets
  * truncate long ones — the URL has to survive that intact.
+ *
+ * On a partner's page (setTermsPartnerName) the terms are named as the partner's, provided by
+ * Stabledrop: the person signing knows the partner, and the terms are still ours. Only the words
+ * before the brackets change; the address and version are exactly as they are on our own site.
  */
 export function siweStatement(terms: string, version?: string | null): string {
+  const whose = partnerName ? `${partnerName} Terms of Service, provided by Stabledrop` : 'Stabledrop Terms of Service';
   return version
-    ? `Sign to accept the Stabledrop Terms of Service (${terms}, version ${version}).`
-    : `Sign to accept the Stabledrop Terms of Service (${terms}).`;
+    ? `Sign to accept the ${whose} (${terms}, version ${version}).`
+    : `Sign to accept the ${whose} (${terms}).`;
 }
 
 /**

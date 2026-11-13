@@ -45,6 +45,21 @@ const FORWARD_RESPONSE_HEADERS = [
 /** Brand ids, asset ids and the word `assets`. Nothing that could walk out of /api/brands. */
 const SEGMENT = /^[A-Za-z0-9_-]{1,64}$/;
 
+/**
+ * The paths this proxy carries: the brand list, a brand, its files, one file. Nothing else.
+ *
+ * ⚠️ THIS IS WHAT KEEPS A PARTNER'S COMMERCIAL TERMS PRIVATE. The service also answers
+ *    /api/brands/{id}/terms (the fee share we have agreed with a partner), and answers it WITHOUT
+ *    a key, because it has no public address and this proxy is the only way in from the internet.
+ *    Named paths only, so that path and anything like it added later is refused by default. Do
+ *    not turn this into "forward everything except…".
+ */
+function isPublicPath(segments: string[]): boolean {
+  if (segments.length <= 1) return true; // the list, or one brand
+  if (segments[1] !== 'assets') return false;
+  return segments.length <= 3; // a brand's files, or one of them
+}
+
 const MAX_BODY_BYTES = 1_100_000;
 
 function readBody(req: NextApiRequest): Promise<Buffer> {
@@ -76,7 +91,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const raw = req.query.path;
   const segments = Array.isArray(raw) ? raw : raw ? [raw] : [];
   // Zero segments is the admin brand list (GET /api/brands), hence the optional catch-all.
-  if (segments.length > 4 || !segments.every((s) => SEGMENT.test(s))) {
+  if (!segments.every((s) => SEGMENT.test(s)) || !isPublicPath(segments)) {
     return void res.status(404).json({ error: 'Not found' });
   }
 

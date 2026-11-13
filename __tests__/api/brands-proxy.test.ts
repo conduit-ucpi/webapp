@@ -46,6 +46,36 @@ describe('/api/brands proxy', () => {
     expect(res.getHeader('cache-control')).toBe('max-age=60, public');
   });
 
+  it.each([
+    ['GET', ['cobro', 'terms']],
+    ['PUT', ['cobro', 'terms']],
+    ['GET', ['cobro', 'Terms']],
+    ['GET', ['cobro', 'terms', 'x']],
+    ['GET', ['cobro', 'assets', 'a', 'terms']],
+    ['GET', ['cobro', 'anything-else']],
+  ])('refuses %s %j: a partner’s commercial terms never leave our network', async (method, path) => {
+    // The service answers /terms without a key, on the strength of this proxy not carrying it.
+    const { req, res } = createMocks({ method, query: { path }, headers: { 'x-api-key': 'even-with-the-admin-key' } });
+
+    await handler(req as any, res as any);
+
+    expect(res._getStatusCode()).toBe(404);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it.each([[[]], [['cobro']], [['cobro', 'assets']], [['cobro', 'assets', '65f0c0ffee0000000000abcd']]])(
+    'still carries %j',
+    async (path) => {
+      fetchMock.mockResolvedValue(upstream(200, '{}'));
+      const { req, res } = createMocks({ method: 'GET', query: { path } });
+
+      await handler(req as any, res as any);
+
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      expect(res._getStatusCode()).toBe(200);
+    }
+  );
+
   it('never sends the session, nor adds this app’s own API key', async () => {
     fetchMock.mockResolvedValue(upstream(200, '{}'));
     const { req, res } = createMocks({ method: 'GET', query: { path: ['cobro'] }, headers: { cookie: 'session=secret' } });

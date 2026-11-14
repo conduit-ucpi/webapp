@@ -35,9 +35,50 @@ export function readConsent(): ConsentChoice | null {
   return value === 'granted' || value === 'denied' ? value : null;
 }
 
+/** Whether another site is showing this page in a frame (a partner embedding our payment pages). */
+function framed(): boolean {
+  try {
+    return window.self !== window.top;
+  } catch {
+    return true; // Reading `top` is refused only from inside someone else's frame.
+  }
+}
+
+/**
+ * The cookie attributes that decide where a cookie of ours may be written and read.
+ *
+ * ⚠️ A FRAMED PAGE CANNOT KEEP A `SameSite=Lax` COOKIE. Inside a partner's frame we are a third
+ *    party, and the browser refuses to set or read one: the visitor's Accept was forgotten at
+ *    once, analytics never counted as consented, and every purchase made through a partner's
+ *    embedded page went unreported to GA (no client id). There the cookie has to be
+ *    `SameSite=None; Secure`, and `Partitioned` so it survives third-party cookie blocking: it is
+ *    then kept per embedding site, so a choice made inside one partner's frame is that frame's
+ *    alone, and is asked for again on another's and on our own site.
+ *
+ * ⚠️ UNFRAMED STAYS `Lax`. A partitioned cookie and a plain one of the same name are two cookies:
+ *    changing our own site's to partitioned would leave returning visitors with both, and a
+ *    withdrawn consent could be answered by the old `granted`.
+ *
+ * Plain http (local dev) cannot set `Secure`, so a framed page there keeps `Lax` and is forgotten
+ * as before.
+ */
+export function cookieScope(
+  isFramed: boolean = framed(),
+  https: boolean = window.location.protocol === 'https:'
+): string {
+  if (isFramed && https) return PARTITIONED;
+  return `; SameSite=Lax${https ? '; Secure' : ''}`;
+}
+
+const PARTITIONED = '; SameSite=None; Secure; Partitioned';
+
+/** Whether this page's cookies are the partitioned kind: framed, over https. */
+function partitioned(): boolean {
+  return cookieScope() === PARTITIONED;
+}
+
 export function writeConsent(choice: ConsentChoice): void {
-  const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-  document.cookie = `${CONSENT_COOKIE}=${choice}; Max-Age=${CONSENT_MAX_AGE_SECONDS}; Path=/; SameSite=Lax${secure}`;
+  document.cookie = `${CONSENT_COOKIE}=${choice}; Max-Age=${CONSENT_MAX_AGE_SECONDS}; Path=/${cookieScope()}`;
 }
 
 export function openConsentSettings(): void {
@@ -67,7 +108,13 @@ export function loadAnalytics(): void {
     window.dataLayer!.push(arguments);
   };
   window.gtag('js', new Date());
-  window.gtag('config', GA_MEASUREMENT_ID);
+  // GA's own cookies need the same treatment in a partner's frame (see cookieScope): without it
+  // the client id cannot be kept there, and the purchase event has no visit to be credited to.
+  if (partitioned()) {
+    window.gtag('config', GA_MEASUREMENT_ID, { cookie_flags: 'SameSite=None;Secure;Partitioned' });
+  } else {
+    window.gtag('config', GA_MEASUREMENT_ID);
+  }
 
   const script = document.createElement('script');
   script.async = true;
@@ -95,9 +142,11 @@ export function disableAnalytics(): void {
     domains.push(`; Domain=.${labels.slice(i).join('.')}`);
   }
 
+  // A partitioned cookie is only removed by a write that is itself partitioned (see cookieScope).
+  const scope = partitioned() ? PARTITIONED : '';
   for (const name of gaCookies) {
     for (const domain of domains) {
-      document.cookie = `${name}=; Max-Age=0; Path=/${domain}`;
+      document.cookie = `${name}=; Max-Age=0; Path=/${domain}${scope}`;
     }
   }
 }

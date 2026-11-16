@@ -1,9 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { isPathSegment } from '@/lib/server/serviceProxy';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
 
-  if (!id || typeof id !== 'string') {
+  if (!isPathSegment(id)) {
     return res.status(400).json({ error: 'Contract ID is required' });
   }
 
@@ -42,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Validate chainAddress is provided
-  if (!chainAddress || typeof chainAddress !== 'string') {
+  if (!isPathSegment(chainAddress)) {
     return res.status(400).json({ error: 'Chain address is required' });
   }
 

@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { isPathSegment } from '@/lib/server/serviceProxy';
 import { requireAuth } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -7,6 +8,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const { walletAddress } = req.query;
+
+  if (!isPathSegment(walletAddress)) {
+    return res.status(400).json({ error: 'Wallet address is required' });
+  }
 
   try {
     const authToken = requireAuth(req);

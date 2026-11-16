@@ -7,7 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { fid } = req.query;
   
-  if (!fid || typeof fid !== 'string') {
+  if (typeof fid !== 'string' || !/^\d{1,12}$/.test(fid)) {
     return res.status(400).json({ error: 'FID is required' });
   }
 

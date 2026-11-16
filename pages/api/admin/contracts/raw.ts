@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { isPathSegment } from '@/lib/server/serviceProxy';
 import { requireAuth } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -8,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { contractId } = req.query;
 
-  if (!contractId) {
+  if (!isPathSegment(contractId)) {
     return res.status(400).json({ error: 'Contract ID is required' });
   }
 

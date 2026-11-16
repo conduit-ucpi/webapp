@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { isPathSegment } from '@/lib/server/serviceProxy';
 import { requireAuth } from '@/utils/api-auth';
 
 /**
@@ -18,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { contractAddress } = req.query;
 
-  if (!contractAddress || typeof contractAddress !== 'string') {
+  if (!isPathSegment(contractAddress)) {
     return res.status(400).json({ error: 'Contract address is required' });
   }
 

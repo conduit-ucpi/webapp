@@ -87,6 +87,11 @@ export async function proxyToService(
     return void res.status(500).json({ error: 'Service not configured' });
   }
 
+  if (pathEscapes(options.path)) {
+    console.warn(`Refused a proxied path that would resolve elsewhere on ${options.service}service`);
+    return void res.status(400).json({ error: 'Invalid request path' });
+  }
+
   try {
     const authToken = options.requiresAuth === false ? extractAuthToken(req) : requireAuth(req);
 
@@ -153,8 +158,37 @@ export function methodGuard(req: NextApiRequest, res: NextApiResponse, allowed: 
   return true;
 }
 
-/** Read a single dynamic route segment, rejecting arrays and blanks. */
+/**
+ * True when a caller-supplied value is safe to drop into an upstream URL as ONE path segment.
+ *
+ * ⚠️ Every id and address we route on is letters, digits, `-` and `_` (Mongo ids, UUIDs,
+ *    `mcp-…` ids, 0x addresses). Anything else is not an id, it is an attempt to steer the
+ *    request: on 2026-11-16 a "seller address" of `../../contracts#` turned the reserves route
+ *    into GET /api/contracts on contractservice, with our service key attached. Next decodes
+ *    `%2F`, `%23` and `%3F` before a handler sees the value, and fetch() then resolves the dots
+ *    and drops everything after the `#`.
+ */
+export function isPathSegment(value: unknown): value is string {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(value);
+}
+
+/**
+ * True when a finished upstream path would be rewritten by URL parsing into a different one: a
+ * `.` or `..` segment (however encoded), a backslash, or a `#` that cuts the rest off. The last
+ * line of defence for a route that built its path from something isPathSegment never saw.
+ */
+export function pathEscapes(path: string): boolean {
+  const queryAt = path.indexOf('?');
+  const pathPart = queryAt === -1 ? path : path.slice(0, queryAt);
+  if (path.includes('#') || pathPart.includes('\\')) return true;
+  return pathPart.split('/').some(segment => {
+    const plain = segment.replace(/%2e/gi, '.');
+    return plain === '.' || plain === '..';
+  });
+}
+
+/** Read a single dynamic route segment, rejecting arrays, blanks and anything that is not an id. */
 export function routeParam(req: NextApiRequest, name: string): string | null {
   const value = req.query[name];
-  return typeof value === 'string' && value.length > 0 ? value : null;
+  return isPathSegment(value) ? value : null;
 }

@@ -260,63 +260,16 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       }
     },
 
-    // Blockchain operations using fundAndSendTransaction
+    // Collecting needs no signature and no gas in the seller's wallet: the relayer sends it.
+    // See lib/claimFunds.ts. `userAddress` and `prompt` are kept so callers need not change;
+    // there is no wallet prompt to word any more, because the wallet is not asked for anything.
     claimFunds: async (
       contractAddress: string,
-      userAddress: string,
-      prompt?: { decimals?: number; describe: (amount: string | null) => string }
+      _userAddress?: string,
+      _prompt?: { decimals?: number; describe: (amount: string | null) => string }
     ): Promise<string> => {
-      console.log('🔧 SimpleAuthProvider: claimFunds called', { contractAddress, userAddress });
-
-      if (!contractAddress || !userAddress) {
-        throw new Error('Contract address and user address are required');
-      }
-
-      // Import contract ABI
-      const { ESCROW_CONTRACT_ABI } = await import('@conduit-ucpi/sdk');
-      const { ethers } = await import('ethers');
-
-      // Encode the claimFunds function call
-      const contractInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
-      const data = contractInterface.encodeFunctionData('claimFunds', []);
-
-      if (!config) {
-        throw new Error('Config not available');
-      }
-
-      // Get ethers provider directly from auth (avoid circular dependency)
-      const ethersProvider = await newAuth.getEthersProvider();
-      if (!ethersProvider) {
-        throw new Error('Ethers provider not available');
-      }
-
-      // Import and create Web3Service directly (avoid useSimpleEthers hook)
-      const { Web3Service } = await import('@/lib/web3');
-      const web3Service = Web3Service.getInstance(config!);
-
-      // Initialize Web3Service if needed
-      if (!web3Service.isServiceInitialized()) {
-        console.log('🔧 SimpleAuthProvider: Initializing Web3Service for claim');
-        await web3Service.initialize(ethersProvider);
-      }
-
-      // What arrives is the amount less the fee, which only the contract knows (usePayoutAmounts).
-      let payout: string | null = null;
-      if (prompt?.decimals !== undefined) {
-        try {
-          payout = ethers.formatUnits(await web3Service.getPayoutAmount(contractAddress), prompt.decimals).replace(/\.0$/, '');
-        } catch {
-          // Unreadable: the prompt goes without a figure.
-        }
-      }
-
-      // Use Web3Service directly for the blockchain operation
-      return await web3Service.fundAndSendTransaction({
-        to: contractAddress,
-        data,
-        value: '0', // No value needed for claiming
-        walletDescription: prompt?.describe(payout)
-      });
+      const { claimFundsViaRelayer } = await import('@/lib/claimFunds');
+      return claimFundsViaRelayer(contractAddress, (url, init) => apiFetch(url, init));
     },
 
     raiseDispute: async (params: {

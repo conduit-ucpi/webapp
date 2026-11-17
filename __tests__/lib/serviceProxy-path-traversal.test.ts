@@ -17,6 +17,9 @@ import arbiter from '@/pages/api/chain/contract/[contractAddress]/arbiter';
 import dispute from '@/pages/api/contracts/[id]/dispute';
 import notes from '@/pages/api/admin/contracts/[id]/notes';
 import resolve from '@/pages/api/admin/contracts/[id]/resolve';
+import projectTree from '@/pages/api/projects/[groupId]/index';
+import projectDeploy from '@/pages/api/projects/[groupId]/deploy';
+import nodeReady from '@/pages/api/projects/[groupId]/nodes/[nodeId]/ready';
 
 // What Next hands a handler after decoding %2F, %23 and %3F.
 const SENT = [
@@ -83,6 +86,7 @@ describe('routes that put a caller value in an upstream path', () => {
     global.fetch = fetchMock as any;
     process.env.CONTRACT_SERVICE_URL = 'http://contractservice';
     process.env.CHAIN_SERVICE_URL = 'http://chainservice';
+    process.env.PROJECTS_LIVE = 'true'; // the project routes 404 before reading anything otherwise
   });
   afterAll(() => { global.fetch = realFetch; });
 
@@ -116,6 +120,17 @@ describe('routes that put a caller value in an upstream path', () => {
       expect(fetchMock).toHaveBeenCalledTimes(1);
       expect(new URL(fetchMock.mock.calls[0][0]).pathname).toContain(`/${WALLET}`);
     });
+  });
+
+  // encodeURIComponent leaves `..` alone, so escaping the id was never enough on these.
+  it.each(['..', '.', '../x', 'a/b'])('a project id of %s is refused', async value => {
+    for (const [handler, method] of [[projectTree, 'GET'], [projectDeploy, 'POST']] as const) {
+      const res = await call(handler, method, { groupId: value });
+      expect(res._getStatusCode()).toBe(400);
+    }
+    const ready = await call(nodeReady, 'PUT', { groupId: '6af90863a1c5f839cca35f47', nodeId: value });
+    expect(ready._getStatusCode()).toBe(400);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it.each(SENT)('a dispute on contract %s is refused', async value => {

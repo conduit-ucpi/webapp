@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { isPathSegment } from '@/lib/server/serviceProxy';
 import { requireAuth } from '@/utils/api-auth';
 import { fanoutServiceUrl, serviceHeaders } from '@/utils/projectsServer';
 import { blockedByProjectsFlag } from '@/utils/featureFlags';
@@ -19,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const authToken = requireAuth(req);
     const { groupId } = req.query;
-    if (typeof groupId !== 'string') {
+    if (!isPathSegment(groupId)) {
       return res.status(400).json({ error: 'groupId is required' });
     }
 

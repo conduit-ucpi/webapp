@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { ADDRESS, forwardToChainAsUser } from '@/lib/server/chainAsUser';
+import { ADDRESS, forwardToChainAsUser, shortAddress } from '@/lib/server/chainAsUser';
 
 /**
  * Whether a contract takes SIGNED ACTIONS, and the domain to sign under if it does.
@@ -22,6 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   await forwardToChainAsUser(req, res, {
     method: 'GET',
     path: `/api/chain/contract/${contractAddress}/signed-calls`,
-    what: 'Signed-calls support'
+    what: 'support check',
+    trace: `does contract ${shortAddress(contractAddress)} take signed actions?`
   });
 }

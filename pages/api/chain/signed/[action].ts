@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { ADDRESS, forwardToChainAsUser, signedMessageOf } from '@/lib/server/chainAsUser';
+import { ADDRESS, forwardToChainAsUser, shortAddress, signedMessageOf } from '@/lib/server/chainAsUser';
 
 /**
  * POST /api/chain/signed/<action> — deliver a party's SIGNED MESSAGE to their contract.
@@ -79,6 +79,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     method: 'POST',
     path: `/api/chain/signed/${action}`,
     body: forwarded,
-    what: `Signed ${action}`
+    what: `${action}`,
+    trace:
+      `contract ${shortAddress(body.contractAddress)} signer ${shortAddress(body.signer)} ` +
+      Object.keys(fields).map(name => `${name}=${shortAddress(forwarded[name])} `).join('') +
+      `nonce=${signed.message.nonce} deadline=${signed.message.deadline} ` +
+      `(${Number(signed.message.deadline) - Math.floor(Date.now() / 1000)}s from now) ` +
+      `signature=${(signed.message.signature.length - 2) / 2} bytes`
   });
 }

@@ -1240,6 +1240,89 @@ export class Web3Service {
     }
   }
 
+  /**
+   * Run a call from the user's own address WITHOUT sending it, and throw if the contract would
+   * refuse it. For a signed action (lib/signedActions.ts): the person is asked to sign only what
+   * the contract will accept, and a refusal carries the contract's own reason, as it does when
+   * fund-then-send estimates.
+   *
+   * ⚠️ ONLY A REVERT THROWS. If the RPC cannot be reached this returns quietly: chainservice
+   *    simulates again before it sends anything, so an outage here must not block the action.
+   */
+  async simulateCall(tx: { to: string; data: string }): Promise<void> {
+    const userAddress = await this.getUserAddress();
+    let answer: any;
+    try {
+      const response = await fetch(this.config.rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_estimateGas',
+          params: [{ from: userAddress, to: tx.to, data: tx.data, value: '0x0' }],
+          id: 1
+        })
+      });
+      if (!response.ok) return;
+      answer = await response.json();
+    } catch {
+      return;
+    }
+    if (answer?.error) {
+      throw new EstimationRevertedError(
+        answer.error.message || 'The transaction would fail on-chain.',
+        typeof answer.error.data === 'string' ? answer.error.data : undefined,
+        userAddress
+      );
+    }
+  }
+
+  /**
+   * Have the wallet sign EIP-712 typed data, and resolve with the signature. Nothing is sent to
+   * the chain and no gas is needed: every wallet we support can do this, including the ones
+   * that will not sign a transaction without sending it.
+   *
+   * The same notice is shown as for a transaction, because what is being approved is the same
+   * thing: [prompt] says what, and whether anything moves once it is delivered.
+   *
+   * ⚠️ NO getSigner(), as everywhere else here: the request goes to the provider directly.
+   */
+  async signTypedData(
+    typedData: { domain: { chainId: number }; primaryType: string; types: unknown; message: unknown },
+    prompt?: { summary?: string; walletDescription?: string; movesFunds?: boolean }
+  ): Promise<string> {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+    // A wallet refuses typed data whose chain is not the one it is on.
+    await this.verifyAndSwitchNetwork();
+
+    const address = await this.getUserAddress();
+    const provider = this.provider as any;
+    const params = [address, JSON.stringify(typedData)];
+    const signature: string = await withWalletPrompt(
+      {
+        kind: 'transaction',
+        summary: prompt?.summary ?? typedData.primaryType,
+        walletDescription: prompt?.walletDescription,
+        movesFunds: prompt?.movesFunds
+      },
+      async () => {
+        if (provider.request && typeof provider.request === 'function') {
+          return await provider.request({ method: 'eth_signTypedData_v4', params });
+        }
+        if (provider.send && typeof provider.send === 'function') {
+          return await provider.send('eth_signTypedData_v4', params);
+        }
+        throw new Error('Provider does not support request() or send() methods');
+      }
+    );
+    if (typeof signature !== 'string' || !signature.startsWith('0x')) {
+      throw new Error('The wallet did not return a signature');
+    }
+    return signature;
+  }
+
   async fundAndSendTransaction(txParams: {
     to: string;
     data: string;

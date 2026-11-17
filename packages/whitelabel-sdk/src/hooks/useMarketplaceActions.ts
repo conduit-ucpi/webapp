@@ -4,18 +4,24 @@ import { ethers } from 'ethers';
 import { ERC20_ABI, ESCROW_CONTRACT_ABI, OFFER_VAULT_ABI, EstimationRevertedError } from '@/lib/web3';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import type { CreateOfferResponse } from '@/types/marketplace';
+import { isSignedAction, sendSignedAction } from '@/lib/signedActions';
 
 /**
  * Every on-chain action the dispute, arbiter and marketplace screens take
  * (MARKETPLACE_OPENSPEC §15.6b–d).
  *
- * ⚠️ ALMOST NOTHING HERE IS RELAYED, AND THAT IS NOT A CHOICE. Embedded wallet providers
- *    (Farcaster, Dynamic, WalletConnect) do not expose raw transaction signing, and calling
- *    `getSigner()` after connection is forbidden on them — so there is no signed transaction to
- *    hand to a backend. Gas sponsorship works the other way round: the UI encodes the call,
- *    `fundAndSendTransaction` estimates it and asks chainservice to move ETH into the user's own
- *    wallet, and the user's provider broadcasts. Any endpoint asking for a `signedTransaction` is
- *    the wrong shape and should not exist.
+ * ⚠️ TWO ROUTES FOR A PARTY'S OWN ACTION, AND THE CONTRACT DECIDES WHICH.
+ *
+ *    A contract that takes SIGNED MESSAGES (lib/signedActions.ts): the wallet signs a typed
+ *    message, chainservice delivers it and pays the gas. No ETH reaches the wallet. This is for
+ *    the escrow's party actions: votes, and the arbiter and recipient actions.
+ *
+ *    Every other contract, and every offer-vault and token call: fund-then-send. The UI encodes
+ *    the call, `fundAndSendTransaction` estimates it and asks chainservice to move ETH into the
+ *    user's own wallet, and the user's provider broadcasts. This exists because most wallet
+ *    providers (MetaMask, Farcaster, anything over WalletConnect) will not sign a TRANSACTION
+ *    without also sending it, so there is no signed transaction to hand to a backend. They will
+ *    all sign a message, which is why the first route works.
  *
  * The two exceptions both go through chainservice, and both are safe to: `seatDefaultArbiter` is
  * permissionless on-chain and seats the DEFAULT_ARBITER Safe rather than the caller, and
@@ -96,13 +102,19 @@ export function useMarketplaceActions() {
       prompt?: { walletDescription?: string; movesFunds?: boolean }
     ): Promise<string> => {
       const web3Service = await getWeb3Service();
+      const data = abi.encodeFunctionData(fn, args);
       try {
-        return await web3Service.fundAndSendTransaction({
-          to,
-          data: abi.encodeFunctionData(fn, args),
-          value: '0',
-          ...prompt
-        });
+        // A party action on a contract that takes signed messages: the wallet signs, chainservice
+        // delivers and pays, and no ETH is handed to the wallet (lib/signedActions.ts). Null
+        // means this contract does not, and the older route below is the only one it has.
+        if (abi === escrowInterface && isSignedAction(fn) && fn !== 'raiseDispute') {
+          const delivered = await sendSignedAction(
+            { fetcher: apiFetch, wallet: web3Service },
+            { contractAddress: to, action: fn, args, data, prompt }
+          );
+          if (delivered) return delivered;
+        }
+        return await web3Service.fundAndSendTransaction({ to, data, value: '0', ...prompt });
       } catch (error) {
         throw decodeRefusal(error) ?? error;
       }

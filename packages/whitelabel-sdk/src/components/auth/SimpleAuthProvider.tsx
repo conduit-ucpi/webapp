@@ -311,8 +311,24 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
 
       // Raise the dispute, then cast the buyer's figure as their vote, then record it.
       const { raiseDisputeAndVote } = await import('@/lib/raiseDispute');
+      const { raiseDisputeSigned, sendSignedAction } = await import('@/lib/signedActions');
+      const signing = { fetcher: apiFetch, wallet: web3Service };
       return raiseDisputeAndVote(
         {
+          // Where the contract takes signed messages the wallet signs and chainservice delivers
+          // (and records the dispute); each answers null where it does not, and `send` is used.
+          signed: {
+            raise: ({ walletDescription, ...request }) =>
+              raiseDisputeSigned(signing, { ...request, prompt: { walletDescription, movesFunds: false } }),
+            vote: ({ contractAddress, data, figure, walletDescription }) =>
+              sendSignedAction(signing, {
+                contractAddress,
+                action: 'submitResolutionVote',
+                args: [figure],
+                data,
+                prompt: { walletDescription }
+              })
+          },
           send: (tx) => web3Service.fundAndSendTransaction(tx),
           record: async (contractId, entry) => {
             try {

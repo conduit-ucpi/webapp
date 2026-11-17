@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { requireAuth } from '@/utils/api-auth';
+import { maskAddress } from '@/lib/server/redactPii';
 
 /** A 0x address. The services decide whose it is; this only stops junk leaving the building. */
 export const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
@@ -9,6 +10,29 @@ export const WHOLE_NUMBER = /^\d{1,78}$/;
 
 /** A hex string with its 0x prefix and at least one byte. */
 export const HEX = /^0x([0-9a-fA-F]{2})+$/;
+
+/**
+ * Every log line about a signed action starts with this, here and in chainservice, so one search
+ * (`|= "SIGNED ACTION"`) shows a whole run in order across both services: the support check, the
+ * request, the simulation, the send, the result.
+ */
+export const SIGNED_ACTION_LOG_TAG = 'SIGNED ACTION';
+
+/** An address as the logs show them: `0x9a42***989c`. */
+export function shortAddress(address: unknown): string {
+  return typeof address === 'string' ? maskAddress(address) : String(address);
+}
+
+/** The parts of chainservice's answer worth a log line. A transaction hash is public and is shown whole. */
+function answerForLog(body: unknown): string {
+  if (!body || typeof body !== 'object') return 'no body';
+  const answer = body as Record<string, unknown>;
+  const parts: string[] = [];
+  for (const key of ['supported', 'success', 'transactionHash', 'recorded', 'error']) {
+    if (answer[key] !== undefined && answer[key] !== null) parts.push(`${key}=${JSON.stringify(answer[key])}`);
+  }
+  return parts.length ? parts.join(' ') : 'nothing recognised';
+}
 
 /**
  * Forward a call to chainservice AS THE SIGNED-IN USER: their session, and nothing else.
@@ -23,8 +47,20 @@ export const HEX = /^0x([0-9a-fA-F]{2})+$/;
 export async function forwardToChainAsUser(
   req: NextApiRequest,
   res: NextApiResponse,
-  options: { path: string; method: 'GET' | 'POST'; body?: unknown; what: string }
+  options: {
+    path: string;
+    method: 'GET' | 'POST';
+    body?: unknown;
+    what: string;
+    /**
+     * What is being asked, in one line, for the log. With it, the request and chainservice's
+     * answer are each logged under SIGNED_ACTION_LOG_TAG; without it only failures are.
+     */
+    trace?: string;
+  }
 ): Promise<void> {
+  const started = Date.now();
+  if (options.trace) console.log(`${SIGNED_ACTION_LOG_TAG} [webapp] ${options.what}: ${options.trace}`);
   try {
     const authToken = requireAuth(req);
     const headers: Record<string, string> = {
@@ -41,15 +77,27 @@ export async function forwardToChainAsUser(
     });
 
     const text = await response.text();
-    if (!text) return void res.status(response.status).end();
     let body: unknown;
     try {
-      body = JSON.parse(text);
+      body = text ? JSON.parse(text) : undefined;
     } catch {
       body = { error: text.substring(0, 500) };
     }
+    if (options.trace) {
+      console.log(
+        `${SIGNED_ACTION_LOG_TAG} [webapp] ${options.what}: chainservice answered ${response.status} ` +
+          `in ${Date.now() - started}ms: ${answerForLog(body)}`
+      );
+    }
+    if (body === undefined) return void res.status(response.status).end();
     res.status(response.status).json(body);
   } catch (error) {
+    if (options.trace) {
+      console.log(
+        `${SIGNED_ACTION_LOG_TAG} [webapp] ${options.what}: FAILED before an answer, after ${Date.now() - started}ms: ` +
+          (error instanceof Error ? error.message : String(error))
+      );
+    }
     console.error(`${options.what} API error:`, error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });

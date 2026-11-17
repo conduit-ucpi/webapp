@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { ADDRESS, HEX, forwardToChainAsUser, signedMessageOf } from '@/lib/server/chainAsUser';
+import { ADDRESS, HEX, forwardToChainAsUser, shortAddress, signedMessageOf } from '@/lib/server/chainAsUser';
 import { isPathSegment } from '@/lib/server/serviceProxy';
 
 /**
@@ -84,6 +84,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     method: 'POST',
     path: '/api/chain/raise-dispute',
     body: forwarded,
-    what: 'Raise dispute'
+    what: 'raise-dispute',
+    trace:
+      `contract ${shortAddress(body.contractAddress)} buyer ${shortAddress(body.userWalletAddress)} ` +
+      (hasMessage
+        ? `by SIGNED MESSAGE nonce=${(forwarded.signedCall as any).nonce} deadline=${(forwarded.signedCall as any).deadline} `
+        : 'by SIGNED TRANSACTION (the older route) ') +
+      `record=${forwarded.databaseId ?? 'none given'} refundPercent=${forwarded.refundPercent ?? 'none given'}`
   });
 }

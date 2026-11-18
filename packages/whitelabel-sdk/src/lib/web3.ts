@@ -6,6 +6,7 @@ import { toHex, toHexString, ensureHexPrefix } from '@/utils/hexUtils';
 import { mLog } from '@/utils/mobileLogger';
 import { RpcClient, readProviderFor } from '@/lib/rpc/RpcClient';
 import { withWalletPrompt } from '@/lib/auth/walletPromptChannel';
+import { asTokenTransfer } from './tokenTransfer';
 import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement';
 
 // ERC20 ABI for USDC interactions
@@ -1146,7 +1147,11 @@ export class Web3Service {
    *    So the prewarm may fund, and may never authorise skipping. The send path always takes
    *    its own reading.
    */
-  private async topUpGasIfShort(userAddress: string, totalGasNeeded: bigint): Promise<boolean> {
+  private async topUpGasIfShort(
+    userAddress: string,
+    totalGasNeeded: bigint,
+    tx: { to: string; data: string; value?: string }
+  ): Promise<boolean> {
     const existingBalance = await this.readNativeBalance(userAddress);
     if (existingBalance !== null && existingBalance >= totalGasNeeded) {
       console.log(
@@ -1156,6 +1161,29 @@ export class Web3Service {
       return false;
     }
 
+    // ⚠️ A TOKEN TRANSFER ASKS BY NAMING THE TRANSFER, NOT AN AMOUNT OF GAS. chainservice checks
+    //    the wallet holds the tokens, simulates the transfer to size the gas itself, and refuses
+    //    a wallet that has been sending native tokens out. What we reckon we need goes along
+    //    only as a figure it may lower its own to; it can never raise what is sent.
+    const transfer = asTokenTransfer(tx);
+    if (transfer) {
+      console.log('Requesting gas for a token transfer from chainservice...', transfer);
+      const response = await apiFetch('/api/chain/fund-transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ walletAddress: userAddress, ...transfer, neededWei: totalGasNeeded.toString() })
+      });
+      const answer = await response.json().catch(() => ({}));
+      console.log(`[fund-transfer] answered ${response.status}`, answer);
+      if (!response.ok || !answer.success) {
+        // chainservice's own sentence: it says why, in words the person can act on.
+        throw new Error(answer.message || answer.error || `Gas for this transfer could not be arranged (${response.status}). Try again.`);
+      }
+      return answer.funded === true;
+    }
+
+    // Everything that is not a plain token transfer still asks the older way, by amount.
     console.log('Requesting wallet funding from chainservice...');
     const fundResponse = await apiFetch('/api/chain/fund-wallet', {
       method: 'POST',
@@ -1231,7 +1259,7 @@ export class Web3Service {
       if (!this.isInjectedWalletProvider()) {
         this.assertWithinGasCostCap(BigInt(Math.round(Number(body.result) * gasPriceBuffer)), gasPrice);
       }
-      const funded = await this.topUpGasIfShort(userAddress, totalGasNeeded);
+      const funded = await this.topUpGasIfShort(userAddress, totalGasNeeded, txParams);
       if (funded) {
         console.log('[Web3Service.prewarmTransaction] Topped the wallet up before it was needed');
       }
@@ -1561,7 +1589,7 @@ export class Web3Service {
       this.assertWithinGasCostCap(bufferedGasLimit, gasPrice);
     }
 
-    await this.topUpGasIfShort(userAddress, totalGasNeeded);
+    await this.topUpGasIfShort(userAddress, totalGasNeeded, txParams);
 
     // Step 5: Send transaction using the same unified ethers provider approach
     console.log('[Web3Service.fundAndSendTransaction] Sending transaction via unified ethers provider...');

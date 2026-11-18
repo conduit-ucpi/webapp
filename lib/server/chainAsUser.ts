@@ -18,6 +18,12 @@ export const HEX = /^0x([0-9a-fA-F]{2})+$/;
  */
 export const SIGNED_ACTION_LOG_TAG = 'SIGNED ACTION';
 
+/**
+ * And every line about gas for a token transfer starts with this, as chainservice's do
+ * (TransferFundingService), so one search shows a request from the route to the decision.
+ */
+export const FUND_TRANSFER_LOG_TAG = 'FUND TRANSFER';
+
 /** An address as the logs show them: `0x9a42***989c`. */
 export function shortAddress(address: unknown): string {
   return typeof address === 'string' ? maskAddress(address) : String(address);
@@ -28,7 +34,7 @@ function answerForLog(body: unknown): string {
   if (!body || typeof body !== 'object') return 'no body';
   const answer = body as Record<string, unknown>;
   const parts: string[] = [];
-  for (const key of ['supported', 'success', 'transactionHash', 'recorded', 'error']) {
+  for (const key of ['supported', 'success', 'funded', 'reason', 'amountWei', 'transactionHash', 'recorded', 'error', 'message']) {
     if (answer[key] !== undefined && answer[key] !== null) parts.push(`${key}=${JSON.stringify(answer[key])}`);
   }
   return parts.length ? parts.join(' ') : 'nothing recognised';
@@ -57,10 +63,13 @@ export async function forwardToChainAsUser(
      * answer are each logged under SIGNED_ACTION_LOG_TAG; without it only failures are.
      */
     trace?: string;
+    /** The tag those lines start with. Defaults to SIGNED_ACTION_LOG_TAG. */
+    tag?: string;
   }
 ): Promise<void> {
   const started = Date.now();
-  if (options.trace) console.log(`${SIGNED_ACTION_LOG_TAG} [webapp] ${options.what}: ${options.trace}`);
+  const tag = options.tag ?? SIGNED_ACTION_LOG_TAG;
+  if (options.trace) console.log(`${tag} [webapp] ${options.what}: ${options.trace}`);
   try {
     const authToken = requireAuth(req);
     const headers: Record<string, string> = {
@@ -85,7 +94,7 @@ export async function forwardToChainAsUser(
     }
     if (options.trace) {
       console.log(
-        `${SIGNED_ACTION_LOG_TAG} [webapp] ${options.what}: chainservice answered ${response.status} ` +
+        `${tag} [webapp] ${options.what}: chainservice answered ${response.status} ` +
           `in ${Date.now() - started}ms: ${answerForLog(body)}`
       );
     }
@@ -94,7 +103,7 @@ export async function forwardToChainAsUser(
   } catch (error) {
     if (options.trace) {
       console.log(
-        `${SIGNED_ACTION_LOG_TAG} [webapp] ${options.what}: FAILED before an answer, after ${Date.now() - started}ms: ` +
+        `${tag} [webapp] ${options.what}: FAILED before an answer, after ${Date.now() - started}ms: ` +
           (error instanceof Error ? error.message : String(error))
       );
     }

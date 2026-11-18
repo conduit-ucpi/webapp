@@ -70,7 +70,7 @@ export default function FeedbackButton() {
           type="button"
           onClick={() => setOpen(true)}
           aria-label={t('feedback.title')}
-          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-40 inline-flex items-center gap-2 rounded-full px-4 py-3 shadow-xl bg-secondary-900 text-white dark:bg-white dark:text-secondary-900 text-sm font-medium hover:scale-105 transition-transform"
+          className="fixed bottom-[max(1rem,var(--chat-clearance,0px))] right-4 sm:bottom-[max(1.5rem,var(--chat-clearance,0px))] sm:right-6 z-40 inline-flex items-center gap-2 rounded-full px-4 py-3 shadow-xl bg-secondary-900 text-white dark:bg-white dark:text-secondary-900 text-sm font-medium hover:scale-105 transition-transform"
         >
           <ChatBubbleLeftEllipsisIcon className="w-5 h-5" aria-hidden="true" />
           <span className="hidden sm:inline">{t('feedback.button')}</span>

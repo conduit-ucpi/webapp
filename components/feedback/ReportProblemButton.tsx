@@ -332,7 +332,7 @@ export default function ReportProblemButton() {
           type="button"
           onClick={() => setStep({ kind: 'intro' })}
           aria-label={t('report.title')}
-          className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 inline-flex items-center gap-2 rounded-full px-4 py-3 shadow-xl bg-white text-secondary-900 border border-secondary-300 text-sm font-medium hover:scale-105 transition-transform"
+          className="fixed bottom-[calc(max(1rem,var(--chat-clearance,0px))+4rem)] right-4 sm:bottom-[calc(max(1.5rem,var(--chat-clearance,0px))+4.5rem)] sm:right-6 inline-flex items-center gap-2 rounded-full px-4 py-3 shadow-xl bg-white text-secondary-900 border border-secondary-300 text-sm font-medium hover:scale-105 transition-transform"
         >
           <VideoCameraIcon className="w-5 h-5" aria-hidden="true" />
           <span className="hidden sm:inline">{t('report.button')}</span>

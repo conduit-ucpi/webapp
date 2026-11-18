@@ -61,6 +61,7 @@ const DIRECTIVES = {
     'https://www.redditstatic.com', // Pixel on /plugins
     'https://cdn.shopify.com', // App Bridge on /shopify/embedded
     'https://www.youtube.com', // iframe API for video tracking
+    'https://app.zipchat.ai', // The help chat widget
   ],
   // Inline styles: Privy's and Reown's modals, and style attributes throughout.
   'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
@@ -83,6 +84,7 @@ const DIRECTIVES = {
     'https://secure.walletconnect.org', // Reown social login
     'https://www.youtube-nocookie.com', // Landing video
     'https://www.youtube.com',
+    'https://app.zipchat.ai', // The help chat window
   ],
   'connect-src': [
     "'self'",
@@ -112,6 +114,7 @@ const DIRECTIVES = {
     'https://stats.g.doubleclick.net',
     // Pixel on /plugins
     'https://*.reddit.com',
+    'https://app.zipchat.ai', // The help chat widget's settings
   ],
 };
 

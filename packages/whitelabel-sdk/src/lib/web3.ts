@@ -4,7 +4,8 @@ import { Config } from '@/types';
 // WalletProvider removed - using ethers.BrowserProvider directly
 import { toHex, toHexString, ensureHexPrefix } from '@/utils/hexUtils';
 import { mLog } from '@/utils/mobileLogger';
-import { RpcClient, readProviderFor } from '@/lib/rpc/RpcClient';
+import { RpcClient, readProviderFor, rememberChain } from '@/lib/rpc/RpcClient';
+import { isRateLimited } from '@/lib/rpc/rateLimit';
 import { withWalletPrompt } from '@/lib/auth/walletPromptChannel';
 import { asTokenTransfer, sendsNativeValue } from './tokenTransfer';
 import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement';
@@ -162,6 +163,10 @@ export class GasCostCapError extends Error {
 }
 
 export class Web3Service {
+  /** The longest a sent transaction is waited on, and how often it is looked for. */
+  static readonly CONFIRMATION_WAIT_MS = 60_000;
+  static readonly CONFIRMATION_POLL_MS = 4000;
+
   private static instance: Web3Service | null = null;
   private provider: ethers.BrowserProvider | null = null;
   private readProvider: ethers.JsonRpcProvider | null = null; // Read-only RPC provider (no wallet needed)
@@ -180,6 +185,7 @@ export class Web3Service {
     // Initialize read-only provider immediately (no wallet needed)
     this.readProvider = readProviderFor(config.rpcUrl, config.chainId);
     // Single owner of read-only RPC — balance/token/contract reads delegate here.
+    rememberChain(config.rpcUrl, config.chainId);
     this.rpcClient = new RpcClient(config.rpcUrl, config.chainId);
     console.log('[Web3Service] Read-only RPC provider created (no wallet access)');
   }
@@ -2403,13 +2409,16 @@ export class Web3Service {
   /**
    * Wait for transaction confirmation using the unified ethers provider
    * @param transactionHash The transaction hash to wait for
-   * @param maxWaitTime Maximum wait time in milliseconds (default: 30 seconds)
+   * @param maxWaitTime Maximum wait in milliseconds. One minute by default, and never more:
+   *                    a longer ask is cut to a minute. Each look is a request against a
+   *                    rate-limited public endpoint, so the wait is bounded and unhurried.
    * @returns Transaction receipt if confirmed, null if timeout/failed
    */
-  async waitForTransaction(transactionHash: string, maxWaitTime: number = 30000, contractId?: string): Promise<any | null> {
+  async waitForTransaction(transactionHash: string, maxWaitTime: number = Web3Service.CONFIRMATION_WAIT_MS, contractId?: string): Promise<any | null> {
     if (!this.readProvider) {
       throw new Error('Read provider not initialized');
     }
+    maxWaitTime = Math.min(maxWaitTime, Web3Service.CONFIRMATION_WAIT_MS);
 
     console.log(`[Web3Service.waitForTransaction] Waiting for transaction confirmation: ${transactionHash}`);
     mLog.info('TransactionWait', '⏳ Starting manual polling for transaction confirmation', {
@@ -2425,8 +2434,10 @@ export class Web3Service {
     // which routes to the read provider (reliable RPC, not wallet provider).
 
     const startTime = Date.now();
-    const pollInterval = 2000; // Poll every 2 seconds
+    const pollInterval = Web3Service.CONFIRMATION_POLL_MS;
     let pollCount = 0;
+    // Whether the last look was refused for asking too often: a timeout then has a known cause.
+    let rateLimited = false;
 
     try {
       while (true) {
@@ -2435,7 +2446,13 @@ export class Web3Service {
 
         // Check if we've exceeded the timeout
         if (elapsedTime >= maxWaitTime) {
-          const errorMessage = contractId
+          const errorMessage = rateLimited
+            ? `We could not check whether your transaction confirmed (timed out after ${Math.floor(maxWaitTime / 1000)} seconds), ` +
+              `because the network is limiting how often this page can read from it. ` +
+              `It may still have gone through: check before sending it again.\n` +
+              `• Transaction: ${transactionHash}` +
+              (contractId ? `\n• Contract ID: ${contractId}` : '')
+            : contractId
             ? `Transaction confirmation timed out after ${Math.floor(maxWaitTime / 1000)} seconds. ` +
               `Your transaction may still be processing. Please contact support with:\n` +
               `• Contract ID: ${contractId}\n` +
@@ -2447,6 +2464,7 @@ export class Web3Service {
             contractId: contractId || 'unknown',
             elapsedSeconds: Math.floor(elapsedTime / 1000),
             pollAttempts: pollCount,
+            rateLimited,
             message: 'Transaction did not confirm within timeout period. User should contact support.'
           });
 
@@ -2460,6 +2478,7 @@ export class Web3Service {
           // Manual RPC call for eth_getTransactionReceipt
           // Use read-only RPC provider (no wallet access needed for reading receipts)
           const receipt = await this.readProvider.getTransactionReceipt(transactionHash);
+          rateLimited = false;
 
           if (receipt) {
             // Transaction has been mined
@@ -2497,10 +2516,15 @@ export class Web3Service {
         } catch (rpcError) {
           // RPC call failed - log but continue polling (might be temporary network issue)
           const errorMsg = rpcError instanceof Error ? rpcError.message : 'Unknown RPC error';
+          // A reverted or unreadable receipt is thrown from inside this try as well; those are
+          // answers, not failed reads, and must reach the caller.
+          if (errorMsg === 'Transaction failed' || errorMsg === 'Transaction status unknown') throw rpcError;
+          rateLimited = isRateLimited(rpcError);
           console.warn(`[Web3Service.waitForTransaction] RPC error during poll #${pollCount}:`, errorMsg);
           mLog.warn('TransactionWait', 'RPC error during polling (will retry)', {
             txHash: transactionHash,
             pollNumber: pollCount,
+            rateLimited,
             error: errorMsg
           });
 

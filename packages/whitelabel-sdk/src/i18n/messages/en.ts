@@ -637,6 +637,7 @@ export const en = {
     'You cannot make a payment to yourself. The seller wallet address ({seller}) matches your connected wallet ({buyer}).',
   'validation.amountRange': 'Enter {min} or more, or exactly {test} for a free test',
   'err.tokenNotConfigured': 'Token {token} address not configured',
+  'transaction.rateLimited': "The network is limiting how often this page can read from it. Wait a few seconds and try again.",
   'transaction.overGasCostCap':
     'This costs more in network fees ({cost} ETH) than is currently covered for you ({cap} ETH). Nothing was sent and nothing was charged. Try again later, when fees may be lower, or contact support.',
   'transaction.refusedNotVoter':
@@ -847,6 +848,7 @@ export const en = {
   'push.converting': "Converting {from} to {token}…",
   'push.convertTooDear': "Converting to {token} costs too much right now. Nothing was converted.",
   'push.convertShort': "The conversion now costs more {from} than your wallet holds. Nothing was converted.",
+  'push.convertUnreadable': "We could not check whether the converted {token} has reached your wallet, because the network is limiting how often this page can read from it. Nothing was paid. Wait a few seconds, check your balance, and try again.",
   'push.convertNotArrived': "The converted {token} has not reached your wallet yet. Nothing was paid; try again in a moment.",
   'addFunds.cannotBuyToken': "Some external suppliers can't support {token} yet. If your option is greyed out, use {token} you already hold or use USDC instead",
   'addFunds.addFromKraken': 'Add from Kraken',

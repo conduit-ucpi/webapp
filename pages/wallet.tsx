@@ -10,7 +10,7 @@ import ExpandableHash from '@/components/ui/ExpandableHash';
 import TokenGuide from '@/components/ui/TokenGuide';
 import { CashOutPanel } from '@conduit-ucpi/whitelabel-sdk';
 import { ethers } from 'ethers';
-import { RpcClient } from '@/lib/rpc/RpcClient';
+import { RpcClient, sharedRpcClient } from '@/lib/rpc/RpcClient';
 import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { ensureHexPrefix } from '@/utils/hexUtils';
@@ -67,7 +67,7 @@ export default function Wallet() {
       console.log('🔧 Loading chain info via READ-ONLY RPC (no wallet access!)');
 
       // Read via the single read-RPC owner (RpcClient) — no wallet access needed.
-      const rpcClient = new RpcClient(config.rpcUrl);
+      const rpcClient = sharedRpcClient(config.rpcUrl, config.chainId);
 
       // Get network info
       const chainId = await rpcClient.getChainId();

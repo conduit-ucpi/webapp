@@ -5,7 +5,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import { useLpOffers, useRefreshFromChain } from '@/hooks/useMarketplaceData';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { RpcClient } from '@/lib/rpc/RpcClient';
+import { sharedRpcClient } from '@/lib/rpc/RpcClient';
 import { displayCurrency } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
 import { formatDateTimeWithTZ } from '@/utils/validation';
@@ -115,7 +115,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
     if (!config?.rpcUrl || !residualEscrowKey) return;
     let cancelled = false;
     (async () => {
-      const client = new RpcClient(config.rpcUrl);
+      const client = sharedRpcClient(config.rpcUrl, config.chainId);
       const entries = await Promise.all(
         residualEscrowKey.split(',').map(async (escrow) => {
           try {
@@ -145,7 +145,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
     if (!config?.rpcUrl || !pendingKey) return;
     let cancelled = false;
     (async () => {
-      const client = new RpcClient(config.rpcUrl);
+      const client = sharedRpcClient(config.rpcUrl, config.chainId);
       const entries = await Promise.all(
         pendingKey.split(',').map(async (pair) => {
           const [vault, token] = pair.split(':');

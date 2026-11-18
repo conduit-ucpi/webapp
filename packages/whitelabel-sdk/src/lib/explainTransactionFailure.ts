@@ -20,6 +20,9 @@ export function explainTransactionFailure(e: unknown, t: TranslateFn): string | 
     return t('transaction.overGasCostCap', { cost: formatEth(costWei), cap: formatEth(capWei) });
   }
 
+  // A read refused for asking too often is not a broken contract: see lib/rpc/rateLimit.ts.
+  if (e.name === 'RpcRateLimitedError') return t('transaction.rateLimited');
+
   if (e.name !== 'ContractRefusedError') return null;
   const { reason, from } = e as ContractRefusedError;
   switch (reason?.name) {

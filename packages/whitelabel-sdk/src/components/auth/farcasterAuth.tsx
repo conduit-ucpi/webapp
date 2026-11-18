@@ -16,7 +16,7 @@ import {
 } from './authInterface';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { ethers, formatUnits } from 'ethers';
-import { RpcClient } from '@/lib/rpc/RpcClient';
+import { RpcClient, sharedRpcClient } from '@/lib/rpc/RpcClient';
 // Contract methods are now deprecated - use API endpoints instead
 import { BackendAuth } from './backendAuth';
 import { useT } from '../../i18n';
@@ -53,7 +53,7 @@ class FarcasterSyntheticProvider {
     // Reads go through the single read-RPC owner (RpcClient). We keep a
     // reference to its underlying provider for the ethers-provider interface
     // methods RpcClient does not (yet) expose (getBalance/estimateGas/call).
-    this.rpcClient = new RpcClient(rpcUrl);
+    this.rpcClient = sharedRpcClient(rpcUrl);
     this.jsonRpcProvider = this.rpcClient.getProvider();
     this.rpcUrl = rpcUrl;
     this.address = address;
@@ -663,7 +663,7 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
         throw new Error('RPC URL not configured');
       }
       // Read-only provider from the single read-RPC owner; signing handled by Wagmi.
-      return new RpcClient(config.rpcUrl).getProvider();
+      return sharedRpcClient(config.rpcUrl, config.chainId).getProvider();
     };
 
     (provider as any).getUSDCBalance = async (userAddress?: string) => {
@@ -676,7 +676,7 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
       // Read balance via the read-only RPC library. Preserve the original
       // hardcoded 6-decimal formatting (USDC) rather than reading decimals
       // on-chain, so behavior is unchanged.
-      const provider = new RpcClient(config.rpcUrl).getProvider();
+      const provider = sharedRpcClient(config.rpcUrl, config.chainId).getProvider();
       const usdcContract = new ethers.Contract(
         tokenAddress,
         ERC20_ABI,
@@ -1171,7 +1171,7 @@ function FarcasterAuthProviderInner({ children, AuthContext }: {
 
       // Read balance via the read-only RPC library (preserve hardcoded
       // 6-decimal USDC formatting below).
-      const provider = new RpcClient(config.rpcUrl).getProvider();
+      const provider = sharedRpcClient(config.rpcUrl, config.chainId).getProvider();
       const usdcContract = new ethers.Contract(
         tokenAddress,
         ERC20_ABI,

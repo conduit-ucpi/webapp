@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { isRateLimited } from '@/lib/rpc/rateLimit';
 import { useRouter } from 'next/router';
 import { ethers } from 'ethers';
 import { useAuth } from '@/components/auth';
@@ -141,8 +142,8 @@ export function paidEscrowFrom(settled: Settled | null, fallbackAddress: string)
 
 /** How long a wallet payment waits to see its own transfer at the escrow address before settling. */
 const ZERO = BigInt(0);
-const ESCROW_FUNDS_POLLS = 15;
-const ESCROW_FUNDS_POLL_MS = 2000;
+const ESCROW_FUNDS_POLLS = 8;
+const ESCROW_FUNDS_POLL_MS = 4000;
 
 // 'refused' is final: a sanctions refusal. Nothing on it can pay, and nothing leads back.
 type Stage = 'details' | 'review' | 'done' | 'refused';
@@ -536,10 +537,17 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
         );
         // Sent is not mined: the transfer that follows needs the token to be in the wallet.
         let arrived = false;
+        let rateLimited = false;
         for (let attempt = 0; attempt < ESCROW_FUNDS_POLLS && !arrived; attempt++) {
-          arrived = unitsOf(await getTokenBalance(address!, token.address).catch(() => '0'), token.decimals) >= owedUnits;
+          const balance = await getTokenBalance(address!, token.address).then(
+            (read) => ((rateLimited = false), read),
+            (e) => ((rateLimited = isRateLimited(e)), '0')
+          );
+          arrived = unitsOf(balance, token.decimals) >= owedUnits;
           if (!arrived) await new Promise((resolve) => setTimeout(resolve, ESCROW_FUNDS_POLL_MS));
         }
+        // Unreadable is not "has not arrived": say which, so nobody converts twice.
+        if (!arrived && rateLimited) return stop(t('push.convertUnreadable', { token: token.symbol }));
         if (!arrived) return stop(t('push.convertNotArrived', { token: token.symbol }));
       }
       updateStep('convert', 'completed');

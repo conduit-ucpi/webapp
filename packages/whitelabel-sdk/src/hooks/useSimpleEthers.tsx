@@ -1,4 +1,5 @@
 import { useAuth } from '@/components/auth';
+import { RATE_LIMIT_MESSAGE, isRateLimited } from '@/lib/rpc/rateLimit';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { ethers } from 'ethers';
 import { useCallback } from 'react';
@@ -6,8 +7,10 @@ import { mLog } from '@/utils/mobileLogger';
 import { encodeSwap, type SwapVenue } from '@/lib/stablecoinSwap';
 
 /** How long to wait for an approval to be mined before the swap that needs it is sent. */
-const ALLOWANCE_POLLS = 15;
-const ALLOWANCE_POLL_MS = 2000;
+// About half a minute, looked for unhurriedly: each look is a request against a rate-limited
+// public endpoint.
+const ALLOWANCE_POLLS = 8;
+const ALLOWANCE_POLL_MS = 4000;
 
 /**
  * Simple hook that provides Web3Service for ALL blockchain operations
@@ -223,11 +226,21 @@ export function useSimpleEthers() {
           movesFunds: false,
         });
         let seen = false;
+        let rateLimited = false;
         for (let attempt = 0; attempt < ALLOWANCE_POLLS && !seen; attempt++) {
           await new Promise((resolve) => setTimeout(resolve, ALLOWANCE_POLL_MS));
-          seen = await allowed().catch(() => false);
+          seen = await allowed().then(
+            (yes) => ((rateLimited = false), yes),
+            (e) => ((rateLimited = isRateLimited(e)), false)
+          );
         }
-        if (!seen) throw new Error('The approval has not shown up yet. Nothing was converted; try again in a moment.');
+        if (!seen) {
+          throw new Error(
+            rateLimited
+              ? `Nothing was converted. ${RATE_LIMIT_MESSAGE}`
+              : 'The approval has not shown up yet. Nothing was converted; try again in a moment.'
+          );
+        }
       }
 
       return await web3Service.fundAndSendTransaction({

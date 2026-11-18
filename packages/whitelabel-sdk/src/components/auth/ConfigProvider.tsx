@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/apiFetch';
+import { rememberChain } from '@/lib/rpc/RpcClient';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Config, ConfigContextType } from '@/types';
 
@@ -14,6 +15,8 @@ export function ConfigProvider({ children }: { children: React.ReactNode }) {
         const response = await apiFetch('/api/config');
         if (response.ok) {
           const configData = await response.json();
+          // So every reader's client is pinned to the chain and need never ask the node for it.
+          rememberChain(configData?.rpcUrl, configData?.chainId);
           setConfig(configData);
         }
       } catch (error) {

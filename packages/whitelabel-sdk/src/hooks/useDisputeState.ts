@@ -1,6 +1,6 @@
 import { apiFetch } from '@/lib/apiFetch';
 import { useCallback, useEffect, useState } from 'react';
-import { RpcClient, EscrowSettlementState } from '@/lib/rpc/RpcClient';
+import { EscrowSettlementState, sharedRpcClient } from '@/lib/rpc/RpcClient';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import type { ArbiterState } from '@/types/marketplace';
 
@@ -85,7 +85,7 @@ export function useSettlementState(contractAddress?: string | null): Fetched<Esc
     setLoading(true);
     setError(null);
     try {
-      const fresh = await new RpcClient(config.rpcUrl).getSettlementState(contractAddress);
+      const fresh = await sharedRpcClient(config.rpcUrl, config.chainId).getSettlementState(contractAddress);
       setData(fresh);
       return fresh;
     } catch (e: any) {

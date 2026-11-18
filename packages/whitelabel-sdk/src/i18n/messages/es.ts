@@ -737,6 +737,7 @@ export const es: Catalogue = {
   'validation.amountRange':
     'Ingresa {min} o más, o exactamente {test} para una prueba gratis',
   'err.tokenNotConfigured': 'No está configurada la dirección del token {token}',
+  'transaction.rateLimited': "La red está limitando la frecuencia con la que esta página puede consultarla. Espera unos segundos e inténtalo de nuevo.",
   'transaction.overGasCostCap':
     'Esto cuesta más en comisiones de red ({cost} ETH) de lo que se te cubre actualmente ({cap} ETH). No se envió nada ni se cobró nada. Vuelve a intentarlo más tarde, cuando las comisiones puedan ser más bajas, o contacta con soporte.',
   'transaction.refusedNotVoter':
@@ -946,6 +947,7 @@ export const es: Catalogue = {
   'push.converting': "Convirtiendo {from} a {token}…",
   'push.convertTooDear': "Convertir a {token} cuesta demasiado ahora mismo. No se convirtió nada.",
   'push.convertShort': "La conversión ahora cuesta más {from} de los que tiene tu billetera. No se convirtió nada.",
+  'push.convertUnreadable': "No pudimos comprobar si los {token} convertidos han llegado a tu billetera, porque la red está limitando la frecuencia con la que esta página puede consultarla. No se pagó nada. Espera unos segundos, revisa tu saldo e inténtalo de nuevo.",
   'push.convertNotArrived': "Los {token} convertidos aún no han llegado a tu billetera. No se pagó nada; inténtalo de nuevo en un momento.",
   'addFunds.cannotBuyToken': 'Algunos proveedores externos todavía no admiten {token}. Si tu opción aparece desactivada, usa {token} que ya tengas o usa USDC',
   'addFunds.addFromKraken': 'Agregar desde Kraken',

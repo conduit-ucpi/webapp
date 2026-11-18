@@ -3,7 +3,7 @@ import { ethers } from 'ethers';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { RpcClient } from '@/lib/rpc/RpcClient';
+import { sharedRpcClient } from '@/lib/rpc/RpcClient';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { displayCurrency } from '@/utils/currency';
 import { annualisedYield, daysUntil, escrowTitle, priceOffer } from '@/utils/marketplace';
@@ -69,7 +69,7 @@ export default function MakeOfferModal({ escrow, lpAddress, onClose, onOfferMade
     (async () => {
       if (!config?.rpcUrl) return;
       try {
-        const value = await new RpcClient(config.rpcUrl).getPayoutAmount(escrow.escrowContract);
+        const value = await sharedRpcClient(config.rpcUrl, config.chainId).getPayoutAmount(escrow.escrowContract);
         if (!cancelled) setPayout(value);
       } catch (e) {
         console.warn('Could not read payoutAmount from the escrow:', e);

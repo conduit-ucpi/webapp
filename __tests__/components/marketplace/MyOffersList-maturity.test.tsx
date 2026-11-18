@@ -22,6 +22,12 @@ jest.mock('@/lib/rpc/RpcClient', () => ({
     getTokenBalance,
     getPayoutAmount,
   })),
+  sharedRpcClient: jest.fn().mockImplementation(() => ({
+    getEscrowTerms,
+    getContractState,
+    getTokenBalance,
+    getPayoutAmount,
+  })),
 }));
 
 const lpOffers = jest.fn();

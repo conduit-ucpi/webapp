@@ -16,6 +16,8 @@
  */
 
 import { ethers } from 'ethers';
+import { mLog } from '@/utils/mobileLogger';
+import { RpcRateLimitedError, hostOf, isRateLimited } from './rateLimit';
 import { ERC20_ABI, ESCROW_CONTRACT_ABI, NO_VOTE_SENTINEL, OFFER_VAULT_ABI, OFFER_VAULT_STATUS } from '@/lib/web3';
 
 export interface TokenMetadata {
@@ -122,9 +124,95 @@ export function clearDecimalsCache(): void {
 export function readProviderFor(rpcUrl: string, chainId?: number): ethers.JsonRpcProvider {
   // Number(): a string would be taken as a network NAME ("8453" is not one) and throw.
   const id = Number(chainId);
-  return Number.isInteger(id) && id > 0
-    ? new ethers.JsonRpcProvider(rpcUrl, id, { staticNetwork: true })
-    : new ethers.JsonRpcProvider(rpcUrl);
+  const provider =
+    Number.isInteger(id) && id > 0
+      ? new ethers.JsonRpcProvider(rpcUrl, id, { staticNetwork: true })
+      : new ethers.JsonRpcProvider(rpcUrl);
+  return reportingRateLimits(provider, rpcUrl);
+}
+
+/** When a rate limit was last logged, by endpoint host: one line per burst, not one per read. */
+const lastRateLimitLog = new Map<string, number>();
+const RATE_LIMIT_LOG_EVERY_MS = 5000;
+
+/**
+ * Every read on a provider goes through `send`. A rate-limited one is logged in plain words and
+ * rethrown as RpcRateLimitedError; anything else passes through untouched. See rateLimit.ts.
+ */
+function reportingRateLimits(provider: ethers.JsonRpcProvider, rpcUrl: string): ethers.JsonRpcProvider {
+  // Nothing to wrap on a stand-in that has no `send` (tests replace the provider wholesale).
+  if (typeof provider?.send !== 'function') return provider;
+  const send = provider.send.bind(provider);
+  provider.send = async (method: string, params: Array<any> | Record<string, any>) => {
+    try {
+      return await send(method, params);
+    } catch (e) {
+      if (!isRateLimited(e)) throw e;
+      const host = hostOf(rpcUrl);
+      const now = Date.now();
+      if (now - (lastRateLimitLog.get(host) ?? 0) >= RATE_LIMIT_LOG_EVERY_MS) {
+        lastRateLimitLog.set(host, now);
+        const detail = { host, method, error: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200) };
+        console.warn(`[rpc] RATE LIMITED by ${host} on ${method}`, detail);
+        mLog.warn('RpcRateLimit', `RATE LIMITED by ${host} on ${method}`, detail);
+      }
+      throw new RpcRateLimitedError(method, e);
+    }
+  };
+  return provider;
+}
+
+// ── one client per endpoint ────────────────────────────────────────────────────────────────
+//
+// ⚠️ THE READ ENDPOINT IS RATE-LIMITED, AND IT IS A PUBLIC ONE. Every request the page makes
+//    counts against the visitor's allowance, and a page that runs out stops being able to read
+//    balances or estimate gas at all. Two habits waste that allowance, and both came from
+//    building a new client wherever a read was wanted:
+//
+//    1. A client that is not told its chain asks the node for it (`eth_chainId`) before it
+//       reads anything. A fresh client per read pays that on every read.
+//    2. ethers folds requests made together on ONE client into a single HTTP request. Requests
+//       spread over several clients are never folded.
+//
+//    So: the chain an endpoint is on is remembered when the configuration loads, and every
+//    reader takes the SAME pinned client for that endpoint.
+
+const chainOf = new Map<string, number>();
+const sharedClients = new Map<string, RpcClient>();
+
+/** Record which chain an endpoint is on, so its shared client need never ask. */
+export function rememberChain(rpcUrl: string | undefined, chainId: number | string | undefined): void {
+  const id = Number(chainId);
+  if (!rpcUrl || !Number.isInteger(id) || id <= 0) return;
+  if (chainOf.get(rpcUrl) === id) return;
+  chainOf.set(rpcUrl, id);
+  // A client built before the chain was known is unpinned: the next caller gets a pinned one.
+  for (const key of Array.from(sharedClients.keys())) {
+    if (key.startsWith(`${rpcUrl}|`)) sharedClients.delete(key);
+  }
+}
+
+/**
+ * THE client for an endpoint: one instance, pinned to its chain when that is known. Use this
+ * wherever a read is wanted; `new RpcClient(...)` is for the one caller that must not share
+ * (verification, which reads through an endpoint the API does not choose).
+ */
+export function sharedRpcClient(rpcUrl: string, chainId?: number | string): RpcClient {
+  const given = Number(chainId);
+  const id = Number.isInteger(given) && given > 0 ? given : chainOf.get(rpcUrl);
+  const key = `${rpcUrl}|${id ?? ''}`;
+  let client = sharedClients.get(key);
+  if (!client) {
+    client = new RpcClient(rpcUrl, id);
+    sharedClients.set(key, client);
+  }
+  return client;
+}
+
+/** For tests. */
+export function forgetSharedRpcClients(): void {
+  sharedClients.clear();
+  chainOf.clear();
 }
 
 export class RpcClient {

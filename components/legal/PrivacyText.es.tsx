@@ -14,7 +14,7 @@ import { openConsentSettings } from '@/lib/consent';
  * changes, __tests__/components/legal/translations.test.tsx fails and prints the new value: update
  * the Spanish to match, then set this to it. Never update this without updating the Spanish.
  */
-export const TRANSLATED_FROM = '48fd9d3789d8489a';
+export const TRANSLATED_FROM = '78e970fbcecdd916';
 
 export default function PrivacyTextEs() {
   return (
@@ -135,8 +135,8 @@ export default function PrivacyTextEs() {
         <p className="text-secondary-700 dark:text-secondary-200">
           Si tienes preguntas sobre esta Política de Privacidad o sobre nuestras prácticas de tratamiento de datos,
           escríbenos a{' '}
-          <a href="mailto:privacy@conduit-ucpi.com" className="text-primary-600 hover:text-primary-500">
-            privacy@conduit-ucpi.com
+          <a href="mailto:privacy@stabledrop.me" className="text-primary-600 hover:text-primary-500">
+            privacy@stabledrop.me
           </a>
         </p>
       </section>

@@ -242,19 +242,20 @@ export const EMBED_EXAMPLES: EmbedExample[] = [
   {
     key: 'javascript',
     label: 'Any website',
-    intro: 'Three lines. The SDK opens the checkout and tells your page when the payment lands.',
+    intro: 'One script and a button. The SDK opens the checkout and tells your page when the payment lands.',
     language: 'html',
-    code: `<script src="https://conduit-ucpi.com/sdk/checkout.js"></script>
-
-<button id="checkout-btn">Pay with USDC</button>
-
+    code: `<script src="https://stabledrop.me/conduit-checkout.js"></script>
 <script>
   ConduitCheckout.init({
-    amount: 99.99,
-    description: "Product Name",
-    onSuccess: (txHash) => console.log("Paid:", txHash)
+    sellerAddress: "0xYourWalletAddress",
+    baseUrl: "https://stabledrop.me",
+    onSuccess: (data) => console.log("Paid:", data)
   });
-</script>`,
+</script>
+
+<button onclick="ConduitCheckout.open({ amount: '99.99', description: 'Product Name' })">
+  Pay with USDC
+</button>`,
     link: { label: 'Integration guide', href: '/integrate' },
   },
   {

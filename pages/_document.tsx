@@ -12,7 +12,8 @@ export default class CustomDocument extends Document<DocumentProps> {
 
     // Auto-detect the base URL from the request (SSR), fallback to env for SSG
     const { req } = ctx;
-    let farcasterBaseUrl = 'https://conduit-ucpi.com'; // Default fallback for static generation
+    // The static export (Cloudflare Pages) has no request, so this is what ships there.
+    let farcasterBaseUrl = 'https://stabledrop.me';
 
     if (req && req.headers.host) {
       const protocol = req.headers['x-forwarded-proto'] || ((req.connection as any)?.encrypted ? 'https' : 'http');

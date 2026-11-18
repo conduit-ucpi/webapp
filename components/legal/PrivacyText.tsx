@@ -122,8 +122,8 @@ export default function PrivacyTextEn() {
         <h2 className="text-2xl font-semibold text-secondary-900 dark:text-white mb-4">8. Contact Us</h2>
         <p className="text-secondary-700 dark:text-secondary-200">
           If you have any questions about this Privacy Policy or our data practices, please contact us at{' '}
-          <a href="mailto:privacy@conduit-ucpi.com" className="text-primary-600 hover:text-primary-500">
-            privacy@conduit-ucpi.com
+          <a href="mailto:privacy@stabledrop.me" className="text-primary-600 hover:text-primary-500">
+            privacy@stabledrop.me
           </a>
         </p>
       </section>

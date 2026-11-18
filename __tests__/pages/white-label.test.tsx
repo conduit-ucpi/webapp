@@ -123,3 +123,19 @@ describe('the request form', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Use Copy email');
   });
 });
+
+it("the merchant's checkout-button snippet loads our SDK and opens the branded checkout", () => {
+  const { runCheckoutSnippet } = require('../../test-utils/checkoutSnippet');
+  mockPartner = { id: 'cobro' };
+  const { container } = render(<WhiteLabelGuide />);
+  const snippet = Array.from(container.querySelectorAll('pre code'))
+    .map((c) => c.textContent || '')
+    .find((t) => t.includes('ConduitCheckout.init'));
+  expect(snippet).toBeDefined();
+  const origin = window.location.origin;
+  const run = runCheckoutSnippet(snippet!, { allowedOrigins: [origin] });
+  expect(run.scriptSrcs).toEqual([`${origin}/conduit-checkout.js`]);
+  expect(run.opened).toHaveLength(1);
+  expect(run.opened[0].searchParams.get('b')).toBe('cobro');
+  expect(run.opened[0].searchParams.get('order_id')).toBe('1042');
+});

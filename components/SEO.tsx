@@ -21,7 +21,7 @@ export default function SEO({
   noindex = false,
   structuredData,
 }: SEOProps) {
-  const baseUrl = 'https://conduit-ucpi.com';
+  const baseUrl = 'https://stabledrop.me';
   const fullCanonical = canonical ? `${baseUrl}${canonical}` : baseUrl;
 
   return (

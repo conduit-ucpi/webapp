@@ -2,7 +2,7 @@
  * /integrate: a white-label partner's merchants copy their samples from the partner's framed page,
  * so the partner's brand goes into them — and the server-side route is documented.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { I18nProvider } from '@conduit-ucpi/whitelabel-sdk';
 
 // What the white-label service holds for the brand the page resolved; null on our own sites.
@@ -112,5 +112,56 @@ describe('/integrate', () => {
       expect(screen.getByText('Check a payment yourself')).toBeInTheDocument();
       expect(text()).not.toContain('Verifica un pago');
     });
+  });
+});
+
+describe('checkout snippets', () => {
+  const { runCheckoutSnippet } = require('../../test-utils/checkoutSnippet');
+  const origin = window.location.origin;
+  const code = (id: string) => {
+    const el = document.getElementById(id);
+    if (!el) throw new Error(`no #${id} code block`);
+    return el.textContent || '';
+  };
+  // The quick start's three steps, pasted together as the page tells the merchant to.
+  const quickStart = () => [code('step1'), code('step2'), code('step3')].join('\n');
+
+  it('the quick start loads our SDK, initialises, and its button opens the checkout', () => {
+    render(<IntegratePage />);
+    const run = runCheckoutSnippet(quickStart(), { allowedOrigins: [origin] });
+    expect(run.scriptSrcs).toEqual([`${origin}/conduit-checkout.js`]);
+    expect(run.initOptions).toMatchObject({ sellerAddress: expect.any(String), baseUrl: origin });
+    expect(run.opened).toHaveLength(1);
+    expect(run.opened[0].pathname).toBe('/contract-create');
+    expect(run.opened[0].searchParams.get('amount')).toBe('50.00');
+  });
+
+  it.each([
+    ['Basic Payment', 'ex-basic', {}, { amount: '29.99', order_id: 'ORDER-12345', tokenSymbol: 'USDC' }],
+    ['Extended Protection', 'ex-extended', {}, { amount: '99.00', email: 'customer@example.com' }],
+    ['Custom Amount', 'ex-custom', { amount: '12.50' }, { amount: '12.50', description: 'Support our project' }],
+    ['USDT Payment', 'ex-usdt', {}, { amount: '500.00', tokenSymbol: 'USDT' }],
+  ])('the "%s" example opens the checkout for what it says', (tab, id, inputs, expected) => {
+    render(<IntegratePage />);
+    fireEvent.click(screen.getAllByRole('button', { name: tab })[0]);
+    const pasted = [code('step1'), code('step2'), code(id)].join('\n');
+    const run = runCheckoutSnippet(pasted, { allowedOrigins: [origin], inputs });
+    expect(run.opened).toHaveLength(1);
+    for (const [k, v] of Object.entries(expected)) expect(run.opened[0].searchParams.get(k)).toBe(v);
+  });
+
+  it('the webhook setup is valid in place of the quick start init', () => {
+    render(<IntegratePage />);
+    const pasted = `${code('step1')}\n<script>${code('webhook-init')}</script>\n${code('step3')}`;
+    const run = runCheckoutSnippet(pasted, { allowedOrigins: [origin] });
+    expect(run.initOptions).toMatchObject({ webhookUrl: expect.stringMatching(/^https:/), baseUrl: origin });
+    expect(run.opened).toHaveLength(1);
+  });
+
+  it("a partner's samples carry their brand into the checkout", () => {
+    mockPartner = { id: 'cobro', name: 'COBRO', links: {} };
+    render(<IntegratePage />);
+    const run = runCheckoutSnippet(quickStart(), { allowedOrigins: [origin] });
+    expect(run.opened[0].searchParams.get('b')).toBe('cobro');
   });
 });

@@ -101,13 +101,13 @@ export default function Plugins() {
   const API_DOCS_URL = useApiDocsUrl();
   const pageTitle = "Protected Payments for WordPress, Shopify & AI Agents (MCP) | Non-Custodial Developer Tools";
   const pageDescription = "Non-custodial protected-payment infrastructure for e-commerce and AI agents. Open-source developer tools for WordPress and Shopify, plus an MCP server so Claude, ChatGPT or any agent can pay with buyer protection. Smart contract-based buyer protection without custody of funds.";
-  const pageUrl = "https://conduit-ucpi.com/plugins";
-  const imageUrl = "https://conduit-ucpi.com/og-plugins.png";
+  const pageUrl = "https://stabledrop.me/plugins";
+  const imageUrl = "https://stabledrop.me/preview.png";
 
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
-    "name": "Conduit UCPI - Protected Payments SDK",
+    "name": "Stabledrop - Protected Payments SDK",
     "applicationCategory": "DeveloperApplication",
     "operatingSystem": "Web",
     "offers": {
@@ -137,7 +137,7 @@ export default function Plugins() {
     "creator": {
       "@type": "Organization",
       "name": "Conduit UCPI",
-      "url": "https://conduit-ucpi.com"
+      "url": "https://stabledrop.me"
     }
   };
 
@@ -310,27 +310,29 @@ export default function Plugins() {
                 <div className="py-6">
                   <Collapsible eyebrow="Any website">
                     <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
-                      Add secure USDC payments with built-in buyer protection using 3 lines of code.
+                      Add secure USDC payments with built-in buyer protection using one script and a button.
                     </p>
 
                     <div className="mb-10">
                       <pre className="bg-secondary-900 dark:bg-secondary-800 text-green-400 p-6 rounded-lg overflow-x-auto text-xs sm:text-sm leading-relaxed">
                         <code>{`<!-- Add script to your HTML -->
-<script src="https://conduit-ucpi.com/sdk/checkout.js"></script>
+<script src="https://stabledrop.me/conduit-checkout.js"></script>
 
-<!-- Add checkout button -->
-<button id="checkout-btn">Pay with USDC</button>
-
-<!-- Initialize checkout -->
+<!-- Initialize checkout with your wallet -->
 <script>
   ConduitCheckout.init({
-    amount: 99.99,
-    description: "Product Name",
-    onSuccess: (txHash) => {
-      console.log("Payment successful:", txHash);
+    sellerAddress: "0xYourWalletAddress",
+    baseUrl: "https://stabledrop.me",
+    onSuccess: (data) => {
+      console.log("Payment successful:", data);
     }
   });
-</script>`}</code>
+</script>
+
+<!-- Add checkout button -->
+<button onclick="ConduitCheckout.open({ amount: '99.99', description: 'Product Name' })">
+  Pay with USDC
+</button>`}</code>
                       </pre>
                     </div>
 

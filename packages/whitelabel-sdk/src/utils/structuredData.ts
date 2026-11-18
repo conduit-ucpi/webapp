@@ -8,9 +8,9 @@ export const financialServiceSchema = {
   "@type": "FinancialService",
   "name": "Stabledrop",
   "description": "100% open source protected payments in USDC stablecoins with built-in buyer protection. Funds are held by a smart contract until a pre-agreed release date, with automatic dispute resolution. No KYC/KYB, no floats, no minimum volumes. 1% flat fee, instant settlement.",
-  "url": "https://conduit-ucpi.com",
-  "logo": "https://conduit-ucpi.com/icon.png",
-  "image": "https://conduit-ucpi.com/preview.png",
+  "url": "https://stabledrop.me",
+  "logo": "https://stabledrop.me/icon.png",
+  "image": "https://stabledrop.me/preview.png",
   "sameAs": ["https://github.com/conduit-ucpi", "https://app.instantescrow.nz"],
   "priceRange": "1%",
   "paymentAccepted": ["USDC", "Cryptocurrency", "Stablecoin"],
@@ -26,8 +26,8 @@ export const financialServiceSchema = {
   },
   "offers": { "@type": "Offer", "priceCurrency": "USD", "price": "1", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "0.01", "priceCurrency": "USD", "referenceQuantity": { "@type": "QuantitativeValue", "value": "1", "unitText": "TRANSACTION" } } },
   "serviceType": "Protected Stablecoin Payments",
-  "provider": { "@type": "Organization", "name": "Conduit UCPI", "url": "https://conduit-ucpi.com" },
-  "termsOfService": "https://conduit-ucpi.com/terms-of-service",
+  "provider": { "@type": "Organization", "name": "Conduit UCPI", "url": "https://stabledrop.me" },
+  "termsOfService": "https://stabledrop.me/terms-of-service",
   "slogan": "Stablecoin payments made safe and easy"
 };
 
@@ -45,7 +45,7 @@ export const articleSchema = {
     "name": "Stabledrop",
     "logo": {
       "@type": "ImageObject",
-      "url": "https://conduit-ucpi.com/icon.png"
+      "url": "https://stabledrop.me/icon.png"
     }
   },
   "datePublished": "2025-11-24",

@@ -24,6 +24,9 @@ export const SIGNED_ACTION_LOG_TAG = 'SIGNED ACTION';
  */
 export const FUND_TRANSFER_LOG_TAG = 'FUND TRANSFER';
 
+/** And gas for a conversion's two steps (chainservice's SwapFundingService uses the same tag). */
+export const FUND_SWAP_LOG_TAG = 'FUND SWAP';
+
 /** An address as the logs show them: `0x9a42***989c`. */
 export function shortAddress(address: unknown): string {
   return typeof address === 'string' ? maskAddress(address) : String(address);

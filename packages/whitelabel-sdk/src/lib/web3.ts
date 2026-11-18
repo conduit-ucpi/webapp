@@ -8,6 +8,7 @@ import { RpcClient, readProviderFor, rememberChain } from '@/lib/rpc/RpcClient';
 import { isRateLimited } from '@/lib/rpc/rateLimit';
 import { withWalletPrompt } from '@/lib/auth/walletPromptChannel';
 import { asTokenTransfer, sendsNativeValue } from './tokenTransfer';
+import { asSwapApproval, asSwapConversion } from '@/lib/swapSteps';
 import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement';
 
 // ERC20 ABI for USDC interactions
@@ -1181,23 +1182,21 @@ export class Web3Service {
     //    only as a figure it may lower its own to; it can never raise what is sent.
     const transfer = asTokenTransfer(tx);
     if (transfer) {
-      console.log('Requesting gas for a token transfer from chainservice...', transfer);
-      const response = await apiFetch('/api/chain/fund-transfer', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ walletAddress: userAddress, ...transfer, neededWei: totalGasNeeded.toString() })
-      });
-      const answer = await response.json().catch(() => ({}));
-      console.log(`[fund-transfer] answered ${response.status}`, answer);
-      if (!response.ok || !answer.success) {
-        // chainservice's own sentence: it says why, in words the person can act on.
-        throw new Error(answer.message || answer.error || `Gas for this transfer could not be arranged (${response.status}). Try again.`);
-      }
-      return answer.funded === true;
+      return this.askForGasByName('/api/chain/fund-transfer', 'transfer', { walletAddress: userAddress, ...transfer }, totalGasNeeded);
     }
 
-    // Everything that is not a plain token transfer still asks the older way, by amount.
+    // The two steps of a stablecoin conversion ask the same way, each by naming itself
+    // (lib/swapSteps.ts). chainservice builds the call from these terms and simulates it.
+    const approval = asSwapApproval(tx);
+    if (approval) {
+      return this.askForGasByName('/api/chain/fund-swap-approval', 'approval', { walletAddress: userAddress, ...approval }, totalGasNeeded);
+    }
+    const conversion = asSwapConversion(tx, userAddress);
+    if (conversion) {
+      return this.askForGasByName('/api/chain/fund-swap', 'conversion', { walletAddress: userAddress, ...conversion }, totalGasNeeded);
+    }
+
+    // Everything else still asks the older way, by amount.
     console.log('Requesting wallet funding from chainservice...');
     const fundResponse = await apiFetch('/api/chain/fund-wallet', {
       method: 'POST',
@@ -1219,6 +1218,27 @@ export class Web3Service {
       throw new Error(`Wallet funding failed: ${fundResult.error || 'Unknown error'}`);
     }
     return true;
+  }
+
+  /**
+   * Ask for gas by saying what it is for. True when gas was sent, false when the wallet already
+   * could; a refusal throws chainservice's own sentence, which says why in words the person can
+   * act on, and is not retried the older way.
+   */
+  private async askForGasByName(path: string, what: string, named: Record<string, string>, totalGasNeeded: bigint): Promise<boolean> {
+    console.log(`Requesting gas for a ${what} from chainservice...`, named);
+    const response = await apiFetch(path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ ...named, neededWei: totalGasNeeded.toString() })
+    });
+    const answer = await response.json().catch(() => ({}));
+    console.log(`[${path.split('/').pop()}] answered ${response.status}`, answer);
+    if (!response.ok || !answer.success) {
+      throw new Error(answer.message || answer.error || `Gas for this ${what} could not be arranged (${response.status}). Try again.`);
+    }
+    return answer.funded === true;
   }
 
   async prewarmTransaction(txParams: { to: string; data: string; value?: string }): Promise<void> {

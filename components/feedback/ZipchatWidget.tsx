@@ -6,10 +6,12 @@ export const ZIPCHAT_SCRIPT_URL = 'https://app.zipchat.ai/widget/zipchat.js?id=Z
 const SCRIPT_ID = 'zipchat-widget-script';
 
 /**
- * How far up from the bottom of the window FeedbackButton and ReportProblemButton must start so they
- * sit above Zipchat's launcher. Set on <html>; 0px when the launcher is anywhere but the bottom right.
+ * How far up from the bottom of the window FeedbackButton must start so it sits above Zipchat's
+ * launcher. Set on <html>; 0px when the launcher is anywhere but the bottom right.
  */
 export const CLEARANCE_VAR = '--chat-clearance';
+/** Set on <html> while Zipchat's chat window is open, so our button can step out of its way. */
+export const CHAT_OPEN_ATTR = 'data-chat-open';
 const GAP = 12;
 
 function framed(): boolean {
@@ -25,6 +27,11 @@ function launcher(): Element | null {
   return document.getElementById('zipchat-shadow-host')?.shadowRoot?.getElementById('widget-chat-container') ?? null;
 }
 
+/** Zipchat's chat window. It goes straight under <body>, and says when it is showing. */
+function chatWindow(): Element | null {
+  return document.getElementById('zipchat-iframe');
+}
+
 /** The clearance a launcher in the bottom right needs, in px; 0 for one that is hidden or elsewhere. */
 export function clearanceFor(el: Element | null): number {
   if (!el) return 0;
@@ -36,10 +43,11 @@ export function clearanceFor(el: Element | null): number {
 }
 
 /**
- * The floating "ask a question" chat, mounted once in ClientOnlyApp beside the feedback buttons.
+ * The floating "ask a question" chat, mounted once in ClientOnlyApp beside FeedbackButton.
  *
  * Zipchat draws its own launcher, and its corner, size and offset are set in the Zipchat dashboard, so
- * rather than assume them this measures it and lifts our two buttons above it (CLEARANCE_VAR).
+ * rather than assume them this measures it and lifts our button above it (CLEARANCE_VAR), and says
+ * when the chat window is open (CHAT_OPEN_ATTR) so our button can hide behind it.
  *
  * Not loaded on a partner's white-label page or inside someone else's frame: the bot answers for
  * Stabledrop, and those pages are the partner's. It is decided when the script first loads; the
@@ -66,7 +74,9 @@ export default function ZipchatWidget() {
       cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         root.style.setProperty(CLEARANCE_VAR, `${clearanceFor(launcher())}px`);
+        root.toggleAttribute(CHAT_OPEN_ATTR, chatWindow()?.getAttribute('data-zipchat-visible') === 'true');
         watchShadow();
+        watchWindow();
       });
     };
 
@@ -81,6 +91,14 @@ export default function ZipchatWidget() {
       inShadow.observe(shadow, { childList: true, subtree: true, attributes: true });
       shadow.addEventListener('transitionend', update);
     };
+    const onWindow = new MutationObserver(update);
+    let watchedWindow: Element | null = null;
+    const watchWindow = () => {
+      const chat = chatWindow();
+      if (!chat || chat === watchedWindow) return;
+      watchedWindow = chat;
+      onWindow.observe(chat, { attributes: true, attributeFilter: ['data-zipchat-visible'] });
+    };
     const inBody = new MutationObserver(update);
     inBody.observe(document.body, { childList: true });
     window.addEventListener('resize', update);
@@ -90,9 +108,11 @@ export default function ZipchatWidget() {
       cancelAnimationFrame(frame);
       inBody.disconnect();
       inShadow.disconnect();
+      onWindow.disconnect();
       watched?.removeEventListener('transitionend', update);
       window.removeEventListener('resize', update);
       root.style.removeProperty(CLEARANCE_VAR);
+      root.removeAttribute(CHAT_OPEN_ATTR);
     };
   }, [partnerBrand]);
 

@@ -475,6 +475,8 @@ export const pagesEn = {
   'feedback.message': 'Message',
   'feedback.messageError': 'Write a message.',
   'feedback.messageTooLong': 'Keep it under {max} characters.',
+  'feedback.record': 'Show us with a screen recording',
+  'feedback.bookDemo': 'Book a demo or a call with us',
   'feedback.context': 'We include the page you are on and, if you are signed in, your account wallet and email.',
   'feedback.send': 'Send',
   'feedback.sending': 'Sending…',
@@ -484,7 +486,6 @@ export const pagesEn = {
   'feedback.failed': 'Your message could not be sent. Try again in a minute.',
 
   // "Report a problem": a screen recording of what the person is seeing, on every page.
-  'report.button': 'Report a problem',
   'report.title': 'Report a problem',
   'report.desktopIntro': 'Show us what is going wrong. Press Start recording, choose Entire screen when your browser asks (so that other tabs and pop-ups are recorded too), then do what you were doing. Stop when you have shown the problem. Recording stops by itself after {limit}.',
   'report.warning': 'The recording shows everything on the screen you share. Do not show card numbers or passwords while it is running.',
@@ -502,7 +503,7 @@ export const pagesEn = {
   'report.recorderLive': 'Go back to the page with the problem now. Leave this window open.',
   'report.recorderRefusedHere': 'Your browser did not let us record. Press Start recording to try again, or close this window and upload a recording instead.',
   'report.recorderDone': 'Done. You can close this window.',
-  'report.recorderOrphan': 'Open this window with the Report a problem button on the page that has the problem.',
+  'report.recorderOrphan': 'Open this window with the Feedback button on the page that has the problem.',
   'report.computerIntro': 'Record your screen with your computer, then come back here and upload the recording.',
   'report.computerSteps': 'Windows: press Windows + Shift + R (Snipping Tool). Mac: press Shift + Command + 5 and choose Record Entire Screen.',
   'report.computerReturn': 'Do what you were doing until the problem shows, stop the recording, then come back to this page and choose Upload recording.',
@@ -522,6 +523,7 @@ export const pagesEn = {
   'report.progress': '{percent}% uploaded. Keep this page open.',
   'report.discard': 'Discard',
   'report.cancel': 'Cancel',
+  'report.back': 'Back',
   'report.sent': 'Thanks: we have your recording. We will reply to {email}.',
   'report.close': 'Close',
   'report.failed': 'Your recording could not be sent. Check your connection and try again.',

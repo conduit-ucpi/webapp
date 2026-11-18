@@ -9,7 +9,6 @@ import { TourProvider } from '@/components/onboarding/TourProvider';
 import FarcasterReady from '@/components/farcaster/FarcasterReady';
 import CookieConsent from '@/components/consent/CookieConsent';
 import FeedbackButton from '@/components/feedback/FeedbackButton';
-import ReportProblemButton from '@/components/feedback/ReportProblemButton';
 import ZipchatWidget from '@/components/feedback/ZipchatWidget';
 import { watchConsoleProblems } from '@/lib/consoleProblems';
 import { RECORDER_WINDOW_PATH } from '@/lib/problemReport';
@@ -86,7 +85,6 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
                             {/* Outside Layout on purpose: every page has it, whichever layout branch it takes. */}
                             {/* Not in the recorder window, which is itself part of reporting a problem. */}
                             {router.pathname !== RECORDER_WINDOW_PATH && <FeedbackButton />}
-                            {router.pathname !== RECORDER_WINDOW_PATH && <ReportProblemButton />}
                             {/* Nor in Shopify's admin iframe. */}
                             {router.pathname !== RECORDER_WINDOW_PATH && router.pathname !== '/shopify/embedded' && <ZipchatWidget />}
                           </>

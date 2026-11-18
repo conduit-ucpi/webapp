@@ -473,6 +473,8 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'feedback.message': 'Mensaje',
   'feedback.messageError': 'Escribe un mensaje.',
   'feedback.messageTooLong': 'Escribe menos de {max} caracteres.',
+  'feedback.record': 'Muéstranoslo con una grabación de pantalla',
+  'feedback.bookDemo': 'Reserva una demostración o una llamada con nosotros',
   'feedback.context': 'Incluimos la página en la que estás y, si has iniciado sesión, la billetera y el correo de tu cuenta.',
   'feedback.send': 'Enviar',
   'feedback.sending': 'Enviando…',
@@ -482,7 +484,6 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'feedback.failed': 'No se pudo enviar tu mensaje. Inténtalo de nuevo en un minuto.',
 
   // "Informar de un problema": una grabación de pantalla de lo que ve la persona, en cada página.
-  'report.button': 'Informar de un problema',
   'report.title': 'Informar de un problema',
   'report.desktopIntro': 'Muéstranos qué falla. Pulsa Empezar a grabar, elige Toda la pantalla cuando el navegador lo pida (para que también se graben otras pestañas y ventanas emergentes) y haz lo que estabas haciendo. Detén la grabación cuando se vea el problema. Se detiene sola a los {limit}.',
   'report.warning': 'La grabación muestra todo lo que haya en la pantalla que compartas. No muestres números de tarjeta ni contraseñas mientras graba.',
@@ -500,7 +501,7 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'report.recorderLive': 'Vuelve ahora a la página del problema. Deja esta ventana abierta.',
   'report.recorderRefusedHere': 'El navegador no nos ha dejado grabar. Pulsa Empezar a grabar para intentarlo de nuevo, o cierra esta ventana y sube una grabación.',
   'report.recorderDone': 'Listo. Puedes cerrar esta ventana.',
-  'report.recorderOrphan': 'Abre esta ventana con el botón Informar de un problema de la página donde ocurre.',
+  'report.recorderOrphan': 'Abre esta ventana con el botón Comentarios de la página donde ocurre.',
   'report.computerIntro': 'Graba la pantalla con tu ordenador, vuelve aquí y sube la grabación.',
   'report.computerSteps': 'Windows: pulsa Windows + Mayús + R (Recortes). Mac: pulsa Mayús + Comando + 5 y elige Grabar toda la pantalla.',
   'report.computerReturn': 'Haz lo que estabas haciendo hasta que se vea el problema, detén la grabación, vuelve a esta página y elige Subir grabación.',
@@ -520,6 +521,7 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'report.progress': '{percent}% subido. Mantén esta página abierta.',
   'report.discard': 'Descartar',
   'report.cancel': 'Cancelar',
+  'report.back': 'Volver',
   'report.sent': 'Gracias: ya tenemos tu grabación. Te responderemos a {email}.',
   'report.close': 'Cerrar',
   'report.failed': 'No se pudo enviar tu grabación. Comprueba tu conexión e inténtalo de nuevo.',

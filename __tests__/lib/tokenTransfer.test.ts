@@ -4,7 +4,7 @@
  */
 
 import { ethers } from 'ethers';
-import { asTokenTransfer } from '@/lib/tokenTransfer';
+import { asTokenTransfer, sendsNativeValue } from '@/lib/tokenTransfer';
 
 const TOKEN = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const TO = '0x9a4264b3173fa692bdd159cb226e4ae491e2989c';
@@ -61,5 +61,19 @@ describe('recognising a token transfer', () => {
   it('does not treat a call to something that is not an address as one', () => {
     expect(asTokenTransfer({ to: 'the token', data: transfer })).toBeNull();
     expect(asTokenTransfer({ to: undefined as any, data: transfer })).toBeNull();
+  });
+});
+
+describe('whether a transaction sends native token', () => {
+  it.each([undefined, '', '0', '0x0', '0x', '0x00'])('%s sends none', value => {
+    expect(sendsNativeValue(value)).toBe(false);
+  });
+
+  it.each(['1', '0x1', '1000000000000000', '0x38d7ea4c68000'])('%s sends some', value => {
+    expect(sendsNativeValue(value)).toBe(true);
+  });
+
+  it('a value that cannot be read counts as sending some, so no gas is handed out on a doubt', () => {
+    expect(sendsNativeValue('lots')).toBe(true);
   });
 });

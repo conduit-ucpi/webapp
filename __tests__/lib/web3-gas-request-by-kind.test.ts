@@ -64,14 +64,20 @@ describe('asking for gas', () => {
 
   it.each([
     ['an approval', approval],
-    ['a vote on a payment contract', vote],
-    ['sending native token', sendEth]
+    ['a vote on a payment contract', vote]
   ])('%s still asks the older way, by amount', async (_what, tx) => {
     apiFetch.mockResolvedValue(json(200, { success: true }));
 
     await service().topUpGasIfShort(USER, NEEDED, tx);
 
     expect(posted()).toEqual([{ url: '/api/chain/fund-wallet', body: { walletAddress: USER, totalAmountNeededWei: NEEDED.toString() } }]);
+  });
+
+  it('sending native token asks for nothing: a wallet sending ETH has ETH to pay its own gas', async () => {
+    // Even with a balance too small to cover the gas: it is the wallet's own to find.
+    expect(await service(BigInt(0)).topUpGasIfShort(USER, NEEDED, sendEth)).toBe(false);
+    expect(await service(BigInt(0)).topUpGasIfShort(USER, NEEDED, { ...sendEth, value: '0x38d7ea4c68000' })).toBe(false);
+    expect(apiFetch).not.toHaveBeenCalled();
   });
 
   it('a wallet that already holds enough asks for nothing, whatever it is sending', async () => {

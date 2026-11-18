@@ -31,6 +31,15 @@ function sendsNoValue(value: string | undefined): boolean {
   }
 }
 
+/**
+ * Whether a transaction sends native token with it. One that does is never given gas: the wallet
+ * holds native token, by definition, and pays its own way. Unreadable counts as "does", since
+ * the question is whether to hand out gas and the safe answer to a doubt is no.
+ */
+export function sendsNativeValue(value: string | undefined): boolean {
+  return !sendsNoValue(value);
+}
+
 export function asTokenTransfer(tx: { to: string; data: string; value?: string }): TokenTransfer | null {
   if (!/^0x[0-9a-fA-F]{40}$/.test(tx.to ?? '') || typeof tx.data !== 'string') return null;
   const data = tx.data.toLowerCase();

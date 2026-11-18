@@ -6,7 +6,7 @@ import { toHex, toHexString, ensureHexPrefix } from '@/utils/hexUtils';
 import { mLog } from '@/utils/mobileLogger';
 import { RpcClient, readProviderFor } from '@/lib/rpc/RpcClient';
 import { withWalletPrompt } from '@/lib/auth/walletPromptChannel';
-import { asTokenTransfer } from './tokenTransfer';
+import { asTokenTransfer, sendsNativeValue } from './tokenTransfer';
 import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement';
 
 // ERC20 ABI for USDC interactions
@@ -1158,6 +1158,14 @@ export class Web3Service {
         `⛽ Wallet already holds ${Number(existingBalance) / 1e18} ETH, covering the ` +
           `${(Number(totalGasNeeded) / 1e18).toExponential(4)} ETH needed — skipping the top-up.`
       );
+      return false;
+    }
+
+    // A transaction that SENDS native token is never funded: a wallet sending ETH has ETH, and
+    // pays its own gas out of it. (Asking would be refused anyway, a moment later: sending
+    // native tokens out is exactly what stops a wallet being given gas.)
+    if (sendsNativeValue(tx.value)) {
+      console.log('⛽ This transaction sends native token; its gas is the wallet\'s own to pay. No top-up requested.');
       return false;
     }
 

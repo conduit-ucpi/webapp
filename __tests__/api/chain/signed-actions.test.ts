@@ -79,7 +79,10 @@ describe('signed-action routes', () => {
       ['evict-arbiter', {}],
       ['resign-arbiter', {}],
       ['change-recipient', { newRecipient: OTHER }],
-      ['approve-recipient-transfer', { operator: OTHER, newRecipient: BUYER }]
+      ['approve-recipient-transfer', { operator: OTHER, newRecipient: BUYER }],
+      // The offer vault's: contractAddress is the vault, and they take no fields of their own.
+      ['accept-offer', {}],
+      ['reject-offer', {}]
     ];
 
     it.each(ACTIONS)('%s goes to its own chainservice endpoint with exactly its fields', async (action, fields) => {

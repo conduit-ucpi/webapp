@@ -13,6 +13,8 @@ import { ADDRESS, forwardToChainAsUser, shortAddress, signedMessageOf } from '@/
  *   resign-arbiter               (none)
  *   change-recipient             newRecipient
  *   approve-recipient-transfer   operator, newRecipient
+ *   accept-offer                 (none)   contractAddress is the offer VAULT
+ *   reject-offer                 (none)   contractAddress is the offer VAULT
  *
  * plus, always: contractAddress, signer, nonce, deadline, signature.
  *
@@ -32,7 +34,9 @@ const ACTIONS: Record<string, Record<string, Field>> = {
   'evict-arbiter': {},
   'resign-arbiter': {},
   'change-recipient': { newRecipient: 'address' },
-  'approve-recipient-transfer': { operator: 'address', newRecipient: 'address' }
+  'approve-recipient-transfer': { operator: 'address', newRecipient: 'address' },
+  'accept-offer': {},
+  'reject-offer': {}
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

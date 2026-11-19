@@ -4,7 +4,7 @@
  * The first block is the one that matters most. The contract rebuilds the message from the call
  * it is handed and checks the signature against that; if what the wallet signs differs by one
  * field name, the contract refuses it. So the digest of the typed data built here is compared
- * with the digest computed the way EscrowContract.sol computes it.
+ * with the digest computed the way EscrowContract.sol and OfferVault.sol compute it.
  */
 
 import { ethers } from 'ethers';
@@ -14,6 +14,7 @@ import {
   SignedActionName,
   SignedCallDomain,
   forgetSignedCallSupport,
+  isSignedAction,
   namedArguments,
   newNonce,
   raiseDisputeSigned,
@@ -34,10 +35,13 @@ const escrow = new ethers.Interface([
   'function evictArbiter()',
   'function resignArbiter()',
   'function changeRecipient(address newSeller)',
-  'function approveRecipientTransfer(address operator, address newRecipient)'
+  'function approveRecipientTransfer(address operator, address newRecipient)',
+  // OfferVault.sol's
+  'function accept()',
+  'function reject()'
 ]);
 
-// The message types exactly as EscrowContract.sol declares them.
+// The message types exactly as EscrowContract.sol and OfferVault.sol declare them.
 const CONTRACT_TYPES: Record<SignedActionName, string> = {
   raiseDispute: 'RaiseDispute(uint256 nonce,uint256 deadline)',
   submitResolutionVote: 'Vote(uint256 refundToBuyerPercent,uint256 nonce,uint256 deadline)',
@@ -45,7 +49,9 @@ const CONTRACT_TYPES: Record<SignedActionName, string> = {
   evictArbiter: 'EvictArbiter(uint256 nonce,uint256 deadline)',
   resignArbiter: 'ResignArbiter(uint256 nonce,uint256 deadline)',
   changeRecipient: 'ChangeRecipient(address newRecipient,uint256 nonce,uint256 deadline)',
-  approveRecipientTransfer: 'ApproveRecipientTransfer(address operator,address newRecipient,uint256 nonce,uint256 deadline)'
+  approveRecipientTransfer: 'ApproveRecipientTransfer(address operator,address newRecipient,uint256 nonce,uint256 deadline)',
+  accept: 'AcceptOffer(uint256 nonce,uint256 deadline)',
+  reject: 'RejectOffer(uint256 nonce,uint256 deadline)'
 };
 
 const ARGS: Record<SignedActionName, unknown[]> = {
@@ -55,7 +61,9 @@ const ARGS: Record<SignedActionName, unknown[]> = {
   evictArbiter: [],
   resignArbiter: [],
   changeRecipient: [OTHER],
-  approveRecipientTransfer: [OTHER, BUYER]
+  approveRecipientTransfer: [OTHER, BUYER],
+  accept: [],
+  reject: []
 };
 
 /** keccak256(0x1901 ‖ domainSeparator ‖ keccak256(typeHash ‖ call arguments ‖ nonce ‖ deadline)), as the contract does it. */
@@ -109,6 +117,14 @@ describe('what the wallet signs is what the contract checks', () => {
     const typed = typedDataFor({ ...DOMAIN, verifyingContract: CONTRACT }, 'nominateArbiter', { candidate: BUYER }, '7', '4102444800');
     expect(typed.message.candidate).toBe(BUYER.toLowerCase());
     expect(typed.domain.verifyingContract).toBe(CONTRACT.toLowerCase());
+  });
+
+  it('knows which contract each action is made on, so one is never sent to the other', () => {
+    expect(isSignedAction('accept', 'vault')).toBe(true);
+    expect(isSignedAction('accept', 'escrow')).toBe(false);
+    expect(isSignedAction('submitResolutionVote', 'vault')).toBe(false);
+    expect(isSignedAction('approveRecipientTransfer', 'escrow')).toBe(true);
+    expect(isSignedAction('withdraw', 'vault')).toBe(false);
   });
 
   it('refuses arguments that are not what the action takes', () => {

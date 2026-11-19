@@ -10,8 +10,12 @@
  * ⚠️ NOT EVERY CONTRACT HAS IT. Contracts created before the route do not, and never will. So
  *    every caller asks `signedCallSupport` first and keeps the older route for a "no".
  *
- * ⚠️ THE TYPES BELOW ARE THE CONTRACT'S, WORD FOR WORD (`_signedMessage` in EscrowContract.sol,
- *    and SignedCallService in chainservice). The wallet shows these field names to the person
+ * Two kinds of contract take them: the payment contract (votes, the arbiter and recipient
+ * actions) and the marketplace's offer vault (the seller accepts or rejects an offer). Each takes
+ * only its own actions, so every action below names the contract it belongs to.
+ *
+ * ⚠️ THE TYPES BELOW ARE THE CONTRACT'S, WORD FOR WORD (`_signedMessage` in EscrowContract.sol
+ *    and OfferVault.sol, and SignedCallService in chainservice). The wallet shows these field names to the person
  *    signing, and the contract rebuilds the same message to check the signature: a renamed
  *    field, a reordered one or a changed type is a signature the contract refuses.
  */
@@ -24,7 +28,12 @@ export type SignedActionName =
   | 'evictArbiter'
   | 'resignArbiter'
   | 'changeRecipient'
-  | 'approveRecipientTransfer';
+  | 'approveRecipientTransfer'
+  | 'accept'
+  | 'reject';
+
+/** The contract an action is made on: the payment contract, or an offer on it. */
+export type SignedActionContract = 'escrow' | 'vault';
 
 interface Field {
   name: string;
@@ -32,6 +41,7 @@ interface Field {
 }
 
 interface ActionSpec {
+  contract: SignedActionContract;
   /** The EIP-712 message type: what the wallet shows as the thing being signed. */
   primaryType: string;
   /** The action's own arguments, in the order the contract function takes them. */
@@ -41,36 +51,48 @@ interface ActionSpec {
 }
 
 export const SIGNED_ACTIONS: Record<SignedActionName, ActionSpec> = {
-  raiseDispute: { primaryType: 'RaiseDispute', fields: [], endpoint: null },
+  raiseDispute: { contract: 'escrow', primaryType: 'RaiseDispute', fields: [], endpoint: null },
   submitResolutionVote: {
+    contract: 'escrow',
     primaryType: 'Vote',
     fields: [{ name: 'refundToBuyerPercent', type: 'uint256' }],
     endpoint: 'submit-resolution-vote'
   },
   nominateArbiter: {
+    contract: 'escrow',
     primaryType: 'NominateArbiter',
     fields: [{ name: 'candidate', type: 'address' }],
     endpoint: 'nominate-arbiter'
   },
-  evictArbiter: { primaryType: 'EvictArbiter', fields: [], endpoint: 'evict-arbiter' },
-  resignArbiter: { primaryType: 'ResignArbiter', fields: [], endpoint: 'resign-arbiter' },
+  evictArbiter: { contract: 'escrow', primaryType: 'EvictArbiter', fields: [], endpoint: 'evict-arbiter' },
+  resignArbiter: { contract: 'escrow', primaryType: 'ResignArbiter', fields: [], endpoint: 'resign-arbiter' },
   changeRecipient: {
+    contract: 'escrow',
     primaryType: 'ChangeRecipient',
     fields: [{ name: 'newRecipient', type: 'address' }],
     endpoint: 'change-recipient'
   },
   approveRecipientTransfer: {
+    contract: 'escrow',
     primaryType: 'ApproveRecipientTransfer',
     fields: [
       { name: 'operator', type: 'address' },
       { name: 'newRecipient', type: 'address' }
     ],
     endpoint: 'approve-recipient-transfer'
-  }
+  },
+  // The offer vault's. Signed under the VAULT's domain: `contractAddress` is the vault.
+  accept: { contract: 'vault', primaryType: 'AcceptOffer', fields: [], endpoint: 'accept-offer' },
+  reject: { contract: 'vault', primaryType: 'RejectOffer', fields: [], endpoint: 'reject-offer' }
 };
 
-export function isSignedAction(name: string): name is SignedActionName {
-  return Object.prototype.hasOwnProperty.call(SIGNED_ACTIONS, name);
+/**
+ * Whether [name] is a signed action, on [contract] when one is given. A vault and an escrow never
+ * share an action here, but the question is asked by contract so that one cannot be sent to the other.
+ */
+export function isSignedAction(name: string, contract?: SignedActionContract): name is SignedActionName {
+  if (!Object.prototype.hasOwnProperty.call(SIGNED_ACTIONS, name)) return false;
+  return contract === undefined || SIGNED_ACTIONS[name as SignedActionName].contract === contract;
 }
 
 /** The EIP-712 domain a contract's signed messages are bound to, as chainservice reports it. */

@@ -93,7 +93,8 @@ function buildExportMap(file: string, stack = new Set<string>()): Map<string, st
       const target = st.moduleSpecifier && ts.isStringLiteral(st.moduleSpecifier) ? resolve(st.moduleSpecifier.text, file) : file;
       if (!target) continue;
       if (!st.exportClause) {
-        for (const [k, v] of buildExportMap(target, stack)) map.set(k, v);
+        // forEach, not for…of: tsconfig targets es5, which cannot iterate a Map without downlevelIteration.
+        buildExportMap(target, stack).forEach((v, k) => map.set(k, v));
       } else if (ts.isNamedExports(st.exportClause)) {
         const inner = target === file ? null : buildExportMap(target, stack);
         st.exportClause.elements.forEach((el) => {

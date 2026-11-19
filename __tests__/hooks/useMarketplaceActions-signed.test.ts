@@ -1,6 +1,7 @@
 /**
- * A party's action on the payment contract goes as a signed message when the contract takes one,
- * and by fund-then-send when it does not. Offer-vault and token calls are never signed for.
+ * A party's action on the payment contract or an offer vault goes as a signed message when the
+ * contract takes one, and by fund-then-send when it does not. The LP's own vault calls and token
+ * transfers are never signed for.
  */
 
 import { renderHook } from '@testing-library/react';
@@ -130,15 +131,78 @@ describe('party actions on the payment contract', () => {
     expect(fundAndSendTransaction).not.toHaveBeenCalled();
   });
 
-  it('an offer-vault action is never signed for: the vault has no signed route', async () => {
+  it("the seller's accept is signed as AcceptOffer under the vault's domain and delivered, with no gas asked for", async () => {
     chain(true);
     const { result } = renderHook(() => useMarketplaceActions());
 
+    await expect(result.current.acceptOffer(VAULT)).resolves.toBe('0xdelivered');
+
+    expect(fundAndSendTransaction).not.toHaveBeenCalled();
+    // Checked against the vault before anything is signed.
+    expect(simulateCall).toHaveBeenCalledWith({ to: VAULT, data: new ethers.Interface(['function accept()']).encodeFunctionData('accept') });
+    expect(signTypedData.mock.calls[0][0].primaryType).toBe('AcceptOffer');
+    expect(apiFetch.mock.calls[0][0]).toBe(`/api/chain/contract/${VAULT}/signed-calls`);
+    expect(posts()).toEqual([
+      { url: '/api/chain/signed/accept-offer', body: expect.objectContaining({ contractAddress: VAULT, signer: USER }) }
+    ]);
+  });
+
+  it('a whole accept is two signatures and no gas: the approval on the escrow, then the accept on the vault', async () => {
+    chain(true);
+    const LP = '0x2222222222222222222222222222222222222222';
+    const { result } = renderHook(() => useMarketplaceActions());
+
+    await result.current.approveRecipientTransfer(ESCROW, VAULT, LP);
     await result.current.acceptOffer(VAULT);
+
+    expect(fundAndSendTransaction).not.toHaveBeenCalled();
+    expect(signTypedData.mock.calls.map(([typed]) => typed.primaryType)).toEqual(['ApproveRecipientTransfer', 'AcceptOffer']);
+    expect(posts().map(({ url, body }) => [url, body.contractAddress])).toEqual([
+      ['/api/chain/signed/approve-recipient-transfer', ESCROW],
+      ['/api/chain/signed/accept-offer', VAULT]
+    ]);
+  });
+
+  it("the seller's reject goes the same way", async () => {
+    chain(true);
+    const { result } = renderHook(() => useMarketplaceActions());
+
+    await result.current.rejectOffer(VAULT);
+
+    expect(signTypedData.mock.calls[0][0].primaryType).toBe('RejectOffer');
+    expect(posts()).toEqual([{ url: '/api/chain/signed/reject-offer', body: expect.anything() }]);
+    expect(fundAndSendTransaction).not.toHaveBeenCalled();
+  });
+
+  it('a vault that cannot be confirmed to take signed calls is refused: nothing is signed or sent', async () => {
+    chain(false);
+    const { result } = renderHook(() => useMarketplaceActions());
+
+    await expect(result.current.acceptOffer(VAULT)).rejects.toThrow('nothing was sent');
+    await expect(result.current.rejectOffer(VAULT)).rejects.toThrow('nothing was sent');
+
+    expect(signTypedData).not.toHaveBeenCalled();
+    expect(fundAndSendTransaction).not.toHaveBeenCalled();
+  });
+
+  it("the LP's withdraw is never signed for: it is not a seller's action", async () => {
+    chain(true);
+    const { result } = renderHook(() => useMarketplaceActions());
+
+    await result.current.withdrawOffer(VAULT);
 
     expect(apiFetch).not.toHaveBeenCalled();
     expect(signTypedData).not.toHaveBeenCalled();
     expect(fundAndSendTransaction).toHaveBeenCalledTimes(1);
-    expect(fundAndSendTransaction.mock.calls[0][0].to).toBe(VAULT);
+  });
+
+  it("a stale offer is refused before anything is signed, in the vault's own words", async () => {
+    chain(true);
+    simulateCall.mockRejectedValue(new EstimationRevertedError('execution reverted', '0xa9468648', USER)); // OfferStale()
+    const { result } = renderHook(() => useMarketplaceActions());
+
+    await expect(result.current.acceptOffer(VAULT)).rejects.toMatchObject({ reason: { name: 'OfferStale', args: [] } });
+    expect(signTypedData).not.toHaveBeenCalled();
+    expect(fundAndSendTransaction).not.toHaveBeenCalled();
   });
 });

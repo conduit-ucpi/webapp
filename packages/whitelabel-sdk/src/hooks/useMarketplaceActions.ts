@@ -14,9 +14,13 @@ import { isSignedAction, sendSignedAction } from '@/lib/signedActions';
  *
  *    A contract that takes SIGNED MESSAGES (lib/signedActions.ts): the wallet signs a typed
  *    message, chainservice delivers it and pays the gas. No ETH reaches the wallet. This is for
- *    the escrow's party actions: votes, and the arbiter and recipient actions.
+ *    the escrow's party actions (votes, the arbiter and recipient actions) and the offer vault's
+ *    (the seller accepting or rejecting an offer).
  *
- *    Every other contract, and every offer-vault and token call: fund-then-send. The UI encodes
+ *    Every other call — an escrow from before the signed route, the LP's withdraw and reserve
+ *    release, and token transfers: fund-then-send. A seller's accept or reject has NO such
+ *    fallback: vaults from before the signed route are not supported, so a vault that cannot be
+ *    confirmed to take signed calls is refused, with nothing sent. The UI encodes
  *    the call, `fundAndSendTransaction` estimates it and asks chainservice to move ETH into the
  *    user's own wallet, and the user's provider broadcasts. This exists because most wallet
  *    providers (MetaMask, Farcaster, anything over WalletConnect) will not sign a TRANSACTION
@@ -32,18 +36,32 @@ const escrowInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
 const vaultInterface = new ethers.Interface(OFFER_VAULT_ABI);
 const erc20Interface = new ethers.Interface(ERC20_ABI);
 
+/** Which signed actions, if any, a call through [abi] may be. */
+const signedContractOf = (abi: ethers.Interface) =>
+  abi === escrowInterface ? 'escrow' : abi === vaultInterface ? 'vault' : null;
+
 /**
- * The escrow's refusals that a party can actually cause from these screens. The ABI above carries
- * functions only, so without these a refusal reaches the user as "execution reverted".
+ * The refusals a party can actually cause from these screens: the escrow's, and the offer vault's
+ * (with the escrow's own that surface through `accept`). The ABIs above carry functions only, so
+ * without these a refusal reaches the user as "execution reverted".
  */
-const escrowErrors = new ethers.Interface([
+const contractErrors = new ethers.Interface([
   'error InvalidArbiterCandidate(address candidate)',
   'error NotDisputeParty(address caller)',
   'error NotFundedOrAlreadyProcessed()',
   'error NotAuthorizedToVote()',
   'error ContractMustBeDisputed()',
   'error ConsensusAlreadyReached()',
-  'error InvalidPercentage()'
+  'error InvalidPercentage()',
+  'error OfferNotOpen()',
+  'error OfferExpiredError()',
+  'error OfferStale()',
+  'error NotEscrowRecipient(address caller)',
+  'error EscrowNotSellable()',
+  'error OffersPaused()',
+  'error NotApprovedOperator()',
+  'error ApprovedTargetMismatch()',
+  'error RecipientApprovalExpired()'
 ]);
 
 /**
@@ -66,7 +84,7 @@ function decodeRefusal(error: unknown): ContractRefusedError | null {
   if (!(error instanceof EstimationRevertedError)) return null;
   let reason: { name: string; args: string[] } | null = null;
   try {
-    const parsed = error.data ? escrowErrors.parseError(error.data) : null;
+    const parsed = error.data ? contractErrors.parseError(error.data) : null;
     if (parsed) reason = { name: parsed.name, args: parsed.args.map(String) };
   } catch {
     // Not one of ours: keep the RPC's own words.
@@ -107,12 +125,17 @@ export function useMarketplaceActions() {
         // A party action on a contract that takes signed messages: the wallet signs, chainservice
         // delivers and pays, and no ETH is handed to the wallet (lib/signedActions.ts). Null
         // means this contract does not, and the older route below is the only one it has.
-        if (abi === escrowInterface && isSignedAction(fn) && fn !== 'raiseDispute') {
+        const contract = signedContractOf(abi);
+        if (contract && isSignedAction(fn, contract) && fn !== 'raiseDispute') {
           const delivered = await sendSignedAction(
             { fetcher: apiFetch, wallet: web3Service },
             { contractAddress: to, action: fn, args, data, prompt }
           );
           if (delivered) return delivered;
+          // An offer vault is only ever acted on by signature; there is no older route to fall to.
+          if (contract === 'vault') {
+            throw new Error('This offer could not be confirmed on the marketplace, so nothing was sent. Try again.');
+          }
         }
         return await web3Service.fundAndSendTransaction({ to, data, value: '0', ...prompt });
       } catch (error) {
@@ -349,6 +372,9 @@ export function useMarketplaceActions() {
 
   /**
    * Accept an offer: the atomic swap. Must land within five minutes of the approval above.
+   *
+   * The seller signs `AcceptOffer` and chainservice delivers it, as the approval before it; each
+   * returns only once mined, so the second is never early. There is no wallet-sent fallback.
    *
    * If the window lapses, just re-prompt for the approval. An expired approval is inert and
    * nothing is at risk — treat expiry as a retry, never as an error state needing recovery.

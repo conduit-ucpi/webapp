@@ -42,7 +42,7 @@ import { useBrandedHref, usePartnerBrand } from '../theme';
  *    takes, so the site dogfoods the agent surface rather than bypassing it.
  *
  * ⚠️ EVERY ROUTE IS AN ORDINARY TRANSFER TO THE ESCROW ADDRESS, the signed-in wallet's included:
- *    we sponsor its gas (fund-wallet) and the wallet sends a plain ERC20 transfer. Nothing here
+ *    we sponsor its gas (fund-transfer) and the wallet sends a plain ERC20 transfer. Nothing here
  *    signs an EIP-3009 authorization. That route only works for tokens that implement it (USDC
  *    does, USDT on Base does not), so a page built on it cannot take every token we list.
  *
@@ -594,7 +594,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
       //    another. An address that already holds the amount is only settled.
       if (!(await escrowHoldsFunds(prepared.escrow_address, tokenAddress))) {
         // The address was checked against the pinned factory when prepare answered.
-        // transferToContract asks for the gas first (fund-wallet), then the wallet sends.
+        // transferToContract asks for the gas first (fund-transfer), then the wallet sends.
         // Said in the wallet's own prompt: how much, of what, for whom and what happens to it. An
         // address means nothing to the person approving, so the seller is named as the page names them.
         const paying = request?.sellerLabel || seller.trim();

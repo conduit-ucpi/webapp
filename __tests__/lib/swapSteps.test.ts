@@ -109,9 +109,8 @@ describe('asking for a conversion\'s gas', () => {
     expect(posted().map((p) => p.url)).toEqual(['/api/chain/fund-swap']);
   });
 
-  it('an approval of something that is not our router still asks the older way', async () => {
-    apiFetch.mockResolvedValue(json(200, { success: true }));
-    await service().topUpGasIfShort(USER, NEEDED, approval(OTHER));
-    expect(posted().map((p) => p.url)).toEqual(['/api/chain/fund-wallet']);
+  it('an approval of something that is not our router is not given gas at all', async () => {
+    await expect(service().topUpGasIfShort(USER, NEEDED, approval(OTHER))).rejects.toThrow('Add a little ETH on Base');
+    expect(apiFetch).not.toHaveBeenCalled();
   });
 });

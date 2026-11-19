@@ -21,7 +21,7 @@ import { ADDRESS, FUND_TRANSFER_LOG_TAG, WHOLE_NUMBER, forwardToChainAsUser, sho
  * Its status and body come back unchanged: 200 with `funded` true or false when the wallet can
  * make the transfer; 400 with `reason` when it is refused; 503 when it could not be checked.
  *
- * Unlike the older /api/chain/fund-wallet, the caller cannot name an amount of gas to be given.
+ * Unlike the removed /api/chain/fund-wallet, the caller cannot name an amount of gas to be given.
  * Only these fields are forwarded; the body is rebuilt, never passed through.
  */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

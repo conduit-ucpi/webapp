@@ -72,10 +72,10 @@ export const ESCROW_CONTRACT_ABI = [
  * One LP's offer vault (MARKETPLACE_OPENSPEC §5.0).
  *
  * Each offer is its own contract, so LP capital is never commingled and every party action is
- * addressed to the vault that holds their own money. ⚠️ NONE of these five actions is relayed:
- * `fund`, `accept`, `reject`, `withdraw` and `releaseHoldback` are sent by the party's own
- * wallet after `fund-wallet` supplies the gas (§15.6a). chainservice only deploys the vault,
- * pays for gas, and indexes the events.
+ * addressed to the vault that holds their own money. None of its actions costs a party gas:
+ * `fund`, `withdraw` and `releaseHoldback` are permissionless and relayed by chainservice, and
+ * the seller's `accept` and `reject` are signed messages chainservice delivers. Only the LP's
+ * deposit is sent from their own wallet, as a token transfer whose gas `fund-transfer` gives.
  */
 export const OFFER_VAULT_ABI = [
   'function escrowContract() view returns (address)',
@@ -1196,28 +1196,16 @@ export class Web3Service {
       return this.askForGasByName('/api/chain/fund-swap', 'conversion', { walletAddress: userAddress, ...conversion }, totalGasNeeded);
     }
 
-    // Everything else still asks the older way, by amount.
-    console.log('Requesting wallet funding from chainservice...');
-    const fundResponse = await apiFetch('/api/chain/fund-wallet', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        walletAddress: userAddress,
-        totalAmountNeededWei: totalGasNeeded.toString()
-      })
-    });
-
-    if (!fundResponse.ok) {
-      const errorData = await fundResponse.json().catch(() => ({}));
-      throw new Error(`Failed to fund wallet: ${errorData.error || fundResponse.statusText}`);
-    }
-
-    const fundResult = await fundResponse.json();
-    if (!fundResult.success) {
-      throw new Error(`Wallet funding failed: ${fundResult.error || 'Unknown error'}`);
-    }
-    return true;
+    // ⚠️ NOTHING ELSE IS GIVEN GAS. There is no ask-by-amount any more (`fund-wallet` was removed
+    //    on 2026-11-19): party actions on our contracts are signed messages chainservice delivers,
+    //    permissionless calls are relayed, and what is left (a contract from before the signed
+    //    route) is the wallet's own to pay for. Say so before the wallet is asked to sign a
+    //    transaction it cannot pay for.
+    console.warn('⛽ No gas route for this transaction, and the wallet is short.', { to: tx.to, selector: tx.data?.slice(0, 10) });
+    throw new Error(
+      'This wallet does not hold enough ETH to pay the network fee for this, and it is not one we pay for. ' +
+        'Add a little ETH on Base to the wallet and try again.'
+    );
   }
 
   /**

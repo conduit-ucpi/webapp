@@ -3,7 +3,7 @@
  *
  * A token transfer names the transfer (/api/chain/fund-transfer): chainservice checks the wallet
  * holds the tokens, sizes the gas from its own simulation, and refuses a wallet that has been
- * sending native tokens out. Everything else still names an amount (/api/chain/fund-wallet).
+ * sending native tokens out. Nothing else is given gas: there is no ask-by-amount any more.
  * A wallet that already holds enough asks for nothing.
  */
 
@@ -65,12 +65,10 @@ describe('asking for gas', () => {
   it.each([
     ['an approval', approval],
     ['a vote on a payment contract', vote]
-  ])('%s still asks the older way, by amount', async (_what, tx) => {
-    apiFetch.mockResolvedValue(json(200, { success: true }));
+  ])('%s has no gas route: the wallet is told it must pay, and nothing is asked for', async (_what, tx) => {
+    await expect(service().topUpGasIfShort(USER, NEEDED, tx)).rejects.toThrow('Add a little ETH on Base');
 
-    await service().topUpGasIfShort(USER, NEEDED, tx);
-
-    expect(posted()).toEqual([{ url: '/api/chain/fund-wallet', body: { walletAddress: USER, totalAmountNeededWei: NEEDED.toString() } }]);
+    expect(apiFetch).not.toHaveBeenCalled();
   });
 
   it('sending native token asks for nothing: a wallet sending ETH has ETH to pay its own gas', async () => {

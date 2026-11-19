@@ -1,9 +1,8 @@
 /**
  * A request in a token nobody sells here (USDT on Base) can be paid with the one they do (USDC).
  *
- * The BUTTONS say so, not a paragraph beside them: each has a main line for what happens and a
- * second for the one fact that decides it, and exactly one is prominent: the next thing this
- * buyer can do.
+ * A wallet holding enough USDC gets one button that says so. One holding too little of both is
+ * shown, on the screen, the ways to add USDC to it, and told it is converted as they pay.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import PaymentActionPanel, { type PaymentConversion } from '@/components/contracts/PaymentActionPanel';
@@ -15,13 +14,13 @@ jest.mock('@/hooks/useCoinbaseAvailability');
 jest.mock('@/hooks/useLinkAvailability', () => ({
   useLinkAvailability: () => ({ unavailable: false, countryName: null, overrule: jest.fn() }),
 }));
-const mockModal = jest.fn();
-jest.mock('@/components/contracts/AddFundsModal', () => (modalProps: any) => {
-  mockModal(modalProps);
-  return null;
-});
+jest.mock('@/lib/reportFundingEvent', () => ({ reportFundingEvent: jest.fn() }));
+jest.mock('@/lib/visitorCountry', () => ({ visitorCountry: () => Promise.resolve(null) }));
 jest.mock('@/components/auth/ConfigProvider', () => ({
-  useConfig: () => ({ config: { coinbaseProjectId: 'p' } }),
+  useConfig: () => ({ config: { coinbaseProjectId: 'p', chainId: 8453 } }),
+}));
+jest.mock('@/components/auth/SimpleAuthProvider', () => ({
+  useAuth: () => ({ canFundWallet: () => false, fundWallet: jest.fn() }),
 }));
 
 const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
@@ -51,18 +50,18 @@ const props = (overrides: Record<string, unknown> = {}) => ({
   isPaymentInProgress: false,
   onPay: jest.fn(),
   onPayFromExternalWallet: jest.fn(),
-  resolveEscrowAddress: async () => '0xescrow',
+  resolveEscrowAddress: async () => '0xcontract',
   elsewherePanel: <div>the payment address panel</div>,
   conversion: conversion(),
   ...overrides,
 });
-const lastModal = () => mockModal.mock.calls[mockModal.mock.calls.length - 1][0];
 
 beforeEach(() => {
-  mockModal.mockClear();
   (useOnrampMinimum as jest.Mock).mockReturnValue(null);
   (useCoinbaseAvailability as jest.Mock).mockReturnValue({ unavailable: false, countryName: null, overrule: jest.fn() });
 });
+
+const topUp = () => screen.getByRole('button', { name: /to this wallet, then pay/ });
 
 /** What can be pressed or read as a button, top to bottom, without the copy-address icon. */
 const buttons = () =>
@@ -72,11 +71,10 @@ const buttons = () =>
     .map((button) => ({ says: button.textContent, live: !(button as HTMLButtonElement).disabled }));
 
 describe('a USDT request, wallet holding enough USDC', () => {
-  it('offers exactly two things: pay with the USDC, or send USDT held elsewhere', () => {
+  it('offers one thing: swap the USDC and pay, on one button', () => {
     render(<PaymentActionPanel {...props()} />);
     expect(buttons()).toEqual([
       { says: 'Pay 20 USDT with your USDCAbout 19.99 USDC, converted as you pay', live: true },
-      { says: 'Send USDT from another walletFor USDT you already hold elsewhere', live: true },
     ]);
   });
 
@@ -147,41 +145,45 @@ describe('a USDT request, wallet holding enough USDC', () => {
 
 describe('a USDT request, wallet holding neither', () => {
   const short = () => props({ conversion: conversion({ fromBalance: 5, status: 'short' }) });
+  let open: jest.SpyInstance;
+  beforeEach(() => {
+    open = jest.spyOn(window, 'open').mockImplementation(() => null);
+  });
+  afterEach(() => open.mockRestore());
 
-  it('leads with buying USDC, shows that USDT itself cannot be bought, and has no dead pay button', () => {
+  it('explains that USDC must be added first, then swapped and paid here, and has no dead pay button', () => {
     render(<PaymentActionPanel {...short()} />);
-    expect(buttons()).toEqual([
-      // 19.985028 plus 1%, up to the cent, is 20.19; the wallet holds 5.
-      { says: 'Buy USDC and pay with itAbout 15.19 USDC by card or exchange, converted to USDT as you pay', live: true },
-      { says: 'Buy USDTNot sold on this network yet', live: false },
-      { says: 'Send USDT from another walletFor USDT you already hold elsewhere', live: true },
-    ]);
+    expect(
+      screen.getByText(
+        "USDT can't be bought by card or bank on Base. Add USDC to your wallet with one of the ways below, then come back to this page: one button will swap it and pay in USDT."
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /from this wallet$/ })).toBeNull();
+    // No card route straight to the payment: nobody sells USDT, and nothing could convert what they send.
+    expect(screen.queryByRole('button', { name: /Pay by card or bank transfer/ })).toBeNull();
+    // 19.985028 plus 1%, up to the cent, is 20.19; the wallet holds 5.
+    expect(topUp()).toHaveTextContent('Add USDC to this wallet, then pay');
+    expect(topUp()).toHaveTextContent('About 15.19 USDC by card or exchange, converted to USDT as you pay');
+    expect(screen.getByRole('button', { name: /Pay from another wallet.*Send USDT you already hold/ })).toBeEnabled();
   });
 
   it('buys USDC, not USDT: the cost plus a margin, less what is already held', () => {
     render(<PaymentActionPanel {...short()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Buy USDC and pay with it/ }));
-    const modal = lastModal();
-    expect(modal).toMatchObject({ isOpen: true, tokenSymbol: 'USDC', tokenAddress: USDC, tokenDecimals: 6 });
-    expect(modal.shortfall).toBeCloseTo(15.19, 6);
+    fireEvent.click(topUp());
+    fireEvent.click(screen.getByRole('button', { name: /Add from Kraken/ }));
+    const url = new URL(open.mock.calls[0][0]);
+    expect(url.searchParams.get('crypto')).toBe('USDC');
+    expect(url.searchParams.get('amount')).toBe('15.19');
+    expect(screen.getByText('When it arrives, come back to this page: one button will swap your USDC and pay in USDT.')).toBeInTheDocument();
   });
 
-  it("names the exchange's minimum on the button when what is needed is less than it", () => {
+  it("names the exchange's minimum when what is needed is less than it", () => {
     (useOnrampMinimum as jest.Mock).mockReturnValue({ amount: 20, currency: 'USD', inTokens: 20 });
     render(<PaymentActionPanel {...short()} />);
-    expect(
-      screen.getByRole('button', { name: /Buy USDC and pay with it.*By card or exchange \(minimum 20 USD\), converted to USDT as you pay/ })
-    ).toBeEnabled();
+    expect(topUp()).toHaveTextContent('By card or exchange (minimum 20 USD), converted to USDT as you pay');
   });
 
-  it('does not show the routes that send straight to the payment address: nothing could convert what they send', () => {
-    render(<PaymentActionPanel {...short()} />);
-    expect(screen.queryByRole('button', { name: /Pay by card/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Pay with Kraken/ })).toBeNull();
-    expect(screen.queryByRole('button', { name: /Pay with Link/ })).toBeNull();
-  });
-
-  it('says nothing in small print that a button already says', () => {
+  it('says nothing in small print that the screen already says', () => {
     render(<PaymentActionPanel {...short()} />);
     expect(screen.queryByText(/Some external suppliers can't support USDT yet/)).toBeNull();
     expect(screen.queryByText(/Add funds first/)).toBeNull();
@@ -194,7 +196,7 @@ describe('a USDT request, while the conversion is not known or not possible', ()
     render(<PaymentActionPanel {...props({ conversion: conversion({ cost: null, status: 'quoting' }) })} />);
     expect(buttons()).toEqual([
       { says: 'Checking what it costs to convert your USDC…', live: false },
-      { says: 'Send USDT from another walletFor USDT you already hold elsewhere', live: true },
+      { says: 'Pay from another walletSend USDT you already hold straight to this payment, on Base+', live: true },
     ]);
   });
 
@@ -202,8 +204,7 @@ describe('a USDT request, while the conversion is not known or not possible', ()
     render(<PaymentActionPanel {...props({ conversion: conversion({ fromBalance: 0, cost: null, status: 'unavailable' }) })} />);
     expect(buttons()).toEqual([
       { says: 'Pay 20 USDT from this wallet', live: false },
-      { says: 'Buy USDTNot sold on this network yet', live: false },
-      { says: 'Send USDT from another walletFor USDT you already hold elsewhere', live: true },
+      { says: 'Pay from another walletSend USDT you already hold straight to this payment, on Base+', live: true },
     ]);
     expect(screen.getByText(/can't be converted to USDT right now/)).toBeInTheDocument();
   });
@@ -211,21 +212,20 @@ describe('a USDT request, while the conversion is not known or not possible', ()
   it("a seller's preview is not about the seller's own wallet: no pay button, and nothing live to buy", () => {
     render(<PaymentActionPanel {...props({ conversion: conversion({ fromBalance: 5, status: 'short' }) })} preview />);
     expect(screen.queryByRole('button', { name: /Pay 20 USDT/ })).toBeNull();
-    expect(screen.getByRole('button', { name: /Buy USDC and pay with it/ })).toBeDisabled();
-    expect(screen.getByRole('button', { name: /^Buy USDT/ })).toBeDisabled();
+    fireEvent.click(topUp());
+    expect(screen.getByRole('button', { name: /Add from Kraken/ })).toBeDisabled();
   });
 });
 
 describe('where it does not apply', () => {
-  it('a USDT request the wallet can already pay is one plain button, and the way in for USDT held elsewhere', () => {
+  it('a USDT request the wallet can already pay is one plain button', () => {
     render(<PaymentActionPanel {...props({ balanceFloat: 50, hasInsufficientBalance: false, conversion: undefined })} />);
     expect(screen.getByRole('button', { name: 'Pay 20 USDT from this wallet' })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /Send USDT from another wallet/ })).toBeEnabled();
     expect(screen.queryByRole('button', { name: /^Buy/ })).toBeNull();
     expect(screen.queryByText('25.0000 USDC')).toBeNull();
   });
 
-  it('a USDC request short of USDC can be paid with USDT held, beside the two ordinary choices', () => {
+  it('a USDC request short of USDC can be paid with USDT held: one button, and nothing to add', () => {
     render(
       <PaymentActionPanel
         {...props({
@@ -238,12 +238,21 @@ describe('where it does not apply', () => {
     );
     expect(buttons()).toEqual([
       { says: 'Pay 20 USDC with your USDTAbout 20.01 USDT, converted as you pay', live: true },
-      { says: 'Pay by card or bank transferNo crypto needed', live: true },
-      { says: 'Pay with cryptoFrom this wallet or one you already have', live: true },
     ]);
-    // Topping up buys USDC, the token asked for: nothing needs converting to get it.
-    fireEvent.click(screen.getByRole('button', { name: /Pay with crypto/ }));
-    fireEvent.click(screen.getByRole('button', { name: /In this wallet, but not enough/ }));
-    expect(lastModal()).toMatchObject({ tokenSymbol: 'USDC', shortfall: 20 });
+  });
+
+  it('a USDC request short of both is shown the ways to add USDC, the token asked for', () => {
+    render(
+      <PaymentActionPanel
+        {...props({
+          amountLabel: '20 USDC',
+          tokenSymbol: 'USDC',
+          tokenAddress: USDC,
+          conversion: conversion({ fromSymbol: 'USDT', fromTokenAddress: USDT, fromBalance: 0, status: 'short' }),
+        })}
+      />
+    );
+    expect(screen.getByRole('button', { name: /Pay by card or bank transfer/ })).toBeEnabled();
+    expect(topUp()).toHaveTextContent('Add USDC to this wallet, then pay');
   });
 });

@@ -167,13 +167,12 @@ beforeEach(() => {
 });
 
 /**
- * The payment address, its QR and "I have paid" are behind "Pay with crypto", for the buyer who
- * says their money is in another wallet. Opens that, once.
+ * The payment address, its QR and "I have paid" are in the "Pay from another wallet"
+ * section, for the buyer whose money is elsewhere. Opens that, once.
  */
 async function openElsewhere() {
   if (screen.queryByRole('button', { name: 'I have paid' })) return;
-  fireEvent.click(await screen.findByRole('button', { name: /Pay with crypto/ }));
-  fireEvent.click(await screen.findByRole('button', { name: /In another wallet or an exchange/ }));
+  fireEvent.click(await screen.findByRole('button', { name: /Pay from another wallet/ }));
 }
 async function iHavePaid() {
   await openElsewhere();
@@ -363,13 +362,13 @@ describe('/pay', () => {
     render(<PayPage />);
     fill();
 
-    // Two plain choices, and no greyed-out pay button above them.
+    // The three ways on, and no greyed-out pay button above them.
     expect(await screen.findByRole('button', { name: /Pay by card or bank transfer/ })).toBeEnabled();
-    fireEvent.click(screen.getByRole('button', { name: /Pay with crypto/ }));
-    expect(screen.queryByRole('button', { name: /from this wallet/ })).toBeNull();
-    // Topping up is the first answer to "Where is your USDC?".
+    expect(screen.getByRole('button', { name: /Pay from another wallet/ })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /from this wallet$/ })).toBeNull();
+    // Topping up says what is missing.
     expect(
-      await screen.findByRole('button', { name: /In this wallet, but not enough.*You hold 5\.00 USDC\. Add 5\.00 more/ })
+      screen.getByRole('button', { name: /Add USDC to this wallet, then pay.*You hold 5\.00 USDC\. Add 5\.00 more/ })
     ).toBeEnabled();
   });
 
@@ -388,6 +387,8 @@ describe('/pay', () => {
   });
 
   it('changed terms get a new escrow, and the address shown follows it', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
     const SECOND = '0x704AAAD9b0E82d6d889417FEd58b4a410C73258A';
     mockCall
       .mockResolvedValueOnce(prepared())
@@ -413,17 +414,19 @@ describe('/pay', () => {
   });
 
   it('offers the escrow address and QR for paying from any other wallet', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
     mockCall.mockResolvedValueOnce(prepared());
     render(<PayPage />);
     fill();
 
     // Not on the screen for everyone: only for the buyer who says their money is elsewhere.
-    await screen.findByRole('button', { name: /Pay with crypto/ });
+    await screen.findByRole('button', { name: /Pay from another wallet/ });
     expect(screen.queryByDisplayValue(ESCROW)).toBeNull();
     expect(screen.queryByRole('button', { name: 'I have paid' })).toBeNull();
 
     await openElsewhere();
-    expect(await screen.findByText('Send USDC from another wallet')).toBeInTheDocument();
+    expect(await screen.findByText(/^Send only USDC on /)).toBeInTheDocument();
     expect(await screen.findByDisplayValue(ESCROW)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'I have paid' })).toBeInTheDocument();
   });
@@ -450,6 +453,8 @@ describe('/pay', () => {
   });
 
   it('a sanctions refusal after a transfer ends the payment and is not asked again', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
     mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce(SANCTIONED);
     render(<PayPage />);
     fill();
@@ -492,6 +497,8 @@ describe('/pay', () => {
   });
 
   it('"I have paid" settles the funded address through the same tool, unsigned, with the same terms', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
     mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({ status: 'settled' });
     render(<PayPage />);
     fill();
@@ -560,6 +567,8 @@ describe('/pay', () => {
   });
 
   it('does not settle an address that holds nothing yet', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
     mockCall.mockResolvedValueOnce(prepared());
     render(<PayPage />);
     fill();
@@ -629,6 +638,8 @@ describe('/pay', () => {
   });
 
   it('says why settle refused a transfer, instead of "no payment found"', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
     mockCall
       .mockResolvedValueOnce(prepared())
       .mockResolvedValueOnce({ error: 'settlement_refused', message: 'The minimum payment is 1 USD. …' });
@@ -933,6 +944,8 @@ describe('/pay in a checkout', () => {
   });
 
   it('hands off a transfer payment too, without a funding hash (the money arrived before settle)', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
     const h = handlers();
     mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({
       status: 'settled',
@@ -1124,13 +1137,16 @@ describe('/pay for a payment request (/contract-pay)', () => {
       expect(screen.getByText('Confirm payment')).toBeInTheDocument();
       expect(await screen.findByText('0.300000 USDC')).toBeInTheDocument();
       expect(screen.queryByText(/cannot make a payment to yourself/)).toBeNull();
-      // The two choices their customer gets, and no technical block at the foot of the page.
+      // The ways on their customer gets, closed, and no technical block at the foot of the page.
       expect(screen.getByRole('button', { name: /Pay by card or bank transfer/ })).toBeEnabled();
-      expect(screen.getByRole('button', { name: /Pay with crypto/ })).toBeEnabled();
+      expect(screen.getByRole('button', { name: /Pay from another wallet/ })).toBeEnabled();
+      expect(screen.getByRole('button', { name: /Add USDC to this wallet, then pay/ })).toBeEnabled();
       expect(screen.queryByTestId('qr-placeholder')).toBeNull();
     });
 
     it('lets them open the address view to look at: a picture for the code, a label for the address, nothing to press', async () => {
+      // A wallet that can pay is only offered its own button: this buyer's is short.
+      mockBalances.wallet = '0';
       render(<PayPage request={request({ seller: PAYER })} />);
       await screen.findByText('0.300000 USDC');
       await openElsewhere();

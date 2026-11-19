@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
@@ -91,6 +91,7 @@ export default function OfferFundingPanel({
   });
 
   // The LP's own balance decides which wallet action is live, exactly as it does for a buyer.
+  const [balanceRead, setBalanceRead] = useState(0);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -107,10 +108,12 @@ export default function OfferFundingPanel({
     return () => {
       cancelled = true;
     };
+    // balanceRead is bumped to read again, after the LP has added funds.
     // getTokenBalance is intentionally omitted: useSimpleEthers returns a fresh object each
     // render, so including it would re-poll on every render. See useQrPayment for the same note.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lpAddress, tokenAddress]);
+  }, [lpAddress, tokenAddress, balanceRead]);
+  const refreshBalance = useCallback(() => setBalanceRead((n) => n + 1), []);
 
   const balanceFloat = balance ?? 0;
   const hasInsufficientBalance = balance !== null && balanceFloat < amountInTokens;
@@ -191,6 +194,7 @@ export default function OfferFundingPanel({
           isSameAddress={false}
           isPaymentInProgress={isFunding}
           loadingMessage={loadingMessage}
+          onRefreshBalance={refreshBalance}
           onPay={payFromConnectedWallet}
           onPayFromExternalWallet={() => {
             setRoute('external');

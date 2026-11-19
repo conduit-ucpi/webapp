@@ -1,15 +1,14 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import AddFundsModal from '@/components/contracts/AddFundsModal';
-import PayByCardModal, { type CardProvider } from '@/components/contracts/PayByCardModal';
-import PayWithCryptoModal from '@/components/contracts/PayWithCryptoModal';
+import FundingOptions from '@/components/funding/FundingOptions';
+import WalletAddressBox from '@/components/funding/WalletAddressBox';
 import { openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
+import { linkDelivers, linkOnrampUrl } from '@/lib/stripeLinkOnramp';
+import { KRAKEN_MINIMUM_USD, krakenDelivers, krakenRampUrl } from '@/lib/krakenRamp';
 import { canBuyToken } from '@/utils/buyableToken';
 import { convertibleFrom, purchaseAmountFor } from '@/lib/stablecoinSwap';
-import { linkDelivers, linkOnrampUrl } from '@/lib/stripeLinkOnramp';
-import { useLinkAvailability } from '@/hooks/useLinkAvailability';
-import { KRAKEN_MINIMUM_USD, krakenDelivers, krakenRampUrl } from '@/lib/krakenRamp';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { reportFundingEvent } from '@/lib/reportFundingEvent';
 import { useOnrampMinimum } from '@/hooks/useOnrampMinimum';
@@ -61,38 +60,70 @@ interface PaymentActionPanelProps {
   onPay: () => void;
   /** Switches to the direct-to-contract route (link + QR). */
   onPayFromExternalWallet: () => void;
-  /** Where Coinbase should return the user; see AddFundsModal. */
+  /** Where Coinbase should return the user; see FundingOptions. */
   addFundsReturnPath?: string;
   /**
-   * Resolves (creating if needed) the escrow this payment funds. Present only
-   * where paying straight into the contract makes sense; without it the
-   * "Pay by card or bank transfer" option is not offered.
+   * Resolves (creating if needed) the contract address this payment funds. Present only where
+   * paying straight into it makes sense; without it paying by card straight to the payment is
+   * not offered.
    */
   resolveEscrowAddress?: () => Promise<string | null>;
+  /**
+   * Re-reads the wallet's balance. Asked for when a funding route reports the money sent, when
+   * the buyer comes back to this tab from a provider's, and when they press the button for it.
+   * Without it the Pay button cannot light up after funds are added, short of a reload.
+   */
+  onRefreshBalance?: () => void;
   /** A seller's preview: everything is off, and the preview says so, so no reasons are given. */
   preview?: boolean;
   /** Present when the wallet's other stablecoin could pay this; see PaymentConversion. */
   conversion?: PaymentConversion;
   /**
-   * The payment address, its QR and "I have paid", for the "Pay with crypto" modal. Absent when
-   * the payment cannot be paid from elsewhere (PaymentOptions).
+   * The payment's contract address, its QR and "I have paid": where money sent straight to the
+   * payment is checked for and settled. Absent when the payment cannot be paid from elsewhere
+   * (PaymentOptions).
    */
   elsewherePanel?: ReactNode;
 }
 
+/** A card or bank provider that can deliver straight to the payment's contract address. */
+interface CardProvider {
+  id: 'coinbase' | 'kraken' | 'link';
+  name: string;
+  /** The one fact that decides between providers: what it takes, and from how much. */
+  fact: string;
+  /** Where it is known not to complete for some buyers. It is still offered: we cannot tell who. */
+  caution?: string;
+  /** Why it cannot take this payment at all; absent when it can. */
+  unavailable?: string;
+  onChoose: () => void;
+}
+
 /**
- * The connected wallet, and the three things a buyer can do from it.
+ * The connected wallet and how to pay from here. Two cases, and the screen is one or the other.
  *
- * Balance decides which of the two wallet-dependent actions is live: with
- * enough funds you can pay and there is nothing to add; short of funds you must
- * add first. Exactly one of those two is ever enabled, so the choice is made
- * for the user rather than by them.
+ * 1. THE WALLET CAN PAY. One button. Pressing it has the wallet sign a transfer into the
+ *    payment's contract address, and the screen says so.
  *
- * "Pay from external wallet" is the exception and stays enabled either way — it
- * sends straight to the escrow contract and never touches this wallet, so
- * balance is irrelevant to it. That is also why topping up and paying
- * externally are kept visibly distinct despite both meaning "use a wallet I
- * already have": they end in different places.
+ * 2. IT CANNOT. Three ways on, each a section on the screen itself, most direct first:
+ *
+ *    a. Card or bank, straight to the payment. A provider delivers the exact amount to the
+ *       contract address (Coinbase, Kraken, Stripe's Link). Nothing passes through this wallet
+ *       and nothing is signed: the page sees the money arrive and settles.
+ *    b. Another wallet, straight to the payment. The contract address, a copy button, a QR code
+ *       and a link, for the buyer who already holds the token somewhere.
+ *    c. Top up this wallet. Anything that puts the token here (FundingOptions: a card, an
+ *       exchange, a transfer). Any amount works, so it is the way under a provider's minimum.
+ *       The buyer then comes back to case 1 and signs the transfer.
+ *
+ * ⚠️ (a) AND (b) GO TO THE CONTRACT ADDRESS; (c) GOES TO THE WALLET. They are different addresses
+ *    and each section shows its own, with the network, so nobody copies one for the other.
+ *    Money at the contract address is this payment. Money in the wallet is the buyer's until
+ *    they press Pay.
+ *
+ * A token nobody sells for card or bank here (USDT on Base) has no (a). A wallet holding enough of
+ * the token that converts into it (USDC) pays with one button that swaps and pays; one holding too
+ * little of that is told to add it by (c), come back, and use that button.
  *
  * Whichever route is taken, the signed-in wallet remains the contract's buyer,
  * so dispute rights and refunds are unaffected and no further sign-in is needed.
@@ -117,26 +148,87 @@ export default function PaymentActionPanel({
   onPayFromExternalWallet,
   addFundsReturnPath,
   resolveEscrowAddress,
+  onRefreshBalance,
   preview = false,
   conversion,
   elsewherePanel,
 }: PaymentActionPanelProps) {
   const t = useT();
   const { config } = useConfig();
-  // Same gate AddFundsModal uses: no project id, no Coinbase.
+  // No project id, no Coinbase.
   const showCoinbasePay = !!config?.coinbaseProjectId;
-  const [showAddFunds, setShowAddFunds] = useState(false);
-  const [showCard, setShowCard] = useState(false);
-  const [showCrypto, setShowCrypto] = useState(false);
-  const [cryptoView, setCryptoView] = useState<'ask' | 'elsewhere'>('ask');
-  /**
-   * The address, QR and "I have paid": where a buyer lands after sending money from anywhere
-   * else, a card provider included, because pressing "I have paid" is what secures it.
-   */
-  const showElsewhere = () => {
-    setShowCard(false);
-    setCryptoView('elsewhere');
-    setShowCrypto(true);
+  const [copied, setCopied] = useState(false);
+
+  const shortfall = Math.max(amountInTokens - balanceFloat, 0);
+
+  // The exchange refuses less than its minimum. Into the contract that rules the route out, since
+  // the escrow takes the exact amount; into the wallet they buy the minimum and pay from it.
+  // No onramp delivers this token (utils/buyableToken): paying by card is greyed out, and that
+  // reason replaces the exchange's own, which say nothing to a buyer it cannot serve at all.
+  const buyable = canBuyToken(tokenSymbol);
+  // A token nobody sells is funded by buying the one that converts into it. What is bought is
+  // what the conversion costs, plus a margin, less what the wallet already holds of it.
+  const converting = !!conversion && hasInsufficientBalance;
+  const viaConversion = !buyable && !!conversion && canBuyToken(conversion.fromSymbol);
+  const fundingSymbol = viaConversion ? conversion.fromSymbol : tokenSymbol;
+  const fundingShortfall = viaConversion
+    ? Math.max(purchaseAmountFor(conversion.cost ?? shortfall) - conversion.fromBalance, 0)
+    : shortfall;
+  const minimum = useOnrampMinimum(fundingSymbol, showCoinbasePay);
+  const minimumLabel = minimum ? `${minimum.amount} ${minimum.currency}` : '';
+  const coinbase = useCoinbaseAvailability(showCoinbasePay);
+  // Coinbase's minimum says nothing to a buyer it cannot serve.
+  const belowMinimumForWallet =
+    (buyable || viaConversion) && !!minimum && !coinbase.unavailable && fundingShortfall > 0 && fundingShortfall < minimum.inTokens;
+  const shortAddress = walletAddress
+    ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
+    : '';
+
+  // The address is truncated for layout, so offer the full value — it is what
+  // someone would paste into a block explorer or another wallet.
+  const handleCopyAddress = async () => {
+    try {
+      await navigator.clipboard.writeText(walletAddress);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard can be blocked; the truncated address stays on screen.
+    }
+  };
+
+  // Balance gates both wallet-dependent actions, in opposite directions.
+  const canConvertAndPay = converting && conversion.status === 'ready';
+  const canPayFromThisWallet =
+    (!hasInsufficientBalance || canConvertAndPay) && !isSameAddress && !isLoadingBalance && !isPreparing;
+  // Rounded up, so the figure on the button is never less than what leaves the wallet.
+  // (Less a hair first: 20.01 * 100 is 2001.0000000000002 in floating point, and must not become 20.02.)
+  const upToCent = (value: number) => (Math.ceil(value * 100 - 1e-7) / 100).toFixed(2);
+  const costLabel = conversion?.cost != null ? upToCent(conversion.cost) : '';
+  const cannotBuyReason = t('addFunds.cannotBuyToken', { token: tokenSymbol });
+
+  const coinbaseUnavailableReason = t('paymentActionPanel.whyNoCoinbase', { country: coinbase.countryName ?? '' });
+
+
+  const actionButton = 'w-full rounded-lg justify-center';
+  const twoLineButton = `${actionButton} h-auto flex-col gap-1 py-3 text-center`;
+  const secondLine = 'text-xs font-normal leading-snug text-secondary-500 dark:text-secondary-400';
+  const quietLink = 'text-sm underline text-secondary-600 dark:text-secondary-300 hover:text-secondary-900 dark:hover:text-white disabled:opacity-50 disabled:no-underline';
+
+  const belowMinimumForContract = !!minimum && amountInTokens < minimum.inTokens;
+  // Into the contract address: only what a provider has been seen to deliver, and never below
+  // its minimum, since that address takes the exact amount.
+  const krakenCanDeliver = krakenDelivers(tokenSymbol, chainId);
+  const belowKrakenMinimum = amountInTokens < KRAKEN_MINIMUM_USD;
+  const linkCanDeliver = linkDelivers(tokenSymbol, chainId);
+
+  /** Which of the three sections is open. One at a time, so each address is on screen once. */
+  type Section = 'card' | 'elsewhere' | 'topUp';
+  const [open, setOpen] = useState<Section | null>(null);
+  /** A card provider has been opened: the address it pays, and "I have paid", are now the next thing. */
+  const [cardStarted, setCardStarted] = useState(false);
+  const cardSent = () => {
+    setCardStarted(true);
+    setOpen('card');
     onPayFromExternalWallet();
   };
   const [cbPayLoading, setCbPayLoading] = useState(false);
@@ -179,7 +271,7 @@ export default function PaymentActionPanel({
         // that needs the domain allowlisted and never fires if the window is
         // closed by hand. Either way the money may have landed, so show the
         // panel that can check the balance and sweep.
-        onPopupClosed: showElsewhere,
+        onPopupClosed: cardSent,
       });
     } catch (e) {
       setCbPayError(e instanceof Error ? e.message : t('addFunds.couldNotOpenCoinbase'));
@@ -213,9 +305,9 @@ export default function PaymentActionPanel({
       } else {
         window.open(url, '_blank', 'noopener,noreferrer');
       }
-      // Kraken has no way back here that we know of: show the panel that checks the address
-      // and sweeps the money in, as the Coinbase route does when its window closes.
-      showElsewhere();
+      // Kraken has no way back here that we know of: show the address and "I have paid" now,
+      // as the Coinbase route does when its window closes.
+      cardSent();
     } catch (e) {
       tab?.close();
       setCbPayError(e instanceof Error ? e.message : t('paymentActionPanel.couldNotPrepare'));
@@ -248,99 +340,67 @@ export default function PaymentActionPanel({
       } else {
         window.open(url, '_blank', 'noopener,noreferrer');
       }
-      showElsewhere();
+      cardSent();
     } catch (e) {
       tab?.close();
       setCbPayError(e instanceof Error ? e.message : t('paymentActionPanel.couldNotPrepare'));
     }
   };
-  const [copied, setCopied] = useState(false);
 
-  const shortfall = Math.max(amountInTokens - balanceFloat, 0);
-
-  // The exchange refuses less than its minimum. Into the contract that rules the route out, since
-  // the escrow takes the exact amount; into the wallet they buy the minimum and pay from it.
-  // No onramp delivers this token (utils/buyableToken): paying by card is greyed out, and that
-  // reason replaces the exchange's own, which say nothing to a buyer it cannot serve at all.
-  const buyable = canBuyToken(tokenSymbol);
-  // A token nobody sells is funded by buying the one that converts into it. What is bought is
-  // what the conversion costs, plus a margin, less what the wallet already holds of it.
-  const converting = !!conversion && hasInsufficientBalance;
-  const viaConversion = !buyable && !!conversion && canBuyToken(conversion.fromSymbol);
-  const fundingSymbol = viaConversion ? conversion.fromSymbol : tokenSymbol;
-  const fundingShortfall = viaConversion
-    ? Math.max(purchaseAmountFor(conversion.cost ?? shortfall) - conversion.fromBalance, 0)
-    : shortfall;
-  const minimum = useOnrampMinimum(fundingSymbol, showCoinbasePay);
-  const minimumLabel = minimum ? `${minimum.amount} ${minimum.currency}` : '';
-  const coinbase = useCoinbaseAvailability(showCoinbasePay);
-  const belowMinimumForContract = !!minimum && amountInTokens < minimum.inTokens;
-  // Coinbase's minimum says nothing to a buyer it cannot serve.
-  const belowMinimumForWallet =
-    (buyable || viaConversion) && !!minimum && !coinbase.unavailable && fundingShortfall > 0 && fundingShortfall < minimum.inTokens;
-  const shortAddress = walletAddress
-    ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`
-    : '';
-
-  // The address is truncated for layout, so offer the full value — it is what
-  // someone would paste into a block explorer or another wallet.
-  const handleCopyAddress = async () => {
-    try {
-      await navigator.clipboard.writeText(walletAddress);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Clipboard can be blocked; the truncated address stays on screen.
-    }
-  };
-
-  // Balance gates both wallet-dependent actions, in opposite directions.
-  const canConvertAndPay = converting && conversion.status === 'ready';
-  const canPayFromThisWallet =
-    (!hasInsufficientBalance || canConvertAndPay) && !isSameAddress && !isLoadingBalance && !isPreparing;
-  // Every way of adding funds buys the token or sends it to this wallet first; for a token no
-  // onramp delivers the buyer is pointed at what does work instead (their own holding, or USDC).
-  // Kraken into the payment address: only what it has been seen to deliver, and never below its
-  // minimum, since the payment address takes the exact amount.
-  const krakenCanDeliver = krakenDelivers(tokenSymbol, chainId);
-  const belowKrakenMinimum = amountInTokens < KRAKEN_MINIMUM_USD;
-  const linkCanDeliver = linkDelivers(tokenSymbol, chainId);
-  // Link sells in the United States only; the country is advice, so it can be overruled.
-  const linkCountry = useLinkAvailability();
-  // With enough of the other token already in the wallet there is nothing to add: it pays.
-  const canAddFunds =
-    hasInsufficientBalance && !isLoadingBalance && (buyable || (viaConversion && !canConvertAndPay));
-  // Rounded up, so the figure on the button is never less than what leaves the wallet.
-  // (Less a hair first: 20.01 * 100 is 2001.0000000000002 in floating point, and must not become 20.02.)
-  const upToCent = (value: number) => (Math.ceil(value * 100 - 1e-7) / 100).toFixed(2);
-  const costLabel = conversion?.cost != null ? upToCent(conversion.cost) : '';
-  const cannotBuyReason = t('addFunds.cannotBuyToken', { token: tokenSymbol });
-
-  const coinbaseUnavailableReason = t('paymentActionPanel.whyNoCoinbase', { country: coinbase.countryName ?? '' });
-
-  const actionButton = 'w-full rounded-lg justify-center';
-  const twoLineButton = `${actionButton} h-auto flex-col gap-1 py-3 text-center`;
-  const secondLine = 'text-xs font-normal leading-snug text-secondary-500 dark:text-secondary-400';
-  // Short of both tokens, with a price to go on: buying the other one is the next step, and the
-  // pay button would only be a greyed-out thing above it.
-  const buyOtherIsNext = viaConversion && hasInsufficientBalance && conversion.status === 'short' && !isSameAddress && !preview;
-  // The two choices, and whether each exists for this payment.
-  const offerCard = !!resolveEscrowAddress && buyable;
-  const offerCrypto = !!elsewherePanel || preview;
-  // No greyed-out pay button above the choices when paying from the wallet is not the next step.
-  const walletCannotPay =
-    hasInsufficientBalance && !isLoadingBalance && !isPreparing && !isPaymentInProgress && !isSameAddress && !preview;
-  // ⚠️ A SELLER'S PREVIEW IS THE SCREEN A CUSTOMER WITH NO MONEY IN THEIR WALLET GETS, AND IT OPENS.
-  //    That customer is the one a seller worries about, so the preview shows the two choices and
-  //    lets both modals be opened to look at. Nothing behind them is live: no provider can be
-  //    continued with, no address is real, nothing can be pressed that pays. A preview where
-  //    nothing responded left the seller wondering whether the real thing works.
+  // What a seller's preview shows as bought, where the token itself is not sold.
   const previewOther = preview && !buyable ? convertibleFrom(chainId, tokenSymbol) : null;
-  const showPayButton = !preview && !(
-    buyOtherIsNext ||
-    (walletCannotPay && buyable && (offerCard || offerCrypto) && !canConvertAndPay && conversion?.status !== 'quoting')
-  );
 
+  // The three ways on, and whether each exists for this payment.
+  const offerCard = !!resolveEscrowAddress && buyable;
+  const offerElsewhere = !!elsewherePanel;
+  // Topping up buys the token itself, or, for one nobody sells, the one that converts into it,
+  // once a price says the wallet holds too little of that as well.
+  const buysOther = viaConversion && conversion.status === 'short';
+  const offerTopUp = preview ? buyable || !!previewOther : buyable || buysOther;
+
+  /**
+   * Whether the wallet is short and the ways on are shown.
+   *
+   * ⚠️ THEY STAY UP WHILE THE BALANCE IS RE-READ. Re-reading is what happens when the buyer comes
+   *    back from a provider, and the sections vanishing and returning under them, with the one
+   *    they had open closed, reads as the page breaking.
+   */
+  const shortNow = hasInsufficientBalance && !isSameAddress && !canConvertAndPay;
+  const [wasShort, setWasShort] = useState(false);
+  useEffect(() => {
+    if (!isLoadingBalance) setWasShort(shortNow);
+  }, [isLoadingBalance, shortNow]);
+  const isShort = preview || (!isPaymentInProgress && (isLoadingBalance ? wasShort && shortNow : shortNow));
+  const showWays = isShort && (offerCard || offerElsewhere || offerTopUp);
+  // No greyed-out pay button above the ways on, except while a conversion is still being priced
+  // or cannot be made, when that button is what says so.
+  const showPayButton = !preview && !(showWays && (buyable ? conversion?.status !== 'quoting' : buysOther));
+
+  // The buyer has been away at a provider or an exchange: coming back is the moment to look
+  // again. Not on a timer, which would spend the RPC's rate limit on a page left open.
+  useEffect(() => {
+    if (!showWays || preview || !onRefreshBalance) return;
+    let last = 0;
+    const refresh = () => {
+      if (document.visibilityState !== 'visible' || Date.now() - last < 5000) return;
+      last = Date.now();
+      onRefreshBalance();
+    };
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [showWays, preview, onRefreshBalance]);
+
+  /**
+   * ⚠️ COINBASE AND LINK ARE OFFERED TO EVERYONE, WITH A WARNING, NOT GREYED OUT BY COUNTRY. Both
+   *    take the contract address and the amount from anywhere. Coinbase then refuses to complete
+   *    for an account that is not a United States one, and Link sells in the United States only.
+   *    The country we can see is the visitor's and not their account's, so the buyer is told and
+   *    left to try: a US account holder abroad can pay, and one we guessed wrong is not blocked.
+   */
   const cardProviders: CardProvider[] = !offerCard
     ? []
     : [
@@ -350,14 +410,8 @@ export default function PaymentActionPanel({
                 id: 'coinbase' as const,
                 name: 'Coinbase',
                 fact: minimum ? t('payByCardModal.coinbaseFactFrom', { minimum: minimumLabel }) : t('payByCardModal.coinbaseFact'),
-                unavailable: coinbase.unavailable
-                  ? coinbaseUnavailableReason
-                  : belowMinimumForContract
-                    ? t('payByCardModal.coinbaseBelowMinimum', { minimum: minimumLabel })
-                    : undefined,
-                overrule: coinbase.unavailable
-                  ? { label: t('paymentActionPanel.notInCountry', { country: coinbase.countryName ?? '' }), onClick: coinbase.overrule }
-                  : undefined,
+                caution: t('paymentActionPanel.coinbaseUsOnly'),
+                unavailable: belowMinimumForContract ? t('payByCardModal.coinbaseBelowMinimum', { minimum: minimumLabel }) : undefined,
                 onChoose: handlePayWithCoinbase,
               },
             ]
@@ -377,19 +431,33 @@ export default function PaymentActionPanel({
           id: 'link' as const,
           name: 'Link by Stripe',
           fact: t('payByCardModal.linkFact'),
-          unavailable: !linkCanDeliver
-            ? t('addFunds.linkCannotDeliver', { token: tokenSymbol, network: networkName })
-            : linkCountry.unavailable
-              ? t('addFunds.linkNotInCountry', { country: linkCountry.countryName ?? '' })
-              : undefined,
-          overrule:
-            linkCanDeliver && linkCountry.unavailable
-              ? { label: t('paymentActionPanel.notInCountry', { country: linkCountry.countryName ?? '' }), onClick: linkCountry.overrule }
-              : undefined,
+          caution: t('paymentActionPanel.linkUsOnly'),
+          unavailable: !linkCanDeliver ? t('addFunds.linkCannotDeliver', { token: tokenSymbol, network: networkName }) : undefined,
           onChoose: handlePayWithLink,
         },
       ];
+  const ableProviders = cardProviders.filter((provider) => !provider.unavailable);
+  const unableProviders = cardProviders.filter((provider) => provider.unavailable);
 
+  const toggle = (section: Section) => {
+    const opening = open !== section;
+    setOpen(opening ? section : null);
+    // A seller looking is not a buyer choosing: nothing is recorded or started.
+    if (!opening || preview || section !== 'elsewhere') return;
+    void reportFundingEvent('other-wallet-opened', { wallet: walletAddress });
+    onPayFromExternalWallet();
+  };
+  const sectionBox = 'rounded-xl border border-secondary-200 dark:border-secondary-700';
+  const sectionHead = 'w-full text-left p-4 flex items-start justify-between gap-3 disabled:opacity-50';
+  const sectionTitle = 'font-semibold text-secondary-900 dark:text-white';
+  const sectionFact = 'mt-1 text-sm text-secondary-500 dark:text-secondary-400';
+  const onNetwork = 'rounded-md border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 p-3 text-xs font-medium text-yellow-800 dark:text-yellow-300';
+  const chevron = (section: Section) => (
+    <span aria-hidden="true" className="mt-1 text-secondary-400">{open === section ? '−' : '+'}</span>
+  );
+  // In a seller's preview everything inside is off.
+  const shown = (content: ReactNode) =>
+    preview ? <fieldset disabled className="min-w-0 border-0 p-0">{content}</fieldset> : content;
 
   const reason = (text: string) =>
     !preview && !isLoadingBalance && !isPaymentInProgress ? (
@@ -471,20 +539,6 @@ export default function PaymentActionPanel({
         </p>
       )}
 
-      {/*
-        ⚠️ ONE NEXT STEP, OR TWO PLAIN CHOICES. NOTHING ELSE ON THIS SCREEN.
-           A wallet that can pay gets one prominent button. One that cannot gets "Pay by card or
-           bank transfer" and "Pay with crypto": a question any buyer can answer. Which provider,
-           topping up, the payment address and its QR all live in the modals behind those two
-           (PayByCardModal, PayWithCryptoModal). The screen used to carry six buttons of equal
-           weight, three of them different companies doing the same thing.
-
-           The buttons say it, not a paragraph beside them: a main line for what happens and,
-           where one fact decides it, a second line for that fact. A request in a token nobody
-           sells here (USDT) is paid with the one they do (USDC), and its buttons are where the
-           buyer learns that: "Pay 20 USDT with your USDC", or "Buy USDC and pay with it" beside
-           a greyed "Buy USDT" that says it is not sold here.
-      */}
       <div className="mt-5 space-y-3">
         {showPayButton && (
           <Button
@@ -523,180 +577,189 @@ export default function PaymentActionPanel({
         {converting && !isSameAddress && conversion.status === 'unavailable' &&
           reason(t('paymentActionPanel.convertUnavailable', { from: conversion.fromSymbol, token: tokenSymbol }))}
 
-        {buyOtherIsNext && (
-          <Button
-            type="button"
-            size="lg"
-            onClick={() => setShowAddFunds(true)}
-            disabled={isPaymentInProgress}
-            className={twoLineButton}
-          >
-            <span className="font-medium">{t('paymentActionPanel.buyOtherAndPay', { from: conversion.fromSymbol })}</span>
-            <span className="text-xs font-normal leading-snug opacity-80">
-              {belowMinimumForWallet
-                ? t('paymentActionPanel.buyOtherAndPayMinimum', { minimum: minimumLabel, token: tokenSymbol })
-                : t('paymentActionPanel.buyOtherAndPayNote', {
-                    amount: upToCent(fundingShortfall),
-                    from: conversion.fromSymbol,
-                    token: tokenSymbol,
-                  })}
-            </span>
-          </Button>
+        {/* Paying from this wallet is a transfer the wallet signs: said before it asks. */}
+        {showPayButton && canPayFromThisWallet && !isPaymentInProgress && (
+          <p className="text-xs text-center text-secondary-500 dark:text-secondary-400">{t('paymentActionPanel.signNote')}</p>
         )}
-        {/* Always beside the route that works, so the buyer sees this token cannot be bought here
-            and is not left wondering why they are being sent to another. It lights up, with a
-            supplier behind it, the day one sells it. */}
-        {viaConversion && hasInsufficientBalance && !canConvertAndPay && conversion.status !== 'quoting' && !preview && (
-          <Button type="button" variant="outline" size="lg" disabled className={twoLineButton}>
-            <span className="font-medium">{t('paymentActionPanel.buyToken', { token: tokenSymbol })}</span>
-            <span className={secondLine}>{t('paymentActionPanel.buyTokenUnavailable')}</span>
-          </Button>
-        )}
-
-        {previewOther && (
-          <>
-            <Button type="button" size="lg" disabled className={twoLineButton}>
-              <span className="font-medium">{t('paymentActionPanel.buyOtherAndPay', { from: previewOther })}</span>
-              <span className="text-xs font-normal leading-snug opacity-80">
-                {t('paymentActionPanel.buyOtherAndPayPreview', { token: tokenSymbol })}
-              </span>
-            </Button>
-            <Button type="button" variant="outline" size="lg" disabled className={twoLineButton}>
-              <span className="font-medium">{t('paymentActionPanel.buyToken', { token: tokenSymbol })}</span>
-              <span className={secondLine}>{t('paymentActionPanel.buyTokenUnavailable')}</span>
-            </Button>
-          </>
-        )}
-
-        {/* The card route: only for a token a card can buy, and only where the money can be sent
-            straight to the payment (resolveEscrowAddress). */}
-        {offerCard && (
-          <Button
-            type="button"
-            size="lg"
-            variant={showPayButton ? 'outline' : undefined}
-            onClick={() => setShowCard(true)}
-            disabled={isPaymentInProgress}
-            className={twoLineButton}
-          >
-            <span className="font-medium">{t('paymentActionPanel.payByCard')}</span>
-            <span className={showPayButton ? secondLine : 'text-xs font-normal leading-snug opacity-80'}>
-              {t('paymentActionPanel.payByCardNote')}
-            </span>
-          </Button>
-        )}
-
-        {/* Never gated on balance: holding the token somewhere else is one of the answers. */}
-        {offerCrypto && (
-          <Button
-            type="button"
-            size="lg"
-            variant={showPayButton || buyOtherIsNext || !buyable ? 'outline' : undefined}
-            onClick={() => {
-              // Where the token cannot be bought there is nothing to ask: this is for someone who
-              // already holds it, and goes straight to the address.
-              setCryptoView(buyable ? 'ask' : 'elsewhere');
-              setShowCrypto(true);
-              // A seller looking is not a buyer choosing: nothing is recorded or started.
-              if (preview) return;
-              void reportFundingEvent('other-wallet-opened', { wallet: walletAddress });
-              if (!buyable) onPayFromExternalWallet();
-            }}
-            disabled={isPaymentInProgress || isSameAddress}
-            className={twoLineButton}
-          >
-            <span className="font-medium">
-              {buyable ? t('paymentActionPanel.payWithCrypto') : t('paymentActionPanel.sendFromAnotherWallet', { token: tokenSymbol })}
-            </span>
-            <span className={showPayButton || buyOtherIsNext || !buyable ? secondLine : 'text-xs font-normal leading-snug opacity-80'}>
-              {buyable
-                ? t('paymentActionPanel.payWithCryptoNote')
-                : t('paymentActionPanel.sendFromAnotherWalletNote', { token: tokenSymbol })}
-            </span>
-          </Button>
-        )}
-
-        {/* With no modal to hold it (no address to pay from elsewhere), topping up stays here. */}
-        {!offerCrypto && !(viaConversion && hasInsufficientBalance) && (
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            onClick={() => setShowAddFunds(true)}
-            disabled={!canAddFunds || isPaymentInProgress}
-            className={actionButton}
-          >
-            {belowMinimumForWallet
-              ? t('paymentActionPanel.addFundsBelowMinimum', { minimum: minimumLabel })
-              : t('paymentActionPanel.addFundsToThis')}
-          </Button>
-        )}
-        {hasInsufficientBalance && !isSameAddress && !buyable && !viaConversion && reason(cannotBuyReason)}
+        {isShort && !buyable && !viaConversion && reason(cannotBuyReason)}
       </div>
 
-      {cbPayError && <p className="mt-2 text-sm text-red-600">{cbPayError}</p>}
+      {showWays && (
+        <div className="mt-5 space-y-3">
+          {!preview && (
+            <p className="text-sm text-secondary-700 dark:text-secondary-200">
+              {buysOther
+                ? t('paymentActionPanel.convertFirst', { token: tokenSymbol, from: conversion.fromSymbol, network: networkName })
+                : t('paymentActionPanel.waysOn')}
+            </p>
+          )}
+          {preview && <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('paymentActionPanel.previewFunding')}</p>}
 
-      <PayByCardModal
-        isOpen={showCard}
-        onClose={() => setShowCard(false)}
-        providers={cardProviders}
-        lookOnly={preview}
-        opening={cbPayLoading ? 'coinbase' : null}
-        error={cbPayError}
-        onUseCrypto={
-          offerCrypto
-            ? () => {
-                setShowCard(false);
-                setCryptoView('ask');
-                setShowCrypto(true);
-              }
-            : undefined
-        }
-      />
-      <PayWithCryptoModal
-        isOpen={showCrypto}
-        onClose={() => setShowCrypto(false)}
-        tokenSymbol={tokenSymbol}
-        view={cryptoView}
-        lookOnly={preview}
-        onViewChange={setCryptoView}
-        elsewhere={elsewherePanel}
-        topUp={
-          canAddFunds && buyable && !preview
-            ? {
-                note: belowMinimumForWallet
-                  ? t('payWithCryptoModal.topUpMinimum', { minimum: minimumLabel })
-                  : t('payWithCryptoModal.topUpNote', { held: balanceFloat.toFixed(2), amount: upToCent(shortfall), token: tokenSymbol }),
-                onClick: () => {
-                  setShowCrypto(false);
-                  setShowAddFunds(true);
-                },
-              }
-            : undefined
-        }
-        onUseCard={
-          offerCard
-            ? () => {
-                setShowCrypto(false);
-                setShowCard(true);
-              }
-            : undefined
-        }
-      />
-      <AddFundsModal
-        isOpen={showAddFunds}
-        onClose={() => setShowAddFunds(false)}
-        walletAddress={walletAddress}
-        tokenAddress={viaConversion ? conversion.fromTokenAddress : tokenAddress}
-        tokenSymbol={fundingSymbol}
-        tokenDecimals={viaConversion ? conversion.fromTokenDecimals : tokenDecimals}
-        chainId={chainId}
-        networkName={networkName}
-        shortfall={fundingShortfall}
-        minimumPurchase={minimum?.inTokens}
-        coinbaseUnavailable={coinbase.unavailable ? coinbaseUnavailableReason : undefined}
-        returnPath={addFundsReturnPath}
-      />
+          {offerCard && (
+            <section className={sectionBox}>
+              <button type="button" aria-expanded={open === 'card'} onClick={() => toggle('card')} disabled={isPaymentInProgress} className={sectionHead}>
+                <span>
+                  <span className={`block ${sectionTitle}`}>{t('paymentActionPanel.payByCard')}</span>
+                  <span className={`block ${sectionFact}`}>{t('paymentActionPanel.cardStraight')}</span>
+                </span>
+                {chevron('card')}
+              </button>
+              {open === 'card' && (
+                <div className="px-4 pb-4 space-y-3">
+                  {ableProviders.map((provider) => (
+                    <div key={provider.id}>
+                      <Button
+                        type="button"
+                        size="lg"
+                        variant="outline"
+                        onClick={provider.onChoose}
+                        disabled={cbPayLoading || preview}
+                        className={twoLineButton}
+                      >
+                        <span className="font-medium">
+                          {cbPayLoading && provider.id === 'coinbase'
+                            ? t('payByCardModal.opening', { name: provider.name })
+                            : t('payByCardModal.continueWith', { name: provider.name })}
+                        </span>
+                        <span className={secondLine}>{provider.fact}</span>
+                      </Button>
+                      {provider.caution && <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400">{provider.caution}</p>}
+                    </div>
+                  ))}
+                  {ableProviders.length === 0 && (
+                    <p className="text-sm text-secondary-700 dark:text-secondary-200">{t('payByCardModal.none')}</p>
+                  )}
+                  {cbPayError && <p role="alert" className="text-sm text-red-600">{cbPayError}</p>}
+                  {unableProviders.length > 0 && (
+                    <div className="pt-2 border-t border-secondary-200 dark:border-secondary-700">
+                      <p className="text-xs font-medium text-secondary-600 dark:text-secondary-300">{t('payByCardModal.notAvailable')}</p>
+                      <ul className="mt-1 space-y-1">
+                        {unableProviders.map((provider) => (
+                          <li key={provider.id} className="text-xs text-secondary-500 dark:text-secondary-400">{provider.unavailable}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {/* Once a provider is opened: where it pays, to check against, and "I have paid". */}
+                  {cardStarted && elsewherePanel && (
+                    <div className="pt-3 border-t border-secondary-200 dark:border-secondary-700">
+                      <p className="mb-3 text-sm text-secondary-700 dark:text-secondary-200">{t('paymentActionPanel.afterCard')}</p>
+                      {elsewherePanel}
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
+          {offerElsewhere && (
+            <section className={sectionBox}>
+              <button
+                type="button"
+                aria-expanded={open === 'elsewhere'}
+                onClick={() => toggle('elsewhere')}
+                disabled={isPaymentInProgress}
+                className={sectionHead}
+              >
+                <span>
+                  <span className={`block ${sectionTitle}`}>{t('paymentActionPanel.otherWalletTitle')}</span>
+                  <span className={`block ${sectionFact}`}>
+                    {t('paymentActionPanel.otherWalletFact', { token: tokenSymbol, network: networkName })}
+                  </span>
+                </span>
+                {chevron('elsewhere')}
+              </button>
+              {open === 'elsewhere' && (
+                <div className="px-4 pb-4 space-y-3">
+                  <p className={onNetwork}>{t('addFunds.sendOnly', { token: tokenSymbol, network: networkName })}</p>
+                  <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('pay.elsewhereLead')}</p>
+                  {shown(elsewherePanel)}
+                </div>
+              )}
+            </section>
+          )}
+
+          {offerTopUp && (
+            <section className={sectionBox}>
+              <button type="button" aria-expanded={open === 'topUp'} onClick={() => toggle('topUp')} disabled={isPaymentInProgress} className={sectionHead}>
+                <span>
+                  <span className={`block ${sectionTitle}`}>
+                    {t('paymentActionPanel.topUpTitle', { token: previewOther ?? fundingSymbol })}
+                  </span>
+                  <span className={`block ${sectionFact}`}>
+                    {preview
+                      ? previewOther
+                        ? t('paymentActionPanel.buyOtherAndPayPreview', { token: tokenSymbol })
+                        : t('paymentActionPanel.topUpFact')
+                      : viaConversion
+                        ? belowMinimumForWallet
+                          ? t('paymentActionPanel.buyOtherAndPayMinimum', { minimum: minimumLabel, token: tokenSymbol })
+                          : t('paymentActionPanel.buyOtherAndPayNote', {
+                              amount: upToCent(fundingShortfall),
+                              from: conversion.fromSymbol,
+                              token: tokenSymbol,
+                            })
+                        : belowMinimumForWallet
+                          ? t('payWithCryptoModal.topUpMinimum', { minimum: minimumLabel })
+                          : t('payWithCryptoModal.topUpNote', { held: balanceFloat.toFixed(2), amount: upToCent(shortfall), token: tokenSymbol })}
+                  </span>
+                </span>
+                {chevron('topUp')}
+              </button>
+              {open === 'topUp' && (
+                <div className="px-4 pb-4 space-y-3">
+                  {/* The seller's own wallet means nothing in a preview of their customer's screen. */}
+                  {!preview && (
+                    <>
+                      <p className="text-sm font-medium text-secondary-900 dark:text-white">
+                        {t('paymentActionPanel.walletOnNetwork', { network: networkName })}
+                      </p>
+                      <WalletAddressBox walletAddress={walletAddress} />
+                      <div className="flex justify-center">
+                        <div className="bg-white p-3 rounded-lg border border-secondary-200">
+                          <QRCodeSVG value={walletAddress} size={160} level="M" marginSize={4} />
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  <p className={onNetwork}>{t('addFunds.sendOnly', { token: previewOther ?? fundingSymbol, network: networkName })}</p>
+                  <FundingOptions
+                    walletAddress={walletAddress}
+                    tokenAddress={viaConversion ? conversion.fromTokenAddress : previewOther ? undefined : tokenAddress}
+                    tokenSymbol={previewOther ?? fundingSymbol}
+                    tokenDecimals={viaConversion ? conversion.fromTokenDecimals : tokenDecimals}
+                    chainId={chainId}
+                    networkName={networkName}
+                    // Already the shortfall: it counts what converting the wallet's other token would cover.
+                    amount={preview ? amountInTokens : fundingShortfall}
+                    minimumPurchase={minimum?.inTokens}
+                    coinbaseUnavailable={coinbase.unavailable ? coinbaseUnavailableReason : undefined}
+                    coinbaseOverrule={{
+                      label: t('paymentActionPanel.notInCountry', { country: coinbase.countryName ?? '' }),
+                      onClick: coinbase.overrule,
+                    }}
+                    returnPath={addFundsReturnPath}
+                    onFunded={onRefreshBalance}
+                    lookOnly={preview}
+                    // The address and its QR code are above; this is the list of ways to send to it.
+                    showTransfer={false}
+                  />
+                  {!preview && (
+                    <p className="text-sm text-secondary-600 dark:text-secondary-300">
+                      {viaConversion ? t('paymentActionPanel.topUpThenConvert', { token: tokenSymbol, from: conversion.fromSymbol }) : t('paymentActionPanel.topUpThen')}
+                    </p>
+                  )}
+                  {!preview && onRefreshBalance && (
+                    <button type="button" onClick={onRefreshBalance} disabled={isLoadingBalance} className={quietLink}>
+                      {isLoadingBalance ? t('paymentActionPanel.loading') : t('paymentActionPanel.checkBalance')}
+                    </button>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,9 @@
 /**
- * The pay screen is one next step, or two plain choices. What an exchange would refuse is never a
- * greyed-out button on it: behind "Pay by card or bank transfer" a provider that cannot serve is a
- * line saying why, and topping the wallet up sits behind "Pay with crypto".
+ * What an exchange would refuse is never a dead end on the pay screen. Straight to the payment
+ * a provider below its minimum drops out, because the contract address takes the exact amount;
+ * topping up the wallet buys the minimum, and the rest stays there.
  */
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import PaymentActionPanel from '@/components/contracts/PaymentActionPanel';
 import { useOnrampMinimum } from '@/hooks/useOnrampMinimum';
 import { useCoinbaseAvailability } from '@/hooks/useCoinbaseAvailability';
@@ -14,17 +14,20 @@ jest.mock('@/hooks/useLinkAvailability', () => ({
   useLinkAvailability: () => ({ unavailable: false, countryName: null, overrule: jest.fn() }),
 }));
 jest.mock('@/lib/reportFundingEvent', () => ({ reportFundingEvent: jest.fn() }));
+jest.mock('@/lib/visitorCountry', () => ({ visitorCountry: () => Promise.resolve(null) }));
 const mockOpenCoinbase = jest.fn();
-jest.mock('@/lib/coinbaseOnramp', () => ({ openCoinbaseOnramp: (options: unknown) => mockOpenCoinbase(options) }));
-const mockModal = jest.fn();
-jest.mock('@/components/contracts/AddFundsModal', () => (modalProps: any) => {
-  mockModal(modalProps);
-  return null;
-});
+jest.mock('@/lib/coinbaseOnramp', () => ({
+  ONRAMP_RETURN_MESSAGE: 'coinbase-onramp-return',
+  openCoinbaseOnramp: (options: unknown) => mockOpenCoinbase(options),
+}));
 jest.mock('@/components/auth/ConfigProvider', () => ({
-  useConfig: () => ({ config: { coinbaseProjectId: 'p' } }),
+  useConfig: () => ({ config: { coinbaseProjectId: 'p', chainId: 8453 } }),
+}));
+jest.mock('@/components/auth/SimpleAuthProvider', () => ({
+  useAuth: () => ({ canFundWallet: () => false, fundWallet: jest.fn() }),
 }));
 
+const WALLET = '0x1234567890abcdef1234567890abcdef12345678';
 const props = (overrides: Record<string, unknown> = {}) => ({
   amountLabel: '1.50 USDC',
   amountInTokens: 1.5,
@@ -33,7 +36,7 @@ const props = (overrides: Record<string, unknown> = {}) => ({
   tokenAddress: '0xtoken',
   tokenDecimals: 6,
   chainId: 8453,
-  walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
+  walletAddress: WALLET,
   networkName: 'Base',
   isLoadingBalance: false,
   hasInsufficientBalance: true,
@@ -41,282 +44,124 @@ const props = (overrides: Record<string, unknown> = {}) => ({
   isPaymentInProgress: false,
   onPay: jest.fn(),
   onPayFromExternalWallet: jest.fn(),
-  resolveEscrowAddress: async () => '0xescrow',
-  elsewherePanel: <div>the payment address panel</div>,
+  addFundsReturnPath: '/pay?resume=1',
+  resolveEscrowAddress: async () => '0xcontract',
+  elsewherePanel: <div>the contract address panel</div>,
   ...overrides,
 });
 const available = { unavailable: false, countryName: null, overrule: jest.fn() };
-/** What can be pressed or read as a button on the screen itself, top to bottom. */
-const onScreen = () =>
-  screen
-    .getAllByRole('button')
-    .filter((button) => !/copy/i.test(button.getAttribute('aria-label') ?? ''))
-    .map((button) => ({ says: button.textContent, live: !(button as HTMLButtonElement).disabled }));
-const openCard = () => fireEvent.click(screen.getByRole('button', { name: /Pay by card or bank transfer/ }));
-const openCrypto = () => fireEvent.click(screen.getByRole('button', { name: /Pay with crypto/ }));
-const lastModal = () => mockModal.mock.calls[mockModal.mock.calls.length - 1][0];
+const topUp = () => screen.getByRole('button', { name: /Add USD[CT] to this wallet, then pay/ });
+const openTopUp = () => fireEvent.click(topUp());
+const coinbase = () => screen.getByRole('button', { name: /Add from Coinbase/ });
 
 beforeEach(() => {
-  mockModal.mockClear();
+  jest.clearAllMocks();
+  mockOpenCoinbase.mockResolvedValue(undefined);
   (useOnrampMinimum as jest.Mock).mockReturnValue({ amount: 2, currency: 'USD', inTokens: 2 });
   (useCoinbaseAvailability as jest.Mock).mockReturnValue(available);
 });
 
-describe('the pay screen, for a USDC payment', () => {
-  it('with an empty wallet is two plain choices, both live, and no greyed-out pay button', () => {
-    render(<PaymentActionPanel {...props({ amountLabel: '32 USDC', amountInTokens: 32 })} />);
-    expect(onScreen()).toEqual([
-      { says: 'Pay by card or bank transferNo crypto needed', live: true },
-      { says: 'Pay with cryptoFrom this wallet or one you already have', live: true },
-    ]);
-  });
-
-  it('with a wallet that can pay is one prominent button, and the two choices beneath it', () => {
-    render(<PaymentActionPanel {...props({ amountLabel: '32 USDC', amountInTokens: 32, balanceFloat: 50, hasInsufficientBalance: false })} />);
-    expect(onScreen()).toEqual([
-      { says: 'Pay 32 USDC from this wallet', live: true },
-      { says: 'Pay by card or bank transferNo crypto needed', live: true },
-      { says: 'Pay with cryptoFrom this wallet or one you already have', live: true },
-    ]);
-  });
-
-  it('names no provider, gives no reason and shows no address until one of them is pressed', () => {
+describe("below the exchange's minimum", () => {
+  it('topping up says the minimum, and that it is paid from the wallet afterwards', () => {
     render(<PaymentActionPanel {...props()} />);
-    expect(screen.queryByText(/Coinbase|Kraken|Link/)).toBeNull();
-    expect(screen.queryByText(/minimum/)).toBeNull();
-    expect(screen.queryByText('the payment address panel')).toBeNull();
-    expect(screen.queryByText(/Add funds/)).toBeNull();
+    expect(topUp()).toHaveTextContent("Add more to this wallet (exchange's minimum 2 USD), then pay from it.");
   });
 
-  it('keeps the pay button, off, while the balance is still being read', () => {
-    render(<PaymentActionPanel {...props({ isLoadingBalance: true })} />);
-    expect(screen.getByRole('button', { name: /from this wallet/ })).toBeDisabled();
-  });
-
-  /**
-   * A seller opening their own request sees what a customer with no money in their wallet gets,
-   * and can open it. A preview where nothing responded left them wondering whether the real thing
-   * works; one they can look through answers "will my customer manage to pay this?".
-   */
-  describe('as a seller\'s preview', () => {
-    const preview = (overrides: Record<string, unknown> = {}) =>
-      props({ amountLabel: '32 USDC', amountInTokens: 32, preview: true, ...overrides });
-
-    it('shows the two choices, live to open, and no pay button', () => {
-      render(<PaymentActionPanel {...preview()} />);
-      expect(onScreen()).toEqual([
-        { says: 'Pay by card or bank transferNo crypto needed', live: true },
-        { says: 'Pay with cryptoFrom this wallet or one you already have', live: true },
-      ]);
-    });
-
-    it("says the wallet shown will be the customer's, and does not show the seller's own", () => {
-      render(<PaymentActionPanel {...preview({ balanceFloat: 987.65 })} />);
-      expect(screen.getByText('Your customer signs in and sees their own wallet here.')).toBeInTheDocument();
-      expect(screen.queryByText(/987\.65/)).toBeNull();
-      expect(screen.queryByText(/0x1234/)).toBeNull();
-    });
-
-    it('opens the card providers to look at, with none that can be continued with', () => {
-      render(<PaymentActionPanel {...preview()} />);
-      openCard();
-      const providers = screen.getAllByRole('button', { name: /^Continue with/ });
-      expect(providers.length).toBeGreaterThan(0);
-      providers.forEach((provider) => expect(provider).toBeDisabled());
-      expect(screen.getByText(/Your customer chooses one of these and pays on their site/)).toBeInTheDocument();
-      // The list is for where the seller is, which is not where their customer is.
-      expect(screen.getByText(/Which providers appear depends on where your customer is/)).toBeInTheDocument();
-    });
-
-    it('never opens a provider, whatever is pressed', () => {
-      mockOpenCoinbase.mockClear();
-      render(<PaymentActionPanel {...preview()} />);
-      openCard();
-      screen.getAllByRole('button', { name: /^Continue with/ }).forEach((provider) => fireEvent.click(provider));
-      expect(mockOpenCoinbase).not.toHaveBeenCalled();
-    });
-
-    it('opens the address view to look at, with everything in it off, and offers no top-up', () => {
-      const onPayFromExternalWallet = jest.fn();
-      render(
-        <PaymentActionPanel
-          {...preview({ onPayFromExternalWallet, elsewherePanel: <button type="button">I have paid</button> })}
-        />
-      );
-      openCrypto();
-      expect(screen.queryByRole('button', { name: /In this wallet/ })).toBeNull();
-      fireEvent.click(screen.getByRole('button', { name: /In another wallet or an exchange/ }));
-      expect(screen.getByRole('button', { name: 'I have paid' })).toBeDisabled();
-      // Looking is not choosing: nothing is started or recorded.
-      expect(onPayFromExternalWallet).not.toHaveBeenCalled();
-      expect(mockModal.mock.calls.every(([modalProps]) => !modalProps.isOpen)).toBe(true);
-    });
-
-    it('for a token no card can buy, shows how the customer will get it: by buying the one that converts', () => {
-      render(<PaymentActionPanel {...preview({ amountLabel: '32 USDT', tokenSymbol: 'USDT' })} />);
-      expect(onScreen()).toEqual([
-        { says: 'Buy USDC and pay with itBy card or exchange, converted to USDT as they pay', live: false },
-        { says: 'Buy USDTNot sold on this network yet', live: false },
-        { says: 'Send USDT from another walletFor USDT you already hold elsewhere', live: true },
-      ]);
-    });
-  });
-});
-
-describe('behind "Pay by card or bank transfer"', () => {
-  it("below Coinbase's minimum, Coinbase is not a button and the reason is given", () => {
+  it('buys the minimum into the wallet, and comes back to this payment', async () => {
     render(<PaymentActionPanel {...props()} />);
-    openCard();
-    expect(screen.queryByRole('button', { name: /Continue with Coinbase/ })).toBeNull();
-    expect(screen.getByText('Coinbase: this amount is below its minimum of 2 USD.')).toBeInTheDocument();
+    openTopUp();
+    fireEvent.click(coinbase());
+    await waitFor(() => expect(mockOpenCoinbase).toHaveBeenCalled());
+    expect(mockOpenCoinbase.mock.calls[0][0]).toMatchObject({
+      destinationAddress: WALLET,
+      purpose: 'add-funds',
+      asset: 'USDC',
+      presetCryptoAmount: 2,
+      returnPath: '/pay?resume=1',
+    });
   });
 
-  it('at or above the minimum, Coinbase leads and says what it takes and from how much', () => {
-    render(<PaymentActionPanel {...props({ amountLabel: '32 USDC', amountInTokens: 32 })} />);
-    openCard();
-    expect(screen.getByRole('button', { name: /Continue with Coinbase.*Card or bank transfer, from 2 USD/ })).toBeEnabled();
-    expect(screen.queryByText(/Coinbase: this amount is below/)).toBeNull();
+  it('buys what is short when that is more than the minimum', async () => {
+    render(<PaymentActionPanel {...props({ amountLabel: '32.391 USDC', amountInTokens: 32.391, balanceFloat: 4 })} />);
+    expect(topUp()).toHaveTextContent('You hold 4.00 USDC. Add 28.40 more, then pay from it.');
+    openTopUp();
+    fireEvent.click(coinbase());
+    await waitFor(() => expect(mockOpenCoinbase).toHaveBeenCalled());
+    expect(mockOpenCoinbase.mock.calls[0][0]).toMatchObject({ presetCryptoAmount: 28.4 });
   });
 
   it('blocks nothing when the minimum is unknown', () => {
     (useOnrampMinimum as jest.Mock).mockReturnValue(null);
     render(<PaymentActionPanel {...props()} />);
-    openCard();
-    expect(screen.getByRole('button', { name: /Continue with Coinbase.*Card or bank transfer$/ })).toBeEnabled();
-  });
-
-  describe('where Coinbase cannot take money', () => {
-    const overrule = jest.fn();
-    beforeEach(() => {
-      (useCoinbaseAvailability as jest.Mock).mockReturnValue({ unavailable: true, countryName: 'Venezuela', overrule });
-    });
-
-    it('Coinbase is not a button; the reason is given, and the buyer can overrule the country', () => {
-      render(<PaymentActionPanel {...props({ amountLabel: '32 USDC', amountInTokens: 32 })} />);
-      openCard();
-      expect(screen.queryByRole('button', { name: /Continue with Coinbase/ })).toBeNull();
-      expect(screen.getByText(/Coinbase can't take card or bank payments in Venezuela/)).toBeInTheDocument();
-      fireEvent.click(screen.getByRole('button', { name: 'Not in Venezuela?' }));
-      expect(overrule).toHaveBeenCalled();
-    });
-
-    it("says that, not Coinbase's minimum, which means nothing to a buyer it cannot serve", () => {
-      render(<PaymentActionPanel {...props()} />);
-      openCard();
-      expect(screen.queryByText(/Coinbase: this amount is below/)).toBeNull();
-    });
-
-    it('still offers whoever else can serve', () => {
-      render(<PaymentActionPanel {...props({ amountLabel: '32 USDC', amountInTokens: 32 })} />);
-      openCard();
-      expect(screen.getByRole('button', { name: /Continue with Kraken/ })).toBeEnabled();
-    });
-  });
-
-  it('choosing Coinbase sends the whole amount straight to the payment, and coming back lands on "I have paid"', async () => {
-    mockOpenCoinbase.mockResolvedValue(undefined);
-    const onPayFromExternalWallet = jest.fn();
-    render(<PaymentActionPanel {...props({ amountLabel: '32.391 USDC', amountInTokens: 32.391, onPayFromExternalWallet })} />);
-    openCard();
-    fireEvent.click(screen.getByRole('button', { name: /Continue with Coinbase/ }));
-
-    await waitFor(() => expect(mockOpenCoinbase).toHaveBeenCalled());
-    const options = mockOpenCoinbase.mock.calls[0][0];
-    expect(options).toMatchObject({ destinationAddress: '0xescrow', purpose: 'pay-by-card', asset: 'USDC', presetCryptoAmount: 32.4 });
-    // Nothing of the address panel yet: the buyer is at Coinbase.
-    expect(screen.queryByText('the payment address panel')).toBeNull();
-
-    // Coinbase's window closes: the money may have landed, and pressing "I have paid" secures it.
-    act(() => options.onPopupClosed());
-    expect(await screen.findByText('the payment address panel')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Continue with Coinbase/ })).toBeNull();
-    expect(onPayFromExternalWallet).toHaveBeenCalled();
-  });
-
-  it('when nobody can serve, says so and offers the other way to pay', () => {
-    (useCoinbaseAvailability as jest.Mock).mockReturnValue({ unavailable: true, countryName: 'Venezuela', overrule: jest.fn() });
-    render(<PaymentActionPanel {...props({ chainId: 1, networkName: 'Ethereum' })} />);
-    openCard();
-    expect(screen.getByText('No card provider can take this payment here.')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Pay with crypto instead' }));
-    expect(screen.getByText('Where is your USDC?')).toBeInTheDocument();
+    expect(topUp()).not.toHaveTextContent(/exchange's minimum/);
+    openTopUp();
+    expect(coinbase()).toBeEnabled();
   });
 });
 
-describe('behind "Pay with crypto"', () => {
-  it('asks one question, and offers the three answers', () => {
-    render(<PaymentActionPanel {...props({ amountLabel: '10 USDC', amountInTokens: 10, balanceFloat: 4 })} />);
-    openCrypto();
-    expect(screen.getByText('Where is your USDC?')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /In this wallet, but not enough.*You hold 4\.00 USDC\. Add 6\.00 more, then pay from it\./ })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /In another wallet or an exchange/ })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /I don't have any.*Pay by card or bank transfer instead/ })).toBeEnabled();
+describe('topping up where Coinbase cannot take money', () => {
+  const overrule = jest.fn();
+  beforeEach(() => {
+    (useCoinbaseAvailability as jest.Mock).mockReturnValue({ unavailable: true, countryName: 'Venezuela', overrule });
   });
 
-  it('"in this wallet" tops it up by what is missing', () => {
-    render(<PaymentActionPanel {...props({ amountLabel: '10 USDC', amountInTokens: 10, balanceFloat: 4 })} />);
-    openCrypto();
-    fireEvent.click(screen.getByRole('button', { name: /In this wallet, but not enough/ }));
-    expect(lastModal()).toMatchObject({ isOpen: true, tokenSymbol: 'USDC', shortfall: 6 });
-  });
-
-  it("names the exchange's minimum when what is missing is less than it", () => {
-    render(<PaymentActionPanel {...props()} />);
-    openCrypto();
-    expect(screen.getByRole('button', { name: /exchange's minimum 2 USD/ })).toBeEnabled();
-  });
-
-  it('"in another wallet" shows the payment address, its QR and "I have paid"', () => {
-    render(<PaymentActionPanel {...props()} />);
-    openCrypto();
-    fireEvent.click(screen.getByRole('button', { name: /In another wallet or an exchange/ }));
-    expect(screen.getByText('the payment address panel')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    expect(screen.getByText('Where is your USDC?')).toBeInTheDocument();
-  });
-
-  it('"I don\'t have any" goes to paying by card', () => {
+  it('Coinbase is greyed out with the reason, and the buyer can overrule the country', () => {
     render(<PaymentActionPanel {...props({ amountLabel: '32 USDC', amountInTokens: 32 })} />);
-    openCrypto();
-    fireEvent.click(screen.getByRole('button', { name: /I don't have any/ }));
-    expect(screen.getByRole('button', { name: /Continue with Coinbase/ })).toBeInTheDocument();
+    openTopUp();
+    expect(coinbase()).toBeDisabled();
+    expect(screen.getByText(/Coinbase can't take card or bank payments in Venezuela/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Not in Venezuela?' }));
+    expect(overrule).toHaveBeenCalled();
   });
 
-  it('offers no top-up to a wallet that already holds enough', () => {
-    render(<PaymentActionPanel {...props({ balanceFloat: 5, hasInsufficientBalance: false })} />);
-    openCrypto();
-    expect(screen.queryByRole('button', { name: /In this wallet/ })).toBeNull();
+  it("says that, not Coinbase's minimum, which means nothing to a buyer it cannot serve", () => {
+    render(<PaymentActionPanel {...props()} />);
+    expect(topUp()).not.toHaveTextContent(/exchange's minimum/);
   });
 
-  it('is not offered where there is no address to pay from elsewhere; topping up stays on the screen', () => {
-    render(<PaymentActionPanel {...props({ elsewherePanel: undefined, resolveEscrowAddress: undefined })} />);
-    expect(screen.queryByRole('button', { name: /Pay with crypto/ })).toBeNull();
-    expect(screen.getByRole('button', { name: "Add funds to this wallet (exchange's minimum transfer = 2 USD)" })).toBeEnabled();
+  it('still offers whoever else can serve', () => {
+    render(<PaymentActionPanel {...props({ amountLabel: '32 USDC', amountInTokens: 32 })} />);
+    openTopUp();
+    expect(screen.getByRole('button', { name: /Add from Kraken/ })).toBeEnabled();
+  });
+});
+
+describe("as a seller's preview", () => {
+  const preview = (overrides: Record<string, unknown> = {}) =>
+    props({ amountLabel: '32 USDC', amountInTokens: 32, preview: true, ...overrides });
+
+  it("says the wallet shown will be the customer's, and does not show the seller's own", () => {
+    render(<PaymentActionPanel {...preview({ balanceFloat: 987.65 })} />);
+    expect(screen.getByText('Your customer signs in and sees their own wallet here.')).toBeInTheDocument();
+    expect(screen.queryByText(/987\.65/)).toBeNull();
+    expect(screen.queryByText(/0x1234/)).toBeNull();
+  });
+
+  it('for a token no card can buy, shows how the customer will get it: by buying the one that converts', () => {
+    render(<PaymentActionPanel {...preview({ amountLabel: '32 USDT', tokenSymbol: 'USDT' })} />);
+    expect(topUp()).toHaveTextContent('Add USDC to this wallet, then pay');
+    expect(topUp()).toHaveTextContent('By card or exchange, converted to USDT as they pay');
+    expect(screen.queryByRole('button', { name: /Pay by card or bank transfer/ })).toBeNull();
+    expect(screen.queryByText(/can't support USDT yet/)).toBeNull();
   });
 });
 
 describe('a token no card can buy (USDT on Base), with nothing to convert from', () => {
-  const SAYS = "Some external suppliers can't support USDT yet. If your option is greyed out, use USDT you already hold or use USDC instead";
   const usdt = (overrides: Record<string, unknown> = {}) =>
     props({ amountLabel: '32 USDT', amountInTokens: 32, tokenSymbol: 'USDT', ...overrides });
 
-  it('has no card route, and the way in for USDT held elsewhere is named for who it is for', () => {
+  it('has nothing to buy and says why; USDT held elsewhere can be sent straight to the payment', () => {
     render(<PaymentActionPanel {...usdt()} />);
-    expect(screen.queryByRole('button', { name: /Pay by card/ })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: /Send USDT from another wallet.*For USDT you already hold elsewhere/ }));
-    // Straight to the address: there is nothing to ask someone who already holds it.
-    expect(screen.getByText('the payment address panel')).toBeInTheDocument();
-    expect(screen.queryByText(/Where is your/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Pay by card or bank transfer/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /to this wallet, then pay/ })).toBeNull();
+    expect(screen.getByText(/Some external suppliers can't support USDT yet/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Pay from another wallet/ }));
+    expect(screen.getByText('the contract address panel')).toBeInTheDocument();
   });
 
   it('pays the ordinary way when the wallet holds enough', () => {
     render(<PaymentActionPanel {...usdt({ balanceFloat: 50, hasInsufficientBalance: false })} />);
     expect(screen.getByRole('button', { name: 'Pay 32 USDT from this wallet' })).toBeEnabled();
-    expect(screen.queryByText(SAYS)).toBeNull();
-  });
-
-  it('stays quiet in a seller preview', () => {
-    render(<PaymentActionPanel {...usdt({ preview: true })} />);
     expect(screen.queryByText(/can't support USDT yet/)).toBeNull();
   });
 });

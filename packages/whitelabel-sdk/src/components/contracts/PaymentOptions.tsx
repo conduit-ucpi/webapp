@@ -82,11 +82,11 @@ export default function PaymentOptions({
         </div>
       )}
 
-      {/* The address, its QR and "I have paid" belong to the buyer who holds the token somewhere
-          else, so they sit behind "Pay with crypto" in the panel's modal, not at the foot of the
-          screen for everyone. Framed as one block on purpose: both methods inside it are
-          fire-and-forget from our side, so pressing "I have paid" is what secures the money.
-          A seller's preview opens the same modal, with everything in it off. */}
+      {/* The contract address, its QR and "I have paid" belong to the buyer whose money goes
+          straight to the payment, so the panel shows them inside those sections, not at the foot
+          of the screen for everyone. Both ways of sending there are fire-and-forget from our
+          side, so pressing "I have paid" is what secures the money if the page's own check has
+          not already. A seller's preview shows the same sections, with everything in them off. */}
       <PaymentActionPanel
         {...actionPanel}
         elsewherePanel={elsewhere && !isPaymentInProgress && !isSameAddress ? elsewherePanel : undefined}

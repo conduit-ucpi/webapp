@@ -463,6 +463,17 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
    */
   const walletPayment = useRef<Promise<boolean> | null>(null);
 
+  /**
+   * Both balances, read again: the buyer may have added either token. Kept stable, because the
+   * panel listens for the buyer coming back to the tab for as long as this function is the same.
+   */
+  const refetchBalances = useRef({ refetchBalance, refetchOtherBalance });
+  refetchBalances.current = { refetchBalance, refetchOtherBalance };
+  const refreshBalances = useCallback(() => {
+    void refetchBalances.current.refetchBalance();
+    void refetchBalances.current.refetchOtherBalance();
+  }, []);
+
   /** Paying from the signed-in wallet: a gas-sponsored ordinary transfer, then settle. */
   const handleWalletPay = async () => {
     // ⚠️ ONLY TO AN ADDRESS ON FILE. If settle fails after the money has moved, the sweep is what
@@ -1012,6 +1023,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
                   // still has a card payment completed by the sweep.)
                   addFundsReturnPath={resumeHref}
                   resolveEscrowAddress={transferOffered || ownRequest ? async () => prepared?.escrow_address ?? null : undefined}
+                  onRefreshBalance={refreshBalances}
                   elsewhere={
                     transferOffered || ownRequest
                       ? {

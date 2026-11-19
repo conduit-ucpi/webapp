@@ -141,7 +141,7 @@ export default function QrPaymentPanel({
               <p className="text-xs text-center text-secondary-500 dark:text-secondary-400">{t('qrPaymentPanel.tapToOpenYour')}</p>
             </div>
           ) : (
-            <div className="flex justify-center mb-4">
+            <div className="flex flex-col items-center gap-2 mb-4">
               <div className="bg-white p-4 rounded-lg border-2 border-secondary-200 shadow-sm">
                 {preview ? (
                   <QrPlaceholder />
@@ -154,6 +154,12 @@ export default function QrPaymentPanel({
                   />
                 )}
               </div>
+              {/* The same request as the code, for a wallet installed on this computer. */}
+              {!preview && (
+                <a href={qr.buildEip681Uri()} className="text-sm underline text-secondary-600 dark:text-secondary-300 hover:text-secondary-900 dark:hover:text-white">
+                  {t('qrPaymentPanel.openInWalletApp')}
+                </a>
+              )}
             </div>
           )}
 

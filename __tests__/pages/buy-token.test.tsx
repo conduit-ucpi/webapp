@@ -1,210 +1,323 @@
-import { render } from '@testing-library/react';
+import { render, fireEvent, waitFor, within } from '@testing-library/react';
 import { screen } from '@testing-library/dom';
-import { useRouter } from 'next/router';
 import BuyToken from '@/pages/buy-token';
 
-// Mock Next.js router
-jest.mock('next/router', () => ({
-  useRouter: jest.fn(),
-}));
+const WALLET = '0x1234567890abcdef1234567890abcdef12345678';
 
-// Mock the wallet address hook
+const mockUseWalletAddress = jest.fn();
 jest.mock('@/hooks/useWalletAddress', () => ({
-  useWalletAddress: () => ({
-    walletAddress: '0x1234567890abcdef1234567890abcdef12345678',
-    isLoading: false,
-  }),
+  useWalletAddress: () => mockUseWalletAddress(),
 }));
 
-// Mock the auth provider
 const mockUseAuth = jest.fn();
 jest.mock('@/components/auth', () => ({
   useAuth: () => mockUseAuth(),
 }));
 
-// Mock the config provider
+// FundingOptions reads the wallet provider's on-ramp from here; the page reads the user from above.
+jest.mock('@/components/auth/SimpleAuthProvider', () => ({
+  useAuth: () => mockUseAuth(),
+}));
+
+const mockUseConfig = jest.fn();
 jest.mock('@/components/auth/ConfigProvider', () => ({
-  useConfig: () => ({
+  useConfig: () => mockUseConfig(),
+}));
+
+jest.mock('@/components/auth/ConnectWalletEmbedded', () => ({
+  __esModule: true,
+  default: () => <button>Connect</button>,
+}));
+
+const mockCoinbaseAvailability = jest.fn();
+jest.mock('@/hooks/useCoinbaseAvailability', () => ({
+  useCoinbaseAvailability: () => mockCoinbaseAvailability(),
+}));
+
+const mockLinkAvailability = jest.fn();
+jest.mock('@/hooks/useLinkAvailability', () => ({
+  useLinkAvailability: () => mockLinkAvailability(),
+}));
+
+jest.mock('@/hooks/useOnrampMinimum', () => ({
+  useOnrampMinimum: () => null,
+}));
+
+const mockVisitorCountry = jest.fn();
+jest.mock('@/lib/visitorCountry', () => ({
+  visitorCountry: () => mockVisitorCountry(),
+}));
+
+const mockReportFundingEvent = jest.fn();
+jest.mock('@/lib/reportFundingEvent', () => ({
+  reportFundingEvent: (...args: unknown[]) => mockReportFundingEvent(...args),
+}));
+
+const mockOpenCoinbaseOnramp = jest.fn();
+jest.mock('@/lib/coinbaseOnramp', () => ({
+  ONRAMP_RETURN_MESSAGE: 'coinbase-onramp-return',
+  openCoinbaseOnramp: (...args: unknown[]) => mockOpenCoinbaseOnramp(...args),
+}));
+
+const USDC = { symbol: 'USDC', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', decimals: 6, name: 'USD Coin' };
+const USDT = { symbol: 'USDT', address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', decimals: 6, name: 'Tether' };
+
+const available = { unavailable: false, countryName: null, overrule: jest.fn() };
+
+function signedIn(auth: Record<string, unknown> = {}) {
+  mockUseAuth.mockReturnValue({
+    user: { userId: '1', email: 'test@example.com', walletAddress: WALLET },
+    isLoading: false,
+    canFundWallet: () => true,
+    fundWallet: jest.fn().mockResolvedValue({ status: 'completed' }),
+    ...auth,
+  });
+  mockUseWalletAddress.mockReturnValue({ walletAddress: WALLET, isLoading: false });
+}
+
+function signedOut() {
+  mockUseAuth.mockReturnValue({ user: null, isLoading: false, canFundWallet: () => false, fundWallet: jest.fn() });
+  mockUseWalletAddress.mockReturnValue({ walletAddress: null, isLoading: false });
+}
+
+function configured(config: Record<string, unknown> = {}) {
+  mockUseConfig.mockReturnValue({
     config: {
-      chainId: 43113,
-      rpcUrl: 'https://api.avax-test.network/ext/bc/C/rpc',
-      usdcContractAddress: '0x5425890298aed601595a70ab815c96711a31bc65',
-      moonPayApiKey: 'test-api-key',
+      chainId: 8453,
       tokenSymbol: 'USDC',
-      serviceLink: 'conduit-ucpi',
+      defaultToken: USDC,
+      supportedTokens: [USDC],
+      coinbaseProjectId: 'project',
+      ...config,
     },
     isLoading: false,
-  }),
-}));
+  });
+}
 
-// Mock the Web3Auth instance provider - Not needed
-// jest.mock('@/components/auth/Web3AuthContextProvider', () => ({
-//   useWeb3AuthInstance: () => ({
-//     web3authProvider: { request: jest.fn() },
-//     isLoading: false,
-//     web3authInstance: null,
-//   }),
-// }));
+describe('BuyToken page', () => {
+  let open: jest.SpyInstance;
 
-// AuthContextProvider has been removed - using SimpleAuthProvider instead
-
-// Mock the auth provider (WalletProvider was removed during auth system reorganization)
-jest.mock('@/components/auth/SimpleAuthProvider', () => ({
-  useAuth: () => ({
-    user: null,
-    isLoading: false,
-    isConnected: false,
-    connect: jest.fn(),
-    disconnect: jest.fn(),
-    getEthersProvider: jest.fn().mockResolvedValue(null),
-  }),
-}));
-
-const mockRouterPush = jest.fn();
-const mockRouterBack = jest.fn();
-
-describe('BuyToken Page', () => {
   beforeEach(() => {
-    (useRouter as jest.Mock).mockReturnValue({
-      query: {},
-      basePath: '',
-      push: mockRouterPush,
-      back: mockRouterBack,
-    });
-
-    // Default auth state - authenticated user
-    mockUseAuth.mockReturnValue({
-      user: { userId: '1', email: 'test@example.com', walletAddress: '0xtest', authProvider: 'web3auth' },
-      isLoading: false,
-      isConnected: true,
-      error: null,
-      disconnect: jest.fn(),
-      getEthersProvider: jest.fn(),
-      authenticatedFetch: jest.fn(),
-      hasVisitedBefore: jest.fn().mockReturnValue(false),
-    });
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
+    signedIn();
+    configured();
+    mockCoinbaseAvailability.mockReturnValue(available);
+    mockLinkAvailability.mockReturnValue(available);
+    mockVisitorCountry.mockResolvedValue(null);
+    mockOpenCoinbaseOnramp.mockResolvedValue(undefined);
+    open = jest.spyOn(window, 'open').mockImplementation(() => null);
+    Object.assign(navigator, { clipboard: { writeText: jest.fn().mockResolvedValue(undefined) } });
   });
 
-  describe('When user is authenticated', () => {
-    it('renders the main heading and description', () => {
+  afterEach(() => open.mockRestore());
+
+  it('names the token and the network, without the word Mainnet', () => {
+    render(<BuyToken />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Add USDC to your wallet' })).toBeInTheDocument();
+    expect(screen.getAllByText('Base').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Mainnet/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Web3Auth/)).not.toBeInTheDocument();
+  });
+
+  it('shows the wallet address wherever it has to be pasted', () => {
+    render(<BuyToken />);
+    const boxes = screen.getAllByLabelText('Your wallet address') as HTMLInputElement[];
+    expect(boxes.length).toBe(2);
+    boxes.forEach((box) => expect(box.value).toBe(WALLET));
+  });
+
+  describe('the wallet provider on-ramp', () => {
+    it('asks for the amount typed, in the token, on the app chain', async () => {
+      const fundWallet = jest.fn().mockResolvedValue({ status: 'completed', detail: 'confirmed' });
+      signedIn({ fundWallet });
       render(<BuyToken />);
 
-      // The heading shows the token symbol from config (USDC in this test)
-      expect(screen.getByRole('heading', { level: 1, name: /Buy or Sell (USDC|Tokens)/ })).toBeInTheDocument();
-      expect(screen.getByText(/Manual instructions for adding (USDC|tokens) to your wallet or converting to fiat/)).toBeInTheDocument();
+      fireEvent.change(screen.getByLabelText(/How much USDC/), { target: { value: '120.005' } });
+      fireEvent.click(screen.getByRole('button', { name: /Add funds with a card/ }));
+
+      await waitFor(() => expect(fundWallet).toHaveBeenCalledWith({ amount: '120.01', asset: 'USDC', chainId: 8453 }));
+      await waitFor(() =>
+        expect(mockReportFundingEvent).toHaveBeenCalledWith('privy-completed', { wallet: WALLET, amount: '120.01', detail: 'confirmed' })
+      );
     });
 
-    it('renders USDC guide information', () => {
+    it('shows why it could not open', async () => {
+      signedIn({ fundWallet: jest.fn().mockRejectedValue(new Error('No providers for this purchase')) });
       render(<BuyToken />);
-
-      expect(screen.getByText('How to Add USDC to Your Wallet/How to get cash from your Wallet')).toBeInTheDocument();
-      expect(screen.getByText(/Check your network:/)).toBeInTheDocument();
-      expect(screen.getByText(/Your wallet address:/)).toBeInTheDocument();
+      fireEvent.click(screen.getByRole('button', { name: /Add funds with a card/ }));
+      expect(await screen.findByRole('alert')).toHaveTextContent('No providers for this purchase');
     });
 
-    it('displays wallet information', () => {
+    it('is not offered to a wallet whose provider has none', () => {
+      signedIn({ canFundWallet: () => false });
       render(<BuyToken />);
-
-      expect(screen.getByText('Connected Wallet:')).toBeInTheDocument();
-      expect(screen.getAllByText('0x1234567890abcdef1234567890abcdef12345678').length).toBeGreaterThan(0);
-      expect(screen.getByText('Network:')).toBeInTheDocument();
-      expect(screen.getByText('Avalanche Fuji Testnet')).toBeInTheDocument();
-    });
-
-    it('shows Web3Auth wallet services', () => {
-      render(<BuyToken />);
-
-      expect(screen.getByText('Web3Auth Wallet Services')).toBeInTheDocument();
-      expect(screen.getByText(/Use the integrated wallet widget to buy, sell, swap, and manage your crypto/)).toBeInTheDocument();
-      expect(screen.getByText(/Look for the wallet widget button/)).toBeInTheDocument();
-    });
-
-    it('shows active status notice', () => {
-      render(<BuyToken />);
-
-      expect(screen.getByText('Active:')).toBeInTheDocument();
-      expect(screen.getByText(/Web3Auth Wallet Services are now integrated and available through the wallet widget/)).toBeInTheDocument();
-    });
-
-    it('displays informational footer', () => {
-      render(<BuyToken />);
-
-      expect(screen.getByText(/Powered by Web3Auth Wallet Services/)).toBeInTheDocument();
-      expect(screen.getByText(/fiat on-ramp providers and DeFi services/)).toBeInTheDocument();
-    });
-
-    it('shows navigation buttons', () => {
-      render(<BuyToken />);
-
-      const dashboardButton = screen.getByRole('button', { name: 'Go to Dashboard' });
-      expect(dashboardButton).toBeInTheDocument();
-      expect(dashboardButton).not.toBeDisabled();
-
-      const backButton = screen.getByRole('button', { name: 'Go Back' });
-      expect(backButton).toBeInTheDocument();
-    });
-
-    it('navigates to dashboard when dashboard button is clicked', () => {
-      render(<BuyToken />);
-
-      const dashboardButton = screen.getByRole('button', { name: 'Go to Dashboard' });
-      dashboardButton.click();
-
-      expect(mockRouterPush).toHaveBeenCalledWith('/dashboard');
-    });
-
-    it('navigates back when back button is clicked', () => {
-      render(<BuyToken />);
-
-      const backButton = screen.getByRole('button', { name: 'Go Back' });
-      backButton.click();
-
-      expect(mockRouterBack).toHaveBeenCalled();
-    });
-
-    it('shows expandable manual instructions', () => {
-      render(<BuyToken />);
-
-      expect(screen.getByText(/Alternative: Manual Instructions/)).toBeInTheDocument();
-      expect(screen.getByText(/click to expand/)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Add funds with a card/ })).not.toBeInTheDocument();
     });
   });
 
-  describe('When user is not authenticated', () => {
-    it('shows connect wallet message', () => {
-      // Override the auth mock for this test
-      mockUseAuth.mockReturnValueOnce({
-        user: null,
-        isLoading: false,
-        login: jest.fn(),
-        logout: jest.fn(),
-      });
-
+  describe('Coinbase', () => {
+    it('is asked for tokens delivered to the wallet', async () => {
       render(<BuyToken />);
+      fireEvent.click(screen.getByRole('button', { name: /Add from Coinbase/ }));
+      await waitFor(() =>
+        expect(mockOpenCoinbaseOnramp).toHaveBeenCalledWith({
+          destinationAddress: WALLET,
+          purpose: 'guide',
+          asset: 'USDC',
+          presetCryptoAmount: 50,
+          returnPath: undefined,
+        })
+      );
+    });
 
-      expect(screen.getByRole('heading', { level: 1, name: 'Connect Your Wallet' })).toBeInTheDocument();
-      // The component shows either the token symbol from config or 'tokens' as fallback
-      expect(screen.getByText(/You need to connect your wallet to buy or sell (USDC|tokens)\./)).toBeInTheDocument();
+    it('is never asked for less than its minimum', async () => {
+      render(<BuyToken />);
+      fireEvent.change(screen.getByLabelText(/How much USDC/), { target: { value: '2' } });
+      fireEvent.click(screen.getByRole('button', { name: /Add from Coinbase/ }));
+      await waitFor(() => expect(mockOpenCoinbaseOnramp).toHaveBeenCalledWith(expect.objectContaining({ presetCryptoAmount: 5 })));
+    });
+
+    it('is left out when there is no Coinbase project', () => {
+      configured({ coinbaseProjectId: undefined });
+      render(<BuyToken />);
+      expect(screen.queryByRole('button', { name: /Add from Coinbase/ })).not.toBeInTheDocument();
+    });
+
+    it('is greyed out, with a way to overrule, where Coinbase cannot serve', () => {
+      const overrule = jest.fn();
+      mockCoinbaseAvailability.mockReturnValue({ unavailable: true, countryName: 'Nigeria', overrule });
+      render(<BuyToken />);
+      expect(screen.getByRole('button', { name: /Add from Coinbase/ })).toBeDisabled();
+      fireEvent.click(screen.getByRole('button', { name: 'Not in Nigeria?' }));
+      expect(overrule).toHaveBeenCalled();
     });
   });
 
-  describe('Loading states', () => {
-    it('shows loading spinner when auth is loading', () => {
-      // Override the auth mock for this test
-      mockUseAuth.mockReturnValueOnce({
-        user: null,
-        isLoading: true,
-        login: jest.fn(),
-        logout: jest.fn(),
-      });
+  describe('Kraken', () => {
+    it('opens its purchase page for this wallet, at its minimum when less is asked for', () => {
+      render(<BuyToken />);
+      fireEvent.change(screen.getByLabelText(/How much USDC/), { target: { value: '3' } });
+      fireEvent.click(screen.getByRole('button', { name: /Add from Kraken/ }));
 
+      const url = new URL(open.mock.calls[0][0]);
+      expect(url.origin).toBe('https://ramp.kraken.com');
+      expect(url.searchParams.get('wallet_address')).toBe(WALLET);
+      expect(url.searchParams.get('amount')).toBe('11');
+      expect(url.searchParams.get('network')).toBe('Base');
+      expect(mockReportFundingEvent).toHaveBeenCalledWith('kraken-opened', { wallet: WALLET, amount: '11' });
+    });
+
+    it('is greyed out on a network it does not deliver to', () => {
+      configured({ chainId: 43113 });
+      render(<BuyToken />);
+      expect(screen.getByRole('button', { name: /Add from Kraken/ })).toBeDisabled();
+      expect(screen.getByText(/Kraken can't deliver USDC on Avalanche Fuji Testnet/)).toBeInTheDocument();
+    });
+  });
+
+  describe('Link', () => {
+    it('opens with the purchase filled in and copies the address to paste there', () => {
+      render(<BuyToken />);
+      fireEvent.click(screen.getByRole('button', { name: /Add with Link/ }));
+
+      const url = new URL(open.mock.calls[0][0]);
+      expect(url.origin).toBe('https://crypto.link.com');
+      expect(url.searchParams.get('destination_amount')).toBe('50');
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith(WALLET);
+    });
+
+    it('is greyed out outside the United States', () => {
+      mockLinkAvailability.mockReturnValue({ unavailable: true, countryName: 'Australia', overrule: jest.fn() });
+      render(<BuyToken />);
+      expect(screen.getByRole('button', { name: /Add with Link/ })).toBeDisabled();
+    });
+  });
+
+  it('opens nothing without an amount', () => {
+    render(<BuyToken />);
+    fireEvent.change(screen.getByLabelText(/How much USDC/), { target: { value: '' } });
+    expect(screen.getByText('Enter an amount to buy.')).toBeInTheDocument();
+    ['Add funds with a card', 'Add from Coinbase', 'Add from Kraken', 'Add with Link'].forEach((name) =>
+      expect(screen.getByRole('button', { name: new RegExp(name) })).toBeDisabled()
+    );
+  });
+
+  it('greys out the buying routes for a token no on-ramp delivers', () => {
+    configured({ supportedTokens: [USDC, USDT] });
+    render(<BuyToken />);
+    fireEvent.change(screen.getByLabelText('Token'), { target: { value: 'USDT' } });
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Add USDT to your wallet' })).toBeInTheDocument();
+    ['Add funds with a card', 'Add from Coinbase', 'Add from Kraken', 'Add with Link'].forEach((name) =>
+      expect(screen.getByRole('button', { name: new RegExp(name) })).toBeDisabled()
+    );
+  });
+
+  describe('the exchange list', () => {
+    it('links to each exchange in a new tab', () => {
+      render(<BuyToken />);
+      const section = screen.getByText('More places to buy USDC').closest('details') as HTMLElement;
+      expect(section).toHaveAttribute('open');
+      for (const [name, href] of [
+        ['Kraken', 'https://www.kraken.com'],
+        ['Binance', 'https://www.binance.com'],
+        ['Swyftx', 'https://swyftx.com'],
+        ['Coinbase', 'https://www.coinbase.com'],
+      ]) {
+        const link = within(section).getAllByRole('link').find((a) => a.getAttribute('href') === href) as HTMLElement;
+        expect(link).toHaveTextContent(name);
+        expect(link).toHaveAttribute('target', '_blank');
+        expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+      }
+      expect(within(section).getAllByRole('link').length).toBe(79);
+    });
+
+    it('says to check the withdrawal network before buying', () => {
+      render(<BuyToken />);
+      expect(screen.getByText(/not every company here can send USDC on Base/)).toBeInTheDocument();
+    });
+
+    it('puts the visitor’s local exchanges first, once', async () => {
+      mockVisitorCountry.mockResolvedValue('AU');
       render(<BuyToken />);
 
-      expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
+      const local = (await screen.findByRole('heading', { name: 'Popular in Australia' })).parentElement as HTMLElement;
+      expect(within(local).getByRole('link', { name: /^Swyftx/ })).toBeInTheDocument();
+      expect(within(local).getByRole('link', { name: /^Kraken/ })).toBeInTheDocument();
+      expect(screen.getAllByRole('link', { name: /^Swyftx/ }).length).toBe(1);
     });
+  });
+
+  describe('signed out', () => {
+    beforeEach(signedOut);
+
+    it('asks to connect, and still lists the exchanges', () => {
+      render(<BuyToken />);
+      expect(screen.getByRole('heading', { name: 'Connect your wallet' })).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: /^Swyftx/ })).toBeInTheDocument();
+    });
+
+    it('offers no route that needs a wallet', () => {
+      render(<BuyToken />);
+      expect(screen.queryByRole('button', { name: /Add from Kraken/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /Transfer from another wallet/ })).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Your wallet address')).not.toBeInTheDocument();
+      expect(screen.getByText(/Connect your wallet to see it/)).toBeInTheDocument();
+    });
+  });
+
+  it('shows the address and a code to scan for a transfer from another wallet', () => {
+    render(<BuyToken />);
+    fireEvent.click(screen.getByRole('button', { name: /Transfer from another wallet/ }));
+    expect(screen.getByText(/Scan with your wallet app to send/)).toBeInTheDocument();
+    expect(screen.getByText('50.0000 USDC')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }));
+    expect(screen.getByRole('button', { name: /Add from Kraken/ })).toBeInTheDocument();
+  });
+
+  it('shows a spinner while the wallet is loading', () => {
+    mockUseWalletAddress.mockReturnValue({ walletAddress: null, isLoading: true });
+    render(<BuyToken />);
+    expect(screen.getByTestId('loading-spinner')).toBeInTheDocument();
   });
 });

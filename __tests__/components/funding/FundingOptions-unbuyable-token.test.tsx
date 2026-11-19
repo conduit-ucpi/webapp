@@ -3,7 +3,9 @@
  * sending tokens already held stays open. USDC is offered exactly as before.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
-import AddFundsModal from '@/components/contracts/AddFundsModal';
+import FundingOptions from '@/components/funding/FundingOptions';
+
+jest.mock('@/lib/visitorCountry', () => ({ visitorCountry: () => Promise.resolve(null) }));
 
 jest.mock('@/components/auth/ConfigProvider', () => ({
   useConfig: () => ({ config: { coinbaseProjectId: 'p', chainId: 8453 } }),
@@ -14,17 +16,15 @@ jest.mock('@/components/auth/SimpleAuthProvider', () => ({
 }));
 jest.mock('@/lib/reportFundingEvent', () => ({ reportFundingEvent: jest.fn() }));
 
-const modal = (tokenSymbol: string, extra: Record<string, unknown> = {}) => (
-  <AddFundsModal
-    isOpen
-    onClose={jest.fn()}
+const modal = (tokenSymbol: string, { shortfall = 9.57, ...extra }: Record<string, unknown> = {}) => (
+  <FundingOptions
     walletAddress="0x1234567890abcdef1234567890abcdef12345678"
     tokenAddress="0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2"
     tokenSymbol={tokenSymbol}
     tokenDecimals={6}
     chainId={8453}
     networkName="Base"
-    shortfall={9.57}
+    amount={shortfall as number}
     {...extra}
   />
 );
@@ -32,7 +32,7 @@ const cardOption = () => screen.getByRole('button', { name: /Add funds with a ca
 const coinbaseOption = () => screen.getByRole('button', { name: /Add from Coinbase/ });
 const CANNOT = "Some external suppliers can't support USDT yet. If your option is greyed out, use USDT you already hold or use USDC instead";
 
-describe('AddFundsModal for a token that cannot be bought', () => {
+describe('FundingOptions for a token that cannot be bought', () => {
   it('greys out both buying routes for USDT, each with the reason', () => {
     render(modal('USDT'));
     expect(cardOption()).toBeDisabled();

@@ -55,7 +55,6 @@ jest.mock('@/components/ui/Toast', () => ({
   ToastProvider: ({ children }: any) => <>{children}</>,
 }));
 jest.mock('@/components/auth/WalletChoiceCards', () => () => <div data-testid="wallet-gate" />);
-jest.mock('@/components/contracts/AddFundsModal', () => () => null);
 jest.mock('@/lib/escrow/verificationRpc', () => ({
   getVerificationReader: () => ({ predictEscrowAddress: jest.fn().mockResolvedValue('0x7b0e8Fa36cF4E8AE5416F759692759ae7745F51B') }),
 }));
@@ -249,8 +248,8 @@ describe('paying a USDT request with USDC', () => {
     mockHeld.usdc = '5';
     render(<PayPage request={request()} />);
 
-    expect(await screen.findByRole('button', { name: /Buy USDC and pay with it.*About 15\.19 USDC/ })).toBeEnabled();
-    expect(screen.getByRole('button', { name: /^Buy USDT.*Not sold on this network yet/ })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: /Add USDC to this wallet, then pay.*About 15\.19 USDC/ })).toBeEnabled();
+    expect(screen.getByText(/USDT can't be bought by card or bank on .*Add USDC to your wallet/)).toBeInTheDocument();
     // Paying is not the next step, so there is no greyed-out pay button above the one that is.
     expect(screen.queryByRole('button', { name: /Pay 20 USDT/ })).toBeNull();
   });

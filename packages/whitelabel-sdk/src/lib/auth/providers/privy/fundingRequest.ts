@@ -5,7 +5,7 @@ import type { FundWalletRequest, FundWalletResult } from '@/lib/auth/types/unifi
  * PrivyHost so it can be tested without Privy.
  *
  * Fiat only, for now. Privy's crypto deposits need a Privy wallet (depositFunds throws for an
- * external one) and cost the app gas, and AddFundsModal already offers a transfer from another wallet.
+ * external one) and cost the app gas, and FundingOptions already offers a transfer from another wallet.
  *
  * ⚠️ THE AMOUNT IS ONLY A STARTING POINT. It is in tokens, and Privy takes it as a fiat amount in
  *    whichever currency is selected. Starting in USD makes it about right for a dollar stablecoin,

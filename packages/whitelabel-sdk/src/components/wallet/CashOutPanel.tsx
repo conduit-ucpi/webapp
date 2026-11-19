@@ -10,6 +10,7 @@ import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { OFFRAMP_RETURN_MESSAGE, openCoinbaseOfframp } from '@/lib/coinbaseOfframp';
 import { detectUserCountry, knownCountryCodes } from '@/utils/currencyDetection';
 import { US_STATES } from '@/utils/usStates';
+import { useT, withNodes } from '../../i18n';
 
 /**
  * Cash out to a bank account, via Coinbase.
@@ -161,6 +162,7 @@ function formatTimeLeft(ms: number): string {
 }
 
 export default function CashOutPanel({ walletAddress, balances, onSent }: CashOutPanelProps) {
+  const t = useT();
   const router = useRouter();
   const { config } = useConfig();
   const { fundAndSendTransaction } = useSimpleEthers();
@@ -254,7 +256,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
         if (cancelled) return;
         console.log(`${LOG} could not read payout options:`, e);
         setCurrencies([]);
-        setOptionsError('Could not read your Coinbase payout options.');
+        setOptionsError(t('cashOut.optionsError'));
       });
 
     return () => {
@@ -316,16 +318,16 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
       if (!config?.coinbaseNetwork) return 'Cash-out is not configured on this server.';
 
       if (order.network.toLowerCase() !== config.coinbaseNetwork.toLowerCase()) {
-        return `This cash-out is for ${order.network}, but this wallet is on ${config.coinbaseNetwork}. Nothing has been sent.`;
+        return t('cashOut.wrongNetwork', { orderNetwork: order.network, network: config.coinbaseNetwork });
       }
 
       const token = supportedTokens.find(t => t.symbol === order.currency);
       if (!token) {
-        return `This cash-out is in ${order.currency}, which this wallet does not hold. Nothing has been sent.`;
+        return t('cashOut.wrongToken', { token: order.currency });
       }
 
       if (!/^0x[a-fA-F0-9]{40}$/.test(order.toAddress)) {
-        return 'Coinbase returned an address we could not read. Nothing has been sent.';
+        return t('cashOut.badAddress');
       }
 
       // A CRYPTO_ACCOUNT order is not a sale. Coinbase would take the tokens
@@ -334,16 +336,16 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
       // Observed in the wild, which is why it is a hard stop rather than a note.
       const msRemaining = Date.parse(order.expiresAt) - Date.now();
       if (Number.isFinite(msRemaining) && msRemaining < MIN_WINDOW_TO_SEND_MS) {
-        return 'There is not enough time left on this cash-out to send it safely. Tokens that arrive after Coinbase closes the order are not returned — they land in your Coinbase account as crypto. Nothing has been sent; start a new cash-out.';
+        return t('cashOut.tooLate');
       }
 
       if (order.paymentMethod === 'CRYPTO_ACCOUNT') {
-        return 'This cash-out would move your tokens into your Coinbase account, not your bank. Nothing has been sent — start again and choose your bank account as the destination in Coinbase.';
+        return t('cashOut.notABank');
       }
 
       return null;
     },
-    [config?.coinbaseNetwork, supportedTokens]
+    [config?.coinbaseNetwork, supportedTokens, t]
   );
 
   const sendToCoinbase = useCallback(
@@ -381,23 +383,24 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
         // for this one sale: nothing a person could recognise. No cash figure: Coinbase's order
         // says what is sold and in which currency it pays, not how much arrives.
         const selling = `${order.amount.includes('.') ? order.amount.replace(/\.?0+$/, '') : order.amount} ${order.currency}`;
-        const paid = order.fiatCurrency ? `the ${order.fiatCurrency}` : 'the money';
-        const walletDescription =
-          `Send ${selling} to Coinbase to complete your cash-out. Coinbase sells it and pays ${paid} ` +
-          (order.paymentMethod === 'ACH_BANK_ACCOUNT' ? 'to your bank account.' : 'by the method you chose there.');
+        const paid = order.fiatCurrency ? t('cashOut.theCurrency', { currency: order.fiatCurrency }) : t('cashOut.theMoney');
+        const walletDescription = t(
+          order.paymentMethod === 'ACH_BANK_ACCOUNT' ? 'cashOut.walletDescriptionBank' : 'cashOut.walletDescriptionOther',
+          { selling, paid },
+        );
 
         const txHash = await fundAndSendTransaction({ to: token.address, data, value: '0', walletDescription });
 
         rememberSentOrder(order.transactionId);
         // Describe the order that actually went, using Coinbase's own view of it.
-        setSentCurrency(order.fiatCurrency || 'cash');
+        setSentCurrency(order.fiatCurrency || t('cashOut.cash'));
         setSentRoute({ reachesBank: order.paymentMethod === 'ACH_BANK_ACCOUNT' });
         setSentTxHash(txHash);
         setPending(null);
         setAmount('');
         onSent?.();
       } catch (e: any) {
-        setError(e?.message || 'The transfer to Coinbase failed');
+        setError(e?.message || t('cashOut.transferFailed'));
       } finally {
         setIsSending(false);
       }
@@ -554,7 +557,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
   useEffect(() => {
     if (pending && msLeft <= 0 && !isSending) {
       setPending(null);
-      setError('That cash-out expired before it was sent. Nothing left your wallet — start again.');
+      setError(t('cashOut.expired'));
     }
   }, [pending, msLeft, isSending]);
 
@@ -589,7 +592,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
         },
       });
     } catch (e: any) {
-      setError(e?.message || 'Could not open Coinbase');
+      setError(e?.message || t('cashOut.openFailed'));
       setIsOpening(false);
     }
   };
@@ -602,63 +605,66 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
 
   return (
     <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6 mb-8">
-      <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Cash out your tokens</h2>
+      <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">{t('cashOut.title')}</h2>
       <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
-        Sell your tokens for cash through Coinbase. Where that cash lands depends on your
-        country — the line below the currency says which.
+        {t('cashOut.blurb')}
       </p>
 
       {pending ? (
         <div className="mt-6 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-4">
           <p className="font-semibold text-secondary-900 dark:text-white">
-            {isSending ? 'Confirm the transfer in your wallet' : 'Finish your cash-out'}
+            {isSending ? t('cashOut.confirmInWallet') : t('cashOut.finish')}
           </p>
           <p className="mt-1 text-sm text-secondary-700 dark:text-secondary-200">
-            Coinbase is waiting for{' '}
-            <span className="font-semibold">
-              {pending.amount} {pending.currency}
-            </span>
-            . Sending it completes the cash-out — {formatTimeLeft(msLeft)} left.
+            {withNodes(t('cashOut.waitingFor', { time: formatTimeLeft(msLeft) }), {
+              amount: (
+                <span className="font-semibold">
+                  {pending.amount} {pending.currency}
+                </span>
+              ),
+            })}
           </p>
 
           <div className="mt-3 text-sm text-secondary-600 dark:text-secondary-300">
-            <span className="mr-2">To Coinbase at</span>
+            <span className="mr-2">{t('cashOut.toCoinbaseAt')}</span>
             <ExpandableHash hash={pending.toAddress} />
           </div>
 
           {!isSending && (
             <Button className="mt-4" onClick={() => sendToCoinbase(pending)}>
-              Send {pending.amount} {pending.currency} to Coinbase
+              {t('cashOut.sendToCoinbase', { amount: pending.amount, token: pending.currency })}
             </Button>
           )}
           {isSending && (
             <p className="mt-4 text-sm text-secondary-600 dark:text-secondary-300">
-              Sending… gas is covered for you.
+              {t('cashOut.sendingGas')}
             </p>
           )}
         </div>
       ) : isWaitingForOrder ? (
         <p className="mt-6 text-sm text-secondary-600 dark:text-secondary-300">
-          Checking your cash-out with Coinbase… this can take a moment.
+          {t('cashOut.checking')}
         </p>
       ) : gaveUp ? (
         <div className="mt-6 rounded-lg border border-secondary-200 dark:border-secondary-700 p-4">
           <p className="font-semibold text-secondary-900 dark:text-white">
-            No cash-out is waiting to be sent
+            {t('cashOut.nothingWaiting')}
           </p>
           <p className="mt-1 text-sm text-secondary-700 dark:text-secondary-200">
             {gaveUp.failed
-              ? 'We could not reach Coinbase to check. Nothing has left your wallet.'
+              ? t('cashOut.unreachable')
               : gaveUp.seen.length === 0
-                ? 'Coinbase has no record of a cash-out for you. If you did not get as far as "Cash out now" — for example it asked you to add a bank account or verify your ID — the order was never created.'
-                : `Coinbase has ${gaveUp.seen.length} order${gaveUp.seen.length === 1 ? '' : 's'} on file for you, but ${gaveUp.seen.length === 1 ? 'it is' : 'none are'} waiting on a transfer (${seenStatuses(gaveUp.seen)}).`}
+                ? t('cashOut.noRecord')
+                : gaveUp.seen.length === 1
+                  ? t('cashOut.oneOrder', { statuses: seenStatuses(gaveUp.seen) })
+                  : t('cashOut.manyOrders', { count: gaveUp.seen.length, statuses: seenStatuses(gaveUp.seen) })}
           </p>
           <div className="mt-4 flex gap-2">
             <Button variant="outline" onClick={() => pollForOrder(false)}>
-              Check again
+              {t('cashOut.checkAgain')}
             </Button>
             <Button variant="outline" onClick={() => setGaveUp(null)}>
-              Start a new cash-out
+              {t('cashOut.startNew')}
             </Button>
           </div>
         </div>
@@ -666,7 +672,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
         <div className="mt-6 space-y-5">
           <div>
             <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2">
-              Token
+              {t('cashOut.token')}
             </label>
             <div className="flex flex-wrap gap-4">
               {supportedTokens.map(token => (
@@ -694,7 +700,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
                 htmlFor="cashOutCountry"
                 className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2"
               >
-                Your country
+                {t('cashOut.country')}
               </label>
               <select
                 id="cashOutCountry"
@@ -719,7 +725,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
                   htmlFor="cashOutState"
                   className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2"
                 >
-                  State
+                  {t('cashOut.state')}
                 </label>
                 <select
                   id="cashOutState"
@@ -727,7 +733,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
                   onChange={e => setSubdivision(e.target.value)}
                   className={selectClass}
                 >
-                  <option value="">Choose…</option>
+                  <option value="">{t('cashOut.choose')}</option>
                   {US_STATES.map(code => (
                     <option key={code} value={code}>
                       {code}
@@ -742,7 +748,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
                 htmlFor="cashOutCurrency"
                 className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2"
               >
-                Paid out in
+                {t('cashOut.paidOutIn')}
               </label>
               <select
                 id="cashOutCurrency"
@@ -751,8 +757,8 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
                 disabled={!currencies || currencies.length === 0}
                 className={selectClass}
               >
-                {!currencies && <option value="">Loading…</option>}
-                {currencies?.length === 0 && <option value="">Unavailable</option>}
+                {!currencies && <option value="">{t('cashOut.loading')}</option>}
+                {currencies?.length === 0 && <option value="">{t('cashOut.unavailable')}</option>}
                 {currencies?.map(c => (
                   <option key={c.code} value={c.code}>
                     {c.code}
@@ -768,18 +774,18 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
           {payoutRoute && (
             <p className="text-sm text-secondary-600 dark:text-secondary-300">
               {payoutRoute.reachesBank
-                ? `Coinbase pays ${fiatCurrency} into your linked bank account.`
-                : `Coinbase pays ${fiatCurrency} into your Coinbase cash balance. Moving it to your bank is a separate step in Coinbase.`}
+                ? t('cashOut.paysBank', { currency: fiatCurrency })
+                : t('cashOut.paysBalance', { currency: fiatCurrency })}
             </p>
           )}
           {country === 'US' && !subdivision && (
             <p className="text-sm text-secondary-600 dark:text-secondary-300">
-              Choose your state — Coinbase's payout options differ by state.
+              {t('cashOut.chooseState')}
             </p>
           )}
           {currencies?.length === 0 && !optionsError && (
             <p className="text-sm text-red-600 dark:text-red-400">
-              Coinbase does not offer cash-out in {country}.
+              {t('cashOut.notOffered', { country })}
             </p>
           )}
           {optionsError && (
@@ -791,7 +797,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
               htmlFor="cashOutAmount"
               className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2"
             >
-              Amount
+              {t('cashOut.amount')}
             </label>
             <Input
               id="cashOutAmount"
@@ -802,20 +808,19 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
               placeholder="0.00"
               error={
                 amount && !amountIsValid
-                  ? 'Amount must be greater than 0 and not exceed your balance'
+                  ? t('cashOut.invalidAmount')
                   : undefined
               }
-              helpText={`Available: ${balances[symbol] || '0.0000'} ${symbol}`}
+              helpText={t('cashOut.available', { balance: balances[symbol] || '0.0000', token: symbol })}
             />
           </div>
 
           <Button onClick={handleStart} disabled={!canStart} className="w-full">
-            {isOpening ? 'Opening Coinbase…' : `Cash out ${symbol}`}
+            {isOpening ? t('cashOut.opening') : t('cashOut.submit', { token: symbol })}
           </Button>
 
           <p className="text-xs text-secondary-500 dark:text-secondary-400">
-            Coinbase handles the sale, the payout and any ID checks. You come back here to
-            approve the transfer — we cover the gas.
+            {t('cashOut.footnote')}
           </p>
         </div>
       )}
@@ -825,12 +830,12 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
       {sentTxHash && (
         <div className="mt-4 rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4">
           <p className="text-sm font-semibold text-green-800 dark:text-green-200">
-            Sent to Coinbase
+            {t('cashOut.sent')}
           </p>
           <p className="mt-1 text-sm text-green-700 dark:text-green-300">
             {sentRoute?.reachesBank
-              ? `Coinbase will sell your tokens and pay ${sentCurrency} into your linked bank account. That usually takes a few days.`
-              : `Coinbase will sell your tokens for ${sentCurrency} and hold it as cash in your Coinbase account.`}
+              ? t('cashOut.sentBank', { currency: sentCurrency })
+              : t('cashOut.sentBalance', { currency: sentCurrency })}
           </p>
 
           {/* The last leg is Coinbase's alone. Their API has no withdrawal call,
@@ -839,11 +844,11 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
           {!sentRoute?.reachesBank && (
             <div className="mt-3">
               <p className="text-sm text-green-700 dark:text-green-300">
-                Moving that cash to your bank is done in Coinbase — we cannot do it for you.
-                The button below opens your cash balance; choose{' '}
-                <span className="font-medium">Cash out</span> there. If it lands on the Coinbase
-                home page instead, go to <span className="font-medium">My Assets</span> and pick
-                your {sentCurrency} balance.
+                {/* The two names are Coinbase's own labels, so they stay as its screens show them. */}
+                {withNodes(t('cashOut.moveToBank', { currency: sentCurrency }), {
+                  cashOut: <span className="font-medium">Cash out</span>,
+                  myAssets: <span className="font-medium">My Assets</span>,
+                })}
               </p>
               <a
                 href={COINBASE_APP_URL}
@@ -851,7 +856,7 @@ export default function CashOutPanel({ walletAddress, balances, onSent }: CashOu
                 rel="noopener noreferrer"
                 className="mt-3 inline-flex items-center justify-center h-10 px-4 rounded-md border border-green-300 dark:border-green-700 text-sm font-medium text-green-800 dark:text-green-200 hover:bg-green-100 dark:hover:bg-green-900/40"
               >
-                Open Coinbase to cash out
+                {t('cashOut.openCoinbase')}
               </a>
             </div>
           )}

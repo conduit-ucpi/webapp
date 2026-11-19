@@ -58,15 +58,22 @@ interface ExchangeDirectoryProps {
   walletAddress?: string;
   /** A seller's preview: the steps as a customer reads them, with no address, since it would be the seller's. */
   preview?: boolean;
+  /**
+   * 'sell' turns it round, for cashing out: deposit at the exchange, sell there, withdraw to a
+   * bank. The address that matters is then the exchange's, so this wallet's is not shown, and the
+   * card services are left out: they are listed for buying, and nobody here has seen them buy back.
+   */
+  mode?: 'buy' | 'sell';
 }
 
 /**
- * How to buy on an exchange and withdraw to this wallet, then the exchanges themselves
- * (lib/exchangeDirectory), with the visitor's local ones lifted to the top.
+ * How to buy on an exchange and withdraw to this wallet (or, in 'sell' mode, how to send from this
+ * wallet to an exchange and cash out there), then the exchanges themselves (lib/exchangeDirectory),
+ * with the visitor's local ones lifted to the top.
  *
  * Written with `dark:` classes: on a page as it is, and in a modal only a `themed` one (ui/Modal).
  */
-export default function ExchangeDirectory({ tokenSymbol, networkName, walletAddress, preview = false }: ExchangeDirectoryProps) {
+export default function ExchangeDirectory({ tokenSymbol, networkName, walletAddress, preview = false, mode = 'buy' }: ExchangeDirectoryProps) {
   const t = useT();
   const [country, setCountry] = useState<string | null>(null);
 
@@ -80,22 +87,34 @@ export default function ExchangeDirectory({ tokenSymbol, networkName, walletAddr
     };
   }, []);
 
-  const local = exchangesIn(country);
+  const selling = mode === 'sell';
+  const cardServices = new Set(
+    EXCHANGE_REGIONS.find((region) => region.id === 'card-services')?.exchanges.map((exchange) => exchange.name),
+  );
+  const local = exchangesIn(country).filter((exchange) => !selling || !cardServices.has(exchange.name));
   const localNames = new Set(local.map((exchange) => exchange.name));
 
   return (
     <div>
       <p className="text-sm text-secondary-600 dark:text-secondary-300">
-        {t('funding.exchanges.blurb', { token: tokenSymbol })}
+        {t(selling ? 'funding.sell.blurb' : 'funding.exchanges.blurb', { token: tokenSymbol })}
       </p>
-      <ol className="mt-4 space-y-2 text-sm text-secondary-700 dark:text-secondary-200 list-decimal list-inside">
-        <li>{t('funding.exchanges.stepBuy', { token: tokenSymbol })}</li>
-        <li>{withNodes(t('funding.exchanges.stepWithdraw'), { network: <strong>{networkName}</strong> })}</li>
-        <li>{t(walletAddress || preview ? 'funding.exchanges.stepPaste' : 'funding.exchanges.stepPasteSignedOut')}</li>
-      </ol>
-      {walletAddress && !preview && <WalletAddressBox walletAddress={walletAddress} />}
+      {selling ? (
+        <ol className="mt-4 space-y-2 text-sm text-secondary-700 dark:text-secondary-200 list-decimal list-inside">
+          <li>{withNodes(t('funding.sell.stepDeposit', { token: tokenSymbol }), { network: <strong>{networkName}</strong> })}</li>
+          <li>{t('funding.sell.stepSend', { token: tokenSymbol })}</li>
+          <li>{t('funding.sell.stepSell')}</li>
+        </ol>
+      ) : (
+        <ol className="mt-4 space-y-2 text-sm text-secondary-700 dark:text-secondary-200 list-decimal list-inside">
+          <li>{t('funding.exchanges.stepBuy', { token: tokenSymbol })}</li>
+          <li>{withNodes(t('funding.exchanges.stepWithdraw'), { network: <strong>{networkName}</strong> })}</li>
+          <li>{t(walletAddress || preview ? 'funding.exchanges.stepPaste' : 'funding.exchanges.stepPasteSignedOut')}</li>
+        </ol>
+      )}
+      {walletAddress && !preview && !selling && <WalletAddressBox walletAddress={walletAddress} />}
       <p className="mt-4 rounded-md border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 p-3 text-xs text-yellow-800 dark:text-yellow-300">
-        {t('funding.exchanges.check', { token: tokenSymbol, network: networkName })}
+        {t(selling ? 'funding.sell.check' : 'funding.exchanges.check', { token: tokenSymbol, network: networkName })}
       </p>
 
       {local.length > 0 && country && (
@@ -107,7 +126,7 @@ export default function ExchangeDirectory({ tokenSymbol, networkName, walletAddr
 
       {EXCHANGE_REGIONS.map((region) => {
         const rest = region.exchanges.filter((exchange) => !localNames.has(exchange.name));
-        if (rest.length === 0) return null;
+        if (rest.length === 0 || (selling && region.id === 'card-services')) return null;
         const note = REGION_NOTE[region.id];
         return (
           <div key={region.id} className="mt-6">

@@ -61,27 +61,26 @@ export default function BuyToken() {
     <div className="py-10 bg-white dark:bg-secondary-900 transition-colors">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">Add {tokenSymbol} to your wallet</h1>
+          <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">{t('buyToken.title', { token: tokenSymbol })}</h1>
           <p className="mt-2 text-secondary-600 dark:text-secondary-300">
-            Buy it with a card, buy it on an exchange, or send it from a wallet you already have. Every route ends
-            in the same place: your wallet{networkName ? ` on ${networkName}` : ''}.
+            {networkName ? t('buyToken.introOnNetwork', { network: networkName }) : t('buyToken.intro')}
           </p>
         </div>
 
         {connected && walletAddress ? (
           <>
             <section className={card} aria-labelledby="your-wallet">
-              <h2 id="your-wallet" className={heading}>Your wallet</h2>
-              <p className={blurb}>This is where the {tokenSymbol} needs to arrive, whichever way you buy it.</p>
+              <h2 id="your-wallet" className={heading}>{t('buyToken.yourWallet')}</h2>
+              <p className={blurb}>{t('buyToken.yourWalletBlurb', { token: tokenSymbol })}</p>
               <WalletAddressBox walletAddress={walletAddress} />
               <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <dt className="text-secondary-500 dark:text-secondary-400">Network</dt>
+                  <dt className="text-secondary-500 dark:text-secondary-400">{t('buyToken.network')}</dt>
                   <dd className="font-semibold text-secondary-900 dark:text-white">{networkName}</dd>
                 </div>
                 <div>
                   <dt className="text-secondary-500 dark:text-secondary-400">
-                    <label htmlFor="buy-token-token">Token</label>
+                    <label htmlFor="buy-token-token">{t('buyToken.token')}</label>
                   </dt>
                   <dd className="font-semibold text-secondary-900 dark:text-white">
                     {tokens.length > 1 ? (
@@ -107,10 +106,9 @@ export default function BuyToken() {
             </section>
 
             <section className={card} aria-labelledby="ways-to-add">
-              <h2 id="ways-to-add" className={heading}>Ways to add {tokenSymbol}</h2>
+              <h2 id="ways-to-add" className={heading}>{t('buyToken.ways', { token: tokenSymbol })}</h2>
               <p className={`${blurb} mb-5`}>
-                The card and bank options send it straight to your wallet. Each one will ask who you are the first
-                time; that check is theirs, and you only do it once.
+                {t('buyToken.waysBlurb')}
               </p>
               <FundingOptions
                 // A fresh one per token, so nothing chosen for one is carried to the other.
@@ -139,10 +137,9 @@ export default function BuyToken() {
         ) : (
           <>
             <section className={`${card} text-center`}>
-              <h2 className={heading}>Connect your wallet</h2>
+              <h2 className={heading}>{t('buyToken.connect.title')}</h2>
               <p className={`${blurb} mb-6`}>
-                Connect and we can send a card purchase straight to your wallet, and show you the address to
-                withdraw to from an exchange.
+                {t('buyToken.connect.blurb')}
               </p>
               <ConnectWalletEmbedded useSmartRouting={true} />
             </section>
@@ -154,9 +151,9 @@ export default function BuyToken() {
         )}
 
         <p className="text-center text-sm text-secondary-500 dark:text-secondary-400">
-          Cashing out instead?{' '}
+          {t('buyToken.cashingOut')}{' '}
           <Link href="/wallet" className="underline hover:text-secondary-900 dark:hover:text-white">
-            Go to your wallet
+            {t('buyToken.goToWallet')}
           </Link>
           .
         </p>

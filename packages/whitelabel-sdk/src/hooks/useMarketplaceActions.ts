@@ -17,8 +17,8 @@ import { isSignedAction, sendSignedAction } from '@/lib/signedActions';
  *    the escrow's party actions (votes, the arbiter and recipient actions) and the offer vault's
  *    (the seller accepting or rejecting an offer).
  *
- *    Every other call — an escrow from before the signed route, the LP's withdraw and reserve
- *    release, and token transfers: fund-then-send. A seller's accept or reject has NO such
+ *    Every other call — an escrow from before the signed route, and token transfers:
+ *    fund-then-send. A seller's accept or reject has NO such
  *    fallback: vaults from before the signed route are not supported, so a vault that cannot be
  *    confirmed to take signed calls is refused, with nothing sent. The UI encodes
  *    the call, `fundAndSendTransaction` estimates it and asks chainservice to move ETH into the
@@ -27,9 +27,11 @@ import { isSignedAction, sendSignedAction } from '@/lib/signedActions';
  *    without also sending it, so there is no signed transaction to hand to a backend. They will
  *    all sign a message, which is why the first route works.
  *
- * The two exceptions both go through chainservice, and both are safe to: `seatDefaultArbiter` is
- * permissionless on-chain and seats the DEFAULT_ARBITER Safe rather than the caller, and
- * `createOffer` deploys an empty vault that only the named LP can fund.
+ * Calls that need no signature at all go through chainservice, which sends and pays, because each
+ * is permissionless on-chain and lets the caller choose nothing: `seatDefaultArbiter` seats the
+ * DEFAULT_ARBITER Safe rather than the caller; `createOffer` deploys an empty vault that only the
+ * named LP can fund; `fund`, `withdraw` and `releaseHoldback` on a vault move money only to
+ * addresses fixed in the vault or read off the escrow.
  */
 
 const escrowInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
@@ -144,6 +146,25 @@ export function useMarketplaceActions() {
     },
     [getWeb3Service]
   );
+
+  /**
+   * Have chainservice send a permissionless vault call (`withdraw`, `releaseHoldback`) and pay
+   * for it. No wallet is involved: nothing is signed and no ETH is handed out. Resolves with the
+   * transaction hash once mined; throws with chainservice's reason when it refused (it checks
+   * before sending, so a refusal costs nothing) or the transaction failed.
+   */
+  const relay = useCallback(async (endpoint: 'withdraw-offer' | 'release-holdback', vaultAddress: string): Promise<string> => {
+    const response = await apiFetch(`/api/chain/marketplace/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vaultAddress })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.success === false || !data.transactionHash) {
+      throw new Error(data.error || 'That could not be sent. Nothing was changed; try again.');
+    }
+    return data.transactionHash as string;
+  }, []);
 
   // ── Dispute settlement (§15.6b) ────────────────────────────────────────────
 
@@ -397,22 +418,17 @@ export function useMarketplaceActions() {
    *    after someone else's acceptance, and dispute-triggered withdrawability are all lazy
    *    conditions the UI must detect and prompt — an LP who is never told simply never withdraws.
    */
-  const withdrawOffer = useCallback(
-    (vaultAddress: string) => send(vaultAddress, vaultInterface, 'withdraw'),
-    [send]
-  );
+  const withdrawOffer = useCallback((vaultAddress: string) => relay('withdraw-offer', vaultAddress), [relay]);
 
   /**
-   * Return a settled escrow's reserve to its funder and beneficiary.
+   * Return a settled escrow's reserve to its funder and beneficiary, sent by chainservice.
    *
-   * ⚠️ NOT KEEPER-FIRABLE. In the per-offer model this answers only to the reserve's funder or
-   *    the live beneficiary, so nobody can sweep up on the parties' behalf. If the UI does not
-   *    detect a settled escrow with a live reserve and tell them, the reserve simply sits there.
+   * Permissionless on-chain (§6.7): the funder is fixed in the vault, the beneficiary read live
+   * off the escrow, and the split falls out of the escrow's final state, so the platform sending
+   * it changes nothing about who is paid what. Nothing announces that an escrow settled, so if
+   * the UI does not detect a settled escrow with a live reserve and offer this, it simply sits.
    */
-  const releaseHoldback = useCallback(
-    (vaultAddress: string) => send(vaultAddress, vaultInterface, 'releaseHoldback'),
-    [send]
-  );
+  const releaseHoldback = useCallback((vaultAddress: string) => relay('release-holdback', vaultAddress), [relay]);
 
   return {
     submitSettlementVote,

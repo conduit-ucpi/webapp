@@ -1,7 +1,7 @@
 /**
  * A party's action on the payment contract or an offer vault goes as a signed message when the
- * contract takes one, and by fund-then-send when it does not. The LP's own vault calls and token
- * transfers are never signed for.
+ * contract takes one, and by fund-then-send when it does not. The LP's withdraw and reserve
+ * release need no signature at all: chainservice sends them.
  */
 
 import { renderHook } from '@testing-library/react';
@@ -185,15 +185,29 @@ describe('party actions on the payment contract', () => {
     expect(fundAndSendTransaction).not.toHaveBeenCalled();
   });
 
-  it("the LP's withdraw is never signed for: it is not a seller's action", async () => {
-    chain(true);
+  it.each([
+    ['withdrawOffer', '/api/chain/marketplace/withdraw-offer'],
+    ['releaseHoldback', '/api/chain/marketplace/release-holdback']
+  ] as const)("the LP's %s is sent by chainservice: no wallet, no signature, no gas", async (fn, url) => {
+    apiFetch.mockResolvedValue(json(200, { success: true, transactionHash: '0xrelayed' }));
     const { result } = renderHook(() => useMarketplaceActions());
 
-    await result.current.withdrawOffer(VAULT);
+    await expect(result.current[fn](VAULT)).resolves.toBe('0xrelayed');
 
-    expect(apiFetch).not.toHaveBeenCalled();
+    expect(posts()).toEqual([{ url, body: { vaultAddress: VAULT } }]);
     expect(signTypedData).not.toHaveBeenCalled();
-    expect(fundAndSendTransaction).toHaveBeenCalledTimes(1);
+    expect(simulateCall).not.toHaveBeenCalled();
+    expect(fundAndSendTransaction).not.toHaveBeenCalled();
+  });
+
+  it("a relay chainservice refuses fails with chainservice's reason", async () => {
+    apiFetch.mockResolvedValue(
+      json(400, { success: false, notWithdrawable: true, error: 'This offer cannot be withdrawn yet: it is still standing.' })
+    );
+    const { result } = renderHook(() => useMarketplaceActions());
+
+    await expect(result.current.withdrawOffer(VAULT)).rejects.toThrow('cannot be withdrawn yet');
+    expect(fundAndSendTransaction).not.toHaveBeenCalled();
   });
 
   it("a stale offer is refused before anything is signed, in the vault's own words", async () => {

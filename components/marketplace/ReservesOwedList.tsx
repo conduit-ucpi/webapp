@@ -66,10 +66,9 @@ export default function ReservesOwedList({ sellerAddress }: ReservesOwedListProp
     setActionError(null);
     try {
       /*
-       * Sent from the supplier's own wallet and throws on failure — it no longer returns a
-       * {success, error} envelope, because releaseHoldback moved from a relayed call to a
-       * direct send with the rest of the marketplace actions. Nothing to unwrap; a rejection
-       * lands in the catch below.
+       * Sent by chainservice (it is permissionless, so the supplier signs nothing and pays no
+       * gas). Resolves with the hash and throws with chainservice's reason on failure, so there
+       * is no envelope to unwrap; a refusal lands in the catch below.
        */
       await releaseHoldback(vaultAddress);
       setViewing(null);

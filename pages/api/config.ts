@@ -178,9 +178,10 @@ async function buildConfig() {
     contractFactoryAddress: contractAddresses.factoryAddress,
     defaultArbiterAddress: contractAddresses.defaultArbiterAddress,
     // Service URLs
-    userServiceUrl: process.env.USER_SERVICE_URL,
-    chainServiceUrl: process.env.CHAIN_SERVICE_URL,
-    contractServiceUrl: process.env.CONTRACT_SERVICE_URL,
+    // ⚠️ NO SERVICE ADDRESSES HERE. This response is public, and until 2026-11-20 it listed
+    //    the internal host and port of userservice, chainservice and contractservice. The
+    //    browser never calls them (it calls /api/*, which does), so all it gave anyone was a
+    //    map of the back end.
     // Third-party services
     moonPayApiKey: process.env.MOONPAY_API_KEY,
     coinbaseProjectId: process.env.COINBASE_PROJECT_ID,
@@ -194,7 +195,9 @@ async function buildConfig() {
     // Whether the sign-in card still offers the provider Privy replaced (the "old wallet" tick
     // box). Off unless SHOW_LEGACY_AUTH is exactly "true".
     showLegacyAuth: process.env.SHOW_LEGACY_AUTH === 'true',
-    neynarApiKey: process.env.NEYNAR_API_KEY,
+    // ⚠️ NO NEYNAR KEY HERE. This response is public, and until 2026-11-20 it carried
+    //    NEYNAR_API_KEY to anyone who asked. Nothing in the browser ever read it: the Neynar
+    //    calls are made server-side by pages/api/users/*.
     // Gas configuration
     minGasWei: process.env.MIN_GAS_WEI || '5',
     maxGasPriceGwei: process.env.MAX_GAS_PRICE_GWEI || '0.001',

@@ -36,9 +36,6 @@ export interface Config {
    */
   defaultArbiterAddress?: string;
   // Service URLs
-  userServiceUrl?: string;
-  chainServiceUrl?: string;
-  contractServiceUrl?: string;
   // Third-party services
   moonPayApiKey: string;
   coinbaseProjectId?: string;
@@ -46,7 +43,6 @@ export interface Config {
   walletConnectProjectId?: string;
   privyAppId?: string;
   showLegacyAuth?: boolean; // SHOW_LEGACY_AUTH: offer the pre-Privy sign-in alongside Privy
-  neynarApiKey?: string;
   // Gas configuration
   minGasWei: string;
   maxGasPriceGwei: string;

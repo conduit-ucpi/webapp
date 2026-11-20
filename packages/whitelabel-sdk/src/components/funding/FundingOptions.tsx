@@ -65,6 +65,14 @@ export interface FundingOptionsProps {
    * already shows the wallet's address and code above this list.
    */
   showTransfer?: boolean;
+  /**
+   * For a visitor with no wallet here yet (the signed-out /wallet page, and the HTML a bot is
+   * sent): list every route this deployment has, whatever this browser's session could itself
+   * use. Coinbase and the card route are otherwise shown from the loaded config and the signed-in
+   * provider, neither of which exists on the server or before sign-in. Use it with `lookOnly`:
+   * there is no wallet for any of them to deliver to.
+   */
+  catalogue?: { coinbase: boolean; card: boolean };
 }
 
 /**
@@ -98,6 +106,7 @@ export default function FundingOptions({
   exchangesOpen = false,
   lookOnly = false,
   showTransfer: offerTransfer = true,
+  catalogue,
 }: FundingOptionsProps) {
   const t = useT();
   const { config } = useConfig();
@@ -112,16 +121,17 @@ export default function FundingOptions({
   // Up to the cent, less a hair first: 20.19 - 5 is 15.190000000000001 in floating point, and
   // must not become 15.20 when each route rounds it up again.
   const needed = amount === undefined ? 0 : Math.max(Math.ceil((amount - balance) * 100 - 1e-7) / 100, 0);
-  const asksAmount = needed <= 0;
+  // Nothing can be bought from a catalogue, so it does not ask how much.
+  const asksAmount = needed <= 0 && !catalogue;
   const typed = Number(amountText);
   const shortfall = asksAmount ? typed : needed;
   const hasAmount = Number.isFinite(shortfall) && shortfall > 0;
 
-  const showCoinbase = !!config?.coinbaseProjectId;
+  const showCoinbase = !!config?.coinbaseProjectId || !!catalogue?.coinbase;
   // The wallet provider's own on-ramp (Privy's funding window). Absent for Reown, so the
   // guard is on capability, not on provider name.
   const { canFundWallet, fundWallet } = useAuth();
-  const showProviderFunding = typeof canFundWallet === 'function' && canFundWallet();
+  const showProviderFunding = (typeof canFundWallet === 'function' && canFundWallet()) || !!catalogue?.card;
   const [providerFundingBusy, setProviderFundingBusy] = useState(false);
   // No onramp delivers this token: the buying routes are greyed out and say so (utils/buyableToken).
   const cannotBuy = canBuyToken(tokenSymbol) ? undefined : t('addFunds.cannotBuyToken', { token: tokenSymbol });
@@ -394,7 +404,7 @@ export default function FundingOptions({
       <details open={exchangesOpen} className="rounded-xl border border-secondary-200 dark:border-secondary-600 p-4">
         <summary className={`cursor-pointer ${choiceTitle}`}>{t('funding.exchanges.more', { token: tokenSymbol })}</summary>
         <div className="mt-3">
-          <ExchangeDirectory tokenSymbol={tokenSymbol} networkName={networkName} walletAddress={walletAddress} preview={lookOnly} />
+          <ExchangeDirectory tokenSymbol={tokenSymbol} networkName={networkName} walletAddress={walletAddress || undefined} preview={lookOnly && !catalogue} />
         </div>
       </details>
     </fieldset>

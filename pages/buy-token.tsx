@@ -1,9 +1,11 @@
 import Link from 'next/link';
+import type { GetServerSideProps } from 'next';
+import SEO from '@/components/SEO';
+import { rampFacts, type RampFacts } from '@/lib/server/rampFacts';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/components/auth';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import ExchangeDirectory from '@/components/funding/ExchangeDirectory';
 import FundingOptions from '@/components/funding/FundingOptions';
 import WalletAddressBox from '@/components/funding/WalletAddressBox';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
@@ -22,10 +24,13 @@ const blurb = 'mt-1 text-sm text-secondary-600 dark:text-secondary-300';
  * no amount, so it asks. The payment screen shows the same component for what a payment is short
  * (PaymentActionPanel, "top up this wallet").
  *
- * The exchange list is shown signed out too: it needs no wallet to read, and a visitor may want to
- * open an account before they have one here.
+ * ⚠️ SIGNED OUT, IT IS THE SAME LIST WITH NOTHING TO PRESS, and that is also what the SERVER
+ *    writes, since the server never has a user: it is the HTML a search engine or an AI agent
+ *    reads. It used to be a spinner until sign-in and the config had loaded, so the page a bot
+ *    was sent had no content (2026-11-20). `ramps` (getServerSideProps) says which chain, tokens
+ *    and providers, so nothing but the connect button waits on the browser. /wallet does the same.
  */
-export default function BuyToken() {
+export default function BuyToken({ ramps }: { ramps?: RampFacts }) {
   const t = useT();
   const { user, isLoading: authLoading } = useAuth();
   const { config, isLoading: configLoading } = useConfig();
@@ -36,10 +41,10 @@ export default function BuyToken() {
     return config?.defaultToken ? [config.defaultToken] : [];
   }, [config]);
   const [chosenSymbol, setChosenSymbol] = useState<string | null>(null);
-  const tokenSymbol = chosenSymbol ?? config?.defaultToken?.symbol ?? config?.tokenSymbol ?? 'USDC';
+  const tokenSymbol = chosenSymbol ?? config?.defaultToken?.symbol ?? config?.tokenSymbol ?? ramps?.tokenSymbols[0] ?? 'USDC';
   const token = tokens.find((candidate) => candidate.symbol === tokenSymbol);
 
-  const chainId = config?.chainId;
+  const chainId = config?.chainId ?? ramps?.chainId;
   // "Base", not "Base Mainnet": it is the word an exchange's withdrawal screen uses.
   const networkName = chainId === undefined ? '' : getChainName(chainId).replace(/ Mainnet$/, '');
 
@@ -47,18 +52,20 @@ export default function BuyToken() {
   const coinbase = useCoinbaseAvailability(showCoinbase);
   const coinbaseMinimum = useOnrampMinimum(tokenSymbol, showCoinbase)?.inTokens;
 
-  if (authLoading || configLoading || isWalletAddressLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-96">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  const connected = !!user && !!walletAddress;
+  // Sign-in or the config still arriving: the page is shown as for a visitor meanwhile, with a
+  // spinner where the connect button will be.
+  const settling = authLoading || configLoading || isWalletAddressLoading;
+  const connected = !settling && !!user && !!walletAddress;
 
   return (
     <div className="py-10 bg-white dark:bg-secondary-900 transition-colors">
+      {!connected && (
+        <SEO
+          title={`How to buy ${tokenSymbol}${networkName ? ` on ${networkName}` : ''} - Stabledrop`}
+          description={`Every way to get ${tokenSymbol} into a Stabledrop wallet: card, bank transfer, Coinbase, Kraken, Link, a transfer from another wallet, and exchanges by region.`}
+          canonical="/buy-token"
+        />
+      )}
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">{t('buyToken.title', { token: tokenSymbol })}</h1>
@@ -141,11 +148,25 @@ export default function BuyToken() {
               <p className={`${blurb} mb-6`}>
                 {t('buyToken.connect.blurb')}
               </p>
-              <ConnectWalletEmbedded useSmartRouting={true} />
+              {settling ? (
+                <div className="flex justify-center"><LoadingSpinner size="lg" /></div>
+              ) : (
+                <ConnectWalletEmbedded useSmartRouting={true} />
+              )}
             </section>
-            <section className={card} aria-labelledby="buy-on-exchange">
-              <h2 id="buy-on-exchange" className={`${heading} mb-2`}>{t('funding.exchanges.title', { token: tokenSymbol })}</h2>
-              <ExchangeDirectory tokenSymbol={tokenSymbol} networkName={networkName} />
+            <section className={card} aria-labelledby="ways-to-add">
+              <h2 id="ways-to-add" className={heading}>{t('buyToken.ways', { token: tokenSymbol })}</h2>
+              <p className={`${blurb} mb-5`}>{t('buyToken.waysBlurb')}</p>
+              <FundingOptions
+                walletAddress=""
+                tokenSymbol={tokenSymbol}
+                chainId={chainId}
+                networkName={networkName}
+                purpose="guide"
+                lookOnly
+                catalogue={{ coinbase: showCoinbase || !!ramps?.coinbase, card: !!ramps?.card }}
+                exchangesOpen
+              />
             </section>
           </>
         )}
@@ -161,3 +182,8 @@ export default function BuyToken() {
     </div>
   );
 }
+
+/** Per request, from the environment alone, so the page the server writes is already the list. */
+export const getServerSideProps: GetServerSideProps<{ ramps: RampFacts }> = async () => ({
+  props: { ramps: rampFacts() },
+});

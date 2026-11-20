@@ -297,10 +297,11 @@ describe('BuyToken page', () => {
       expect(screen.getByRole('link', { name: /^Swyftx/ })).toBeInTheDocument();
     });
 
-    it('offers no route that needs a wallet', () => {
+    it('lists every route so a visitor (or a bot) can read them, but none can be pressed without a wallet', () => {
       render(<BuyToken />);
-      expect(screen.queryByRole('button', { name: /Add from Kraken/ })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /Transfer from another wallet/ })).not.toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Add from Kraken/ })).toBeDisabled();
+      expect(screen.getByRole('button', { name: /Transfer from another wallet/ })).toBeDisabled();
+      expect(screen.queryByLabelText(/How much USDC/)).not.toBeInTheDocument();
       expect(screen.queryByLabelText('Your wallet address')).not.toBeInTheDocument();
       expect(screen.getByText(/Connect your wallet to see it/)).toBeInTheDocument();
     });

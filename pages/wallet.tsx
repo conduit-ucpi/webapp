@@ -1,4 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
+import type { GetServerSideProps } from 'next';
+import SEO from '@/components/SEO';
+import { rampFacts, type RampFacts } from '@/lib/server/rampFacts';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
@@ -39,7 +42,7 @@ const sectionBlurb = 'mt-1 text-sm text-secondary-600 dark:text-secondary-300';
  * (FundingOptions, the same list /buy-token and the payment screen show), cash it out (Coinbase's
  * sell order, or by hand through an exchange) and send it on.
  */
-export default function Wallet() {
+export default function Wallet({ ramps }: { ramps?: RampFacts }) {
   const t = useT();
   const { user, state, isLoading: authLoading, getEthersProvider, showWalletUI, canExportWallet, exportWallet } = useAuth();
   // Embedded wallets only: the provider shows the key in its own isolated UI, never to this app.
@@ -51,7 +54,8 @@ export default function Wallet() {
   // Using ethers directly instead of SDK
   const [balances, setBalances] = useState<WalletBalances>({ native: '0.0000', tokens: {} });
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
-  const defaultTokenSymbol = config?.defaultToken?.symbol || config?.defaultTokenSymbol || 'USDC';
+  // `ramps` is what the server knew when it wrote the page; the loaded config replaces it.
+  const defaultTokenSymbol = config?.defaultToken?.symbol || config?.defaultTokenSymbol || ramps?.tokenSymbols[0] || 'USDC';
   const [sendForm, setSendForm] = useState<SendFormData>({
     recipient: '',
     amount: '',
@@ -66,7 +70,8 @@ export default function Wallet() {
   const addTokenSymbol = addSymbol ?? defaultTokenSymbol;
   const addToken = config?.supportedTokens?.find((token) => token.symbol === addTokenSymbol);
   // "Base", not "Base Mainnet": it is the word an exchange's deposit and withdrawal screens use.
-  const networkName = config?.chainId === undefined ? '' : getChainName(config.chainId).replace(/ Mainnet$/, '');
+  const chainId = config?.chainId ?? ramps?.chainId;
+  const networkName = chainId === undefined ? '' : getChainName(chainId).replace(/ Mainnet$/, '');
   const showCoinbase = !!config?.coinbaseProjectId;
   const coinbase = useCoinbaseAvailability(showCoinbase);
   const coinbaseMinimum = useOnrampMinimum(addTokenSymbol, showCoinbase)?.inTokens;
@@ -238,23 +243,93 @@ export default function Wallet() {
     );
   };
 
-  if (authLoading || isWalletAddressLoading) {
+  /*
+   * ⚠️ WITH NO WALLET, THE PAGE IS STILL A PAGE: every way to add money and to cash out, laid out
+   *    as it is for a signed-in user, with nothing to press. It is also what the SERVER writes,
+   *    since the server never has a user, so it is the HTML a search engine or an AI agent reads.
+   *    This used to be a spinner while sign-in resolved and a bare "connect your wallet" after,
+   *    and the page a bot was sent had no content at all (2026-11-20).
+   *
+   *    So it must not wait on anything the browser loads: `ramps` (getServerSideProps) says which
+   *    chain, tokens and providers, and only the connect button waits for sign-in to settle.
+   */
+  if (authLoading || isWalletAddressLoading || !user || !walletAddress || isInFarcaster) {
+    const settling = authLoading || isWalletAddressLoading;
+    const catalogue = {
+      coinbase: !!config?.coinbaseProjectId || !!ramps?.coinbase,
+      card: !!ramps?.card,
+    };
     return (
-      <div className="flex justify-center items-center min-h-96">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
+      <div className="py-10 bg-white dark:bg-secondary-900 transition-colors">
+        <SEO
+          title={`Add and cash out ${defaultTokenSymbol} - Stabledrop wallet`}
+          description={`Every way to add ${defaultTokenSymbol} to a Stabledrop wallet and to cash it out: card, bank transfer, Coinbase, Kraken, Link, a transfer from another wallet, and exchanges by region.`}
+          canonical="/wallet"
+        />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">{t('walletPage.title')}</h1>
+            <p className="mt-2 text-secondary-600 dark:text-secondary-300">{t('walletPage.subtitle')}</p>
+            <nav className="mt-4 flex flex-wrap gap-2 text-sm font-medium">
+              {([['#add', 'walletPage.jump.add'], ['#cash-out', 'walletPage.jump.cashOut'], ['#send', 'walletPage.jump.send']] as const).map(([href, label]) => (
+                <a
+                  key={href}
+                  href={href}
+                  className="rounded-full border border-secondary-300 dark:border-secondary-600 px-4 py-1.5 text-secondary-700 dark:text-secondary-200 hover:border-primary-500"
+                >
+                  {t(label)}
+                </a>
+              ))}
+            </nav>
+          </div>
 
-  // For now, wallet page is only available with Web3Auth
-  if (!user || !walletAddress || isInFarcaster) {
-    return (
-      <div className="max-w-md mx-auto text-center py-20">
-        <h1 className="text-2xl font-bold text-secondary-900 dark:text-white mb-4">{t('walletPage.connect.title')}</h1>
-        <p className="text-secondary-600 dark:text-secondary-300 mb-6">
-          {t('walletPage.connect.blurb')}
-        </p>
-        <ConnectWalletEmbedded useSmartRouting={true} />
+          <section className={`${card} text-center`} aria-labelledby="connect-heading">
+            <h2 id="connect-heading" className={sectionHeading}>{t('walletPage.connect.title')}</h2>
+            <p className={`${sectionBlurb} mb-6`}>{t('walletPage.connect.blurb')}</p>
+            {settling ? (
+              <div className="flex justify-center"><LoadingSpinner size="lg" /></div>
+            ) : (
+              <ConnectWalletEmbedded useSmartRouting={true} />
+            )}
+          </section>
+
+          <section id="add" className={`${card} scroll-mt-4`} aria-labelledby="add-heading">
+            <h2 id="add-heading" className={sectionHeading}>{t('walletPage.add.title', { token: defaultTokenSymbol })}</h2>
+            <p className={`${sectionBlurb} mb-5`}>{t('walletPage.add.blurb')}</p>
+            <FundingOptions
+              walletAddress=""
+              tokenSymbol={defaultTokenSymbol}
+              chainId={chainId}
+              networkName={networkName}
+              purpose="guide"
+              lookOnly
+              catalogue={catalogue}
+              exchangesOpen
+            />
+          </section>
+
+          <div id="cash-out" className="scroll-mt-4">
+            {catalogue.coinbase && (
+              <section className={card} aria-labelledby="cash-out-heading">
+                <h2 id="cash-out-heading" className={sectionHeading}>{t('cashOut.title')}</h2>
+                <p className={sectionBlurb}>{t('cashOut.blurb')}</p>
+              </section>
+            )}
+            <section className={card} aria-labelledby="cash-out-exchange-heading">
+              <h2 id="cash-out-exchange-heading" className={sectionHeading}>
+                {t('funding.sell.title', { token: defaultTokenSymbol })}
+              </h2>
+              <div className="mt-4">
+                <ExchangeDirectory mode="sell" tokenSymbol={defaultTokenSymbol} networkName={networkName} />
+              </div>
+            </section>
+          </div>
+
+          <section id="send" className={`${card} scroll-mt-4`} aria-labelledby="send-heading">
+            <h2 id="send-heading" className={sectionHeading}>{t('walletPage.send.title')}</h2>
+            <p className={sectionBlurb}>{t('walletPage.send.blurb', { network: networkName })}</p>
+          </section>
+        </div>
       </div>
     );
   }
@@ -555,3 +630,11 @@ export default function Wallet() {
     </div>
   );
 }
+
+/**
+ * Run per request so the page the server writes already names the chain, the tokens and the
+ * providers this deployment has: see the signed-out branch above. Environment only, no calls out.
+ */
+export const getServerSideProps: GetServerSideProps<{ ramps: RampFacts }> = async () => ({
+  props: { ramps: rampFacts() },
+});

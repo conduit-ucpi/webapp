@@ -4,7 +4,7 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { ethers } from 'ethers';
 import { useCallback } from 'react';
 import { mLog } from '@/utils/mobileLogger';
-import { encodeSwap, type SwapVenue } from '@/lib/stablecoinSwap';
+import { encodeSale, encodeSwap, type SwapVenue } from '@/lib/stablecoinSwap';
 
 /** How long to wait for an approval to be mined before the swap that needs it is sent. */
 // About half a minute, looked for unhurriedly: each look is a request against a rate-limited
@@ -62,6 +62,47 @@ export function useSimpleEthers() {
 
     return web3Service;
   }, [config, getEthersProvider]);
+
+  /**
+   * The first step of either conversion: let the router take up to `amount` of `tokenIn`, and
+   * wait until the chain shows it. Skipped when the router may already take that much.
+   */
+  const letRouterTake = async (venue: SwapVenue, tokenIn: string, tokenInDecimals: number, amount: bigint, prompt?: string) => {
+    const web3Service = await getWeb3Service();
+    const owner = await web3Service.getUserAddress();
+    const allowed = async () =>
+      ethers.parseUnits(await web3Service.getTokenAllowance(owner, venue.router, tokenIn), tokenInDecimals) >= amount;
+
+    if (!(await allowed())) {
+      const approve = new ethers.Interface(['function approve(address spender, uint256 amount) external returns (bool)']);
+      await web3Service.fundAndSendTransaction({
+        to: tokenIn,
+        data: approve.encodeFunctionData('approve', [venue.router, amount]),
+        value: '0',
+        walletDescription: prompt,
+        // An approval spends nothing, and the notice must not say it does next to a sentence
+        // that says it does not.
+        movesFunds: false,
+      });
+      let seen = false;
+      let rateLimited = false;
+      for (let attempt = 0; attempt < ALLOWANCE_POLLS && !seen; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, ALLOWANCE_POLL_MS));
+        seen = await allowed().then(
+          (yes) => ((rateLimited = false), yes),
+          (e) => ((rateLimited = isRateLimited(e)), false)
+        );
+      }
+      if (!seen) {
+        throw new Error(
+          rateLimited
+            ? `Nothing was converted. ${RATE_LIMIT_MESSAGE}`
+            : 'The approval has not shown up yet. Nothing was converted; try again in a moment.'
+        );
+      }
+    }
+    return { web3Service, owner };
+  };
 
   return {
     provider: null, // Legacy compatibility
@@ -208,40 +249,7 @@ export function useSimpleEthers() {
       /** What the wallet's own prompt says for each of the two steps, in the buyer's language. */
       prompts?: { approve?: string; convert?: string }
     ) => {
-      const web3Service = await getWeb3Service();
-      const owner = await web3Service.getUserAddress();
-      const allowed = async () =>
-        ethers.parseUnits(await web3Service.getTokenAllowance(owner, venue.router, swap.tokenIn), swap.tokenInDecimals) >=
-        swap.amountInMaximum;
-
-      if (!(await allowed())) {
-        const approve = new ethers.Interface(['function approve(address spender, uint256 amount) external returns (bool)']);
-        await web3Service.fundAndSendTransaction({
-          to: swap.tokenIn,
-          data: approve.encodeFunctionData('approve', [venue.router, swap.amountInMaximum]),
-          value: '0',
-          walletDescription: prompts?.approve,
-          // An approval spends nothing, and the notice must not say it does next to a sentence
-          // that says it does not.
-          movesFunds: false,
-        });
-        let seen = false;
-        let rateLimited = false;
-        for (let attempt = 0; attempt < ALLOWANCE_POLLS && !seen; attempt++) {
-          await new Promise((resolve) => setTimeout(resolve, ALLOWANCE_POLL_MS));
-          seen = await allowed().then(
-            (yes) => ((rateLimited = false), yes),
-            (e) => ((rateLimited = isRateLimited(e)), false)
-          );
-        }
-        if (!seen) {
-          throw new Error(
-            rateLimited
-              ? `Nothing was converted. ${RATE_LIMIT_MESSAGE}`
-              : 'The approval has not shown up yet. Nothing was converted; try again in a moment.'
-          );
-        }
-      }
+      const { web3Service, owner } = await letRouterTake(venue, swap.tokenIn, swap.tokenInDecimals, swap.amountInMaximum, prompts?.approve);
 
       return await web3Service.fundAndSendTransaction({
         to: venue.router,
@@ -251,6 +259,42 @@ export function useSimpleEthers() {
           recipient: owner,
           amountOut: swap.amountOut,
           amountInMaximum: swap.amountInMaximum,
+        }),
+        value: '0',
+        walletDescription: prompts?.convert,
+      });
+    },
+
+    /**
+     * What selling exactly `amountIn` would bring, in `tokenOut`'s base units. Read-only, and
+     * memoised, as quoteSwap is.
+     */
+    quoteSale: useCallback(async (venue: SwapVenue, tokenIn: string, tokenOut: string, amountIn: bigint) => {
+      if (!config) throw new Error('Config not available');
+      const { Web3Service } = await import('@/lib/web3');
+      return await Web3Service.getInstance(config).quoteStablecoinSale(venue, tokenIn, tokenOut, amountIn);
+    }, [config]),
+
+    /**
+     * Convert in the user's own wallet the other way round: exactly `amountIn` of `tokenIn`
+     * leaves it and at least `amountOutMinimum` of `tokenOut` arrives. For emptying a balance,
+     * where swapForExactOutput would leave dust. Approved, waited for and sponsored the same way.
+     */
+    sellExactInput: async (
+      venue: SwapVenue,
+      sale: { tokenIn: string; tokenInDecimals: number; tokenOut: string; amountIn: bigint; amountOutMinimum: bigint },
+      prompts?: { approve?: string; convert?: string }
+    ) => {
+      const { web3Service, owner } = await letRouterTake(venue, sale.tokenIn, sale.tokenInDecimals, sale.amountIn, prompts?.approve);
+
+      return await web3Service.fundAndSendTransaction({
+        to: venue.router,
+        data: encodeSale(venue, {
+          tokenIn: sale.tokenIn,
+          tokenOut: sale.tokenOut,
+          recipient: owner,
+          amountIn: sale.amountIn,
+          amountOutMinimum: sale.amountOutMinimum,
         }),
         value: '0',
         walletDescription: prompts?.convert,

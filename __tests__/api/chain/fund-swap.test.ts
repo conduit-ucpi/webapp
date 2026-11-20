@@ -127,6 +127,32 @@ describe('gas for a conversion', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  describe('a conversion naming what leaves', () => {
+    const sale = { walletAddress: WALLET, tokenIn: USDT, tokenOut: USDC, amountIn: '5000000', amountOutMinimum: '4975000' };
+
+    it('is carried to chainservice with that pair of amounts and not the other', async () => {
+      const res = await call(swapHandler, 'POST', { ...sale, recipient: USDT, smuggled: 'x' });
+
+      expect(res._getStatusCode()).toBe(200);
+      expect(sent().url).toBe('http://chainservice:8978/api/chain/fund-swap');
+      expect(sent().body).toEqual(sale);
+      expect(logged.join('\n')).toContain(
+        'conversion: wallet 0x78A6***afBD wants to convert exactly 5000000 of token 0xfde4***9bb2 into at least 4975000 of token 0x8335***2913'
+      );
+    });
+
+    it.each([
+      ['amounts named both ways', { amountOut: '5000000', amountInMaximum: '5025000' }],
+      ['one amount from each pair', { amountOutMinimum: undefined, amountInMaximum: '5025000' }],
+      ['no floor', { amountOutMinimum: undefined }],
+      ['a floor of zero', { amountOutMinimum: '0' }],
+      ['nothing to sell', { amountIn: '0' }]
+    ])('refuses %s without calling chainservice', async (_what, fields) => {
+      expect((await call(swapHandler, 'POST', { ...sale, ...fields }))._getStatusCode()).toBe(400);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
   it('logs both steps under FUND SWAP, with addresses masked', async () => {
     await call(approvalHandler, 'POST', approval);
     await call(swapHandler, 'POST', swap);

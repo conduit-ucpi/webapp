@@ -4,7 +4,8 @@
  * dev, 11 Nov 2026). The swap itself does move funds, and is announced as doing so.
  */
 import { renderHook } from '@testing-library/react';
-import { SWAP_VENUES } from '@/lib/stablecoinSwap';
+import { SWAP_VENUES, decodeSale } from '@/lib/stablecoinSwap';
+import { asSwapApproval } from '@/lib/swapSteps';
 
 const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const USDT = '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2';
@@ -52,6 +53,36 @@ const run = async () => {
   await jest.advanceTimersByTimeAsync(5000);
   return done;
 };
+
+describe('sellExactInput', () => {
+  const sale = { tokenIn: USDT, tokenInDecimals: 6, tokenOut: USDC, amountIn: BigInt(20_000_000), amountOutMinimum: BigInt(19_873_232) };
+  const sell = async () => {
+    const { result } = renderHook(() => useSimpleEthers());
+    const done = result.current.sellExactInput(venue, sale, prompts);
+    await jest.advanceTimersByTimeAsync(5000);
+    return done;
+  };
+
+  it('approves exactly what is being sold, then sends the router a sale of it into the wallet itself', async () => {
+    mockAllowance.mockResolvedValueOnce('0').mockResolvedValue('20');
+    expect(await sell()).toBe('0xhash');
+
+    const [approval, conversion] = mockSend.mock.calls.map(([tx]) => tx);
+    expect(approval).toMatchObject({ to: USDT, walletDescription: prompts.approve, movesFunds: false });
+    expect(asSwapApproval(approval)).toEqual({ tokenAddress: USDT, amount: '20000000' });
+    expect(conversion).toMatchObject({ to: venue.router, walletDescription: prompts.convert });
+    expect(decodeSale(conversion.data)).toEqual({
+      tokenIn: USDT, tokenOut: USDC, recipient: '0x19E7E376E7C213B7E7e7e46cc70A5dD086DAff2A',
+      amountIn: BigInt(20_000_000), amountOutMinimum: BigInt(19_873_232),
+    });
+  });
+
+  it('skips the approval when the router may already take that much', async () => {
+    mockAllowance.mockResolvedValue('20');
+    await sell();
+    expect(mockSend).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe('swapForExactOutput', () => {
   it('approves without claiming funds move, then converts and says that one does', async () => {

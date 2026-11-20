@@ -16,3 +16,4 @@ export { setAnalyticsClientIdSource } from './lib/analyticsClientId';
 
 // Building blocks for tenants that assemble their own screens around the product pages.
 export { default as CashOutPanel } from './components/wallet/CashOutPanel';
+export { default as ConvertPanel } from './components/wallet/ConvertPanel';

@@ -4,7 +4,7 @@
  */
 import { ethers } from 'ethers';
 import { asSwapApproval, asSwapConversion } from '@/lib/swapSteps';
-import { SWAP_VENUES, encodeSwap } from '@/lib/stablecoinSwap';
+import { SWAP_VENUES, encodeSale, encodeSwap } from '@/lib/stablecoinSwap';
 import { Web3Service } from '@/lib/web3';
 
 const apiFetch = jest.fn();
@@ -21,6 +21,12 @@ const approval = (spender: string, amount: bigint | number = 5025000) => ({ to: 
 const conversion = (recipient: string) => ({
   to: venue.router,
   data: encodeSwap(venue, { tokenIn: USDC, tokenOut: USDT, recipient, amountOut: BigInt(5000000), amountInMaximum: BigInt(5025000) }),
+  value: '0'
+});
+
+const sale = (recipient: string, amountOutMinimum = BigInt(4975000)) => ({
+  to: venue.router,
+  data: encodeSale(venue, { tokenIn: USDT, tokenOut: USDC, recipient, amountIn: BigInt(5000000), amountOutMinimum }),
   value: '0'
 });
 
@@ -47,7 +53,15 @@ describe('recognising the conversion', () => {
     });
   });
 
+  it('so is the same conversion naming what leaves instead of what arrives', () => {
+    expect(asSwapConversion(sale(USER), USER.toLowerCase())).toEqual({
+      tokenIn: USDT, tokenOut: USDC, amountIn: '5000000', amountOutMinimum: '4975000'
+    });
+  });
+
   it.each([
+    ['a sale paying out to somebody else', sale(OTHER)],
+    ['a sale willing to receive nothing', sale(USER, BigInt(0))],
     ['one paying out to somebody else', conversion(OTHER)],
     ['the same call on a contract that is not our router', { ...conversion(USER), to: OTHER }],
     ['one sending native value', { ...conversion(USER), value: '1' }],
@@ -93,6 +107,16 @@ describe('asking for a conversion\'s gas', () => {
       {
         url: '/api/chain/fund-swap',
         body: { walletAddress: USER, tokenIn: USDC, tokenOut: USDT, amountOut: '5000000', amountInMaximum: '5025000', neededWei: NEEDED.toString() }
+      }
+    ]);
+  });
+
+  it('a sale names what leaves and the least that may arrive, and nothing of the other pair', async () => {
+    expect(await service().topUpGasIfShort(USER, NEEDED, sale(USER))).toBe(true);
+    expect(posted()).toEqual([
+      {
+        url: '/api/chain/fund-swap',
+        body: { walletAddress: USER, tokenIn: USDT, tokenOut: USDC, amountIn: '5000000', amountOutMinimum: '4975000', neededWei: NEEDED.toString() }
       }
     ]);
   });

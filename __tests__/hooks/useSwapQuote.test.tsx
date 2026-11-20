@@ -2,7 +2,7 @@
  * The quote behind "Pay … using your USDC": asked once per amount, and never when it is off.
  */
 import { renderHook, waitFor } from '@testing-library/react';
-import { useSwapQuote } from '@/hooks/useSwapQuote';
+import { useSaleQuote, useSwapQuote } from '@/hooks/useSwapQuote';
 import { SWAP_VENUES } from '@/lib/stablecoinSwap';
 
 const venue = SWAP_VENUES[8453];
@@ -53,5 +53,24 @@ describe('useSwapQuote', () => {
     );
     await waitFor(() => expect(result.current.state).toBe('failed'));
     expect(result.current.amountIn).toBeNull();
+  });
+});
+
+describe('useSaleQuote', () => {
+  it('asks what a set amount would bring, and reports that', async () => {
+    const quoteSale = jest.fn().mockResolvedValue(BigInt(19_973_097));
+    const { result } = renderHook(() =>
+      useSaleQuote({ venue, tokenIn: USDT, tokenOut: USDC, amountIn: BigInt(20_000_000), quoteSale })
+    );
+    await waitFor(() => expect(result.current.state).toBe('quoted'));
+    expect(result.current.amountOut).toBe(BigInt(19_973_097));
+    expect(quoteSale).toHaveBeenCalledWith(venue, USDT, USDC, BigInt(20_000_000));
+  });
+
+  it('asks nothing while it is off', () => {
+    const quoteSale = jest.fn();
+    const { result } = renderHook(() => useSaleQuote({ venue: null, tokenIn: USDT, tokenOut: USDC, amountIn: BigInt(1), quoteSale }));
+    expect(result.current).toEqual({ amountOut: null, state: 'idle' });
+    expect(quoteSale).not.toHaveBeenCalled();
   });
 });

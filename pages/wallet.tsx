@@ -17,7 +17,8 @@ import { useCoinbaseAvailability } from '@/hooks/useCoinbaseAvailability';
 import { useOnrampMinimum } from '@/hooks/useOnrampMinimum';
 import { getChainName } from '@/utils/chainNames';
 import { useT } from '@/i18n';
-import { CashOutPanel } from '@conduit-ucpi/whitelabel-sdk';
+import { CashOutPanel, ConvertPanel } from '@conduit-ucpi/whitelabel-sdk';
+import { SWAP_VENUES } from '@/lib/stablecoinSwap';
 import { ethers } from 'ethers';
 import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
@@ -39,9 +40,10 @@ const sectionHeading = 'text-lg font-semibold text-secondary-900 dark:text-white
 const sectionBlurb = 'mt-1 text-sm text-secondary-600 dark:text-secondary-300';
 
 /**
- * The wallet: what it holds, then the three things done with it, in the order money moves: add it
- * (FundingOptions, the same list /buy-token and the payment screen show), cash it out (Coinbase's
- * sell order, or by hand through an exchange) and send it on.
+ * The wallet: what it holds, then the things done with it, in the order money moves: add it
+ * (FundingOptions, the same list /buy-token and the payment screen show), convert it into the
+ * stablecoin that can be cashed out (ConvertPanel, where this network has a pool for it), cash it
+ * out (Coinbase's sell order, or by hand through an exchange) and send it on.
  */
 export default function Wallet({ ramps }: { ramps?: RampFacts }) {
   const t = useT();
@@ -73,6 +75,15 @@ export default function Wallet({ ramps }: { ramps?: RampFacts }) {
   // "Base", not "Base Mainnet": it is the word an exchange's deposit and withdrawal screens use.
   const chainId = config?.chainId ?? ramps?.chainId;
   const networkName = chainId === undefined ? '' : getChainName(chainId).replace(/ Mainnet$/, '');
+  // Whether this network converts between the stablecoins listed here: what ConvertPanel itself asks.
+  const listedSymbols = (config?.supportedTokens?.map((token) => token.symbol) ?? ramps?.tokenSymbols ?? []).map((symbol) => symbol.toUpperCase());
+  const canConvert = chainId !== undefined && (SWAP_VENUES[Number(chainId)]?.tokens.every((symbol) => listedSymbols.includes(symbol)) ?? false);
+  const jumps = [
+    ['#add', 'walletPage.jump.add'],
+    ...(canConvert ? ([['#convert', 'walletPage.jump.convert']] as const) : []),
+    ['#cash-out', 'walletPage.jump.cashOut'],
+    ['#send', 'walletPage.jump.send'],
+  ] as const;
   const showCoinbase = !!config?.coinbaseProjectId;
   const coinbase = useCoinbaseAvailability(showCoinbase);
   const coinbaseMinimum = useOnrampMinimum(addTokenSymbol, showCoinbase)?.inTokens;
@@ -272,7 +283,7 @@ export default function Wallet({ ramps }: { ramps?: RampFacts }) {
             <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">{t('walletPage.title')}</h1>
             <p className="mt-2 text-secondary-600 dark:text-secondary-300">{t('walletPage.subtitle')}</p>
             <nav className="mt-4 flex flex-wrap gap-2 text-sm font-medium">
-              {([['#add', 'walletPage.jump.add'], ['#cash-out', 'walletPage.jump.cashOut'], ['#send', 'walletPage.jump.send']] as const).map(([href, label]) => (
+              {jumps.map(([href, label]) => (
                 <a
                   key={href}
                   href={href}
@@ -308,6 +319,13 @@ export default function Wallet({ ramps }: { ramps?: RampFacts }) {
               exchangesOpen
             />
           </section>
+
+          {canConvert && (
+            <section id="convert" className={`${card} scroll-mt-4`} aria-labelledby="convert-heading">
+              <h2 id="convert-heading" className={sectionHeading}>{t('walletPage.jump.convert')}</h2>
+              <p className={sectionBlurb}>{t('walletPage.convert.outline', { token: defaultTokenSymbol })}</p>
+            </section>
+          )}
 
           <div id="cash-out" className="scroll-mt-4">
             {catalogue.coinbase && (
@@ -346,7 +364,7 @@ export default function Wallet({ ramps }: { ramps?: RampFacts }) {
           <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">{t('walletPage.title')}</h1>
           <p className="mt-2 text-secondary-600 dark:text-secondary-300">{t('walletPage.subtitle')}</p>
           <nav className="mt-4 flex flex-wrap gap-2 text-sm font-medium">
-            {([['#add', 'walletPage.jump.add'], ['#cash-out', 'walletPage.jump.cashOut'], ['#send', 'walletPage.jump.send']] as const).map(([href, label]) => (
+            {jumps.map(([href, label]) => (
               <a
                 key={href}
                 href={href}
@@ -501,6 +519,15 @@ export default function Wallet({ ramps }: { ramps?: RampFacts }) {
             onFunded={loadBalances}
           />
         </section>
+
+        {/* Convert: out of the stablecoin that cannot be cashed out here and into the one that can.
+            It shows itself only where this network has a pool for the pair. A conversion that
+            has been sent is not yet mined, so the balances are read again a moment later. */}
+        <ConvertPanel
+          balances={balances.tokens}
+          networkName={networkName}
+          onConverted={() => setTimeout(loadBalances, 4000)}
+        />
 
         {/* Cash out: Coinbase's sell order (it hides itself when Coinbase is unconfigured), then by
             hand through any exchange, which ends in the send form below. */}

@@ -7,7 +7,7 @@
 import { ethers } from 'ethers';
 import { Web3Service } from '@/lib/web3';
 import { Config } from '@/types';
-import { SWAP_VENUES, encodeSwap } from '@/lib/stablecoinSwap';
+import { SWAP_VENUES, encodeSale, encodeSwap } from '@/lib/stablecoinSwap';
 
 const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
 const USDT = '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2';
@@ -101,7 +101,18 @@ describe('the notice over the wallet prompt', () => {
 
     it('says an approval to the router is for a conversion, not just "to be spent by" an address', () => {
       const summary = describe_(USDC, erc20.encodeFunctionData('approve', [venue.router, '20100000']));
-      expect(summary).toBe('allowing up to 20.1 USDC to be converted for this payment');
+      expect(summary).toBe('allowing up to 20.1 USDC to be converted in your own wallet');
+    });
+
+    it('says what a sale of a set amount converts, and the least it can bring', () => {
+      const sale = encodeSale(venue, {
+        tokenIn: USDT,
+        tokenOut: USDC,
+        recipient: ESCROW,
+        amountIn: BigInt(20_000_000),
+        amountOutMinimum: BigInt(19_900_000),
+      });
+      expect(describe_(venue.router, sale)).toBe('converting 20.0 USDT into at least 19.9 USDC in your own wallet');
     });
 
     it('states no figures for a token it does not list', () => {

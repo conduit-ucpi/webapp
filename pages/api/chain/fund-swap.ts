@@ -6,8 +6,10 @@ import { ADDRESS, FUND_SWAP_LOG_TAG, WHOLE_NUMBER, forwardToChainAsUser, shortAd
  * in the caller's own wallet: the conversion itself.
  *
  *   walletAddress, tokenIn, tokenOut   addresses; tokenIn is held, tokenOut is wanted
- *   amountOut                          exactly what should arrive, in tokenOut's smallest unit
- *   amountInMaximum                    the most that may leave, in tokenIn's smallest unit
+ *   EITHER amountOut                   exactly what should arrive, in tokenOut's smallest unit
+ *      and amountInMaximum             the most that may leave, in tokenIn's smallest unit
+ *   OR     amountIn                    exactly what should leave, in tokenIn's smallest unit
+ *      and amountOutMinimum            the least that may arrive, in tokenOut's smallest unit
  *   neededWei (optional)               what the wallet reckons it needs; it can lower what is
  *                                      sent, never raise it
  *
@@ -35,7 +37,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
   }
   const forwarded: Record<string, string> = { walletAddress: body.walletAddress, tokenIn: body.tokenIn, tokenOut: body.tokenOut };
-  for (const field of ['amountOut', 'amountInMaximum'] as const) {
+  // One way of naming the amounts or the other: a body with some of each names neither conversion.
+  const present = (field: string) => body[field] !== undefined && body[field] !== null;
+  const selling = present('amountIn') || present('amountOutMinimum');
+  if (selling && (present('amountOut') || present('amountInMaximum'))) {
+    return res.status(400).json({ error: 'Give amountOut and amountInMaximum, or amountIn and amountOutMinimum, not both' });
+  }
+  for (const field of selling ? (['amountIn', 'amountOutMinimum'] as const) : (['amountOut', 'amountInMaximum'] as const)) {
     const amount = text(body[field]);
     if (!aboveZero(amount)) {
       return res.status(400).json({ error: `${field} must be a whole number above zero, in the token's smallest unit` });
@@ -57,8 +65,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     what: 'fund-swap',
     tag: FUND_SWAP_LOG_TAG,
     trace:
-      `conversion: wallet ${shortAddress(forwarded.walletAddress)} wants exactly ${forwarded.amountOut} of token ` +
-      `${shortAddress(forwarded.tokenOut)} for at most ${forwarded.amountInMaximum} of token ${shortAddress(forwarded.tokenIn)}` +
+      (selling
+        ? `conversion: wallet ${shortAddress(forwarded.walletAddress)} wants to convert exactly ${forwarded.amountIn} of token ` +
+          `${shortAddress(forwarded.tokenIn)} into at least ${forwarded.amountOutMinimum} of token ${shortAddress(forwarded.tokenOut)}`
+        : `conversion: wallet ${shortAddress(forwarded.walletAddress)} wants exactly ${forwarded.amountOut} of token ` +
+          `${shortAddress(forwarded.tokenOut)} for at most ${forwarded.amountInMaximum} of token ${shortAddress(forwarded.tokenIn)}`) +
       (forwarded.neededWei ? `, reckoning it needs ${forwarded.neededWei} wei` : '')
   });
 }

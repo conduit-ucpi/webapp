@@ -35,7 +35,10 @@ jest.mock('@/hooks/useSimpleEthers', () => ({
   }),
 }));
 jest.mock('@/components/farcaster/FarcasterDetectionProvider', () => ({ useFarcaster: () => ({ isInFarcaster: false }) }));
-jest.mock('@conduit-ucpi/whitelabel-sdk', () => ({ CashOutPanel: () => <div>the Coinbase cash-out panel</div> }));
+jest.mock('@conduit-ucpi/whitelabel-sdk', () => ({
+  CashOutPanel: () => <div>the Coinbase cash-out panel</div>,
+  ConvertPanel: () => <section id="convert">the conversion panel</section>,
+}));
 jest.mock('@/lib/rpc/RpcClient', () => ({ RpcClient: class {}, sharedRpcClient: jest.fn() }));
 jest.mock('@/hooks/useCoinbaseAvailability', () => ({
   useCoinbaseAvailability: () => ({ unavailable: false, countryName: null, overrule: jest.fn() }),
@@ -53,8 +56,9 @@ const section = (id: string) => document.getElementById(id) as HTMLElement;
 describe('the wallet page', () => {
   beforeEach(() => render(<Wallet />));
 
-  it('links to its three sections from the top', () => {
+  it('links to its sections from the top, in the order money moves', () => {
     expect(screen.getByRole('link', { name: 'Add money' })).toHaveAttribute('href', '#add');
+    expect(screen.getByRole('link', { name: 'Convert' })).toHaveAttribute('href', '#convert');
     expect(screen.getByRole('link', { name: 'Cash out' })).toHaveAttribute('href', '#cash-out');
     expect(screen.getByRole('link', { name: 'Send' })).toHaveAttribute('href', '#send');
   });
@@ -70,6 +74,12 @@ describe('the wallet page', () => {
     expect(add.getByRole('button', { name: /Add from Kraken/ })).toBeInTheDocument();
     expect(add.getByText('More places to buy USDC')).toBeInTheDocument();
     expect(add.getByLabelText('Token to add')).toHaveValue('USDC');
+  });
+
+  it('converts between its two stablecoins before the cash-out, where the network has a pool for them', () => {
+    const convert = section('convert');
+    expect(convert).toHaveTextContent('the conversion panel');
+    expect(convert.compareDocumentPosition(section('cash-out')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('cashes out through Coinbase, or by hand through an exchange', () => {

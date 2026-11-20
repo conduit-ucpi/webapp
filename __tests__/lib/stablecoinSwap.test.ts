@@ -2,14 +2,20 @@
  * Converting one stablecoin to another in the buyer's wallet: where it is offered, what it may
  * cost, and that the calldata says what was asked.
  */
+import { ethers } from 'ethers';
 import {
   SWAP_VENUES,
   convertibleFrom,
+  decodeSale,
+  decodeSaleQuote,
   decodeSwap,
   encodeQuote,
+  encodeSale,
+  encodeSaleQuote,
   encodeSwap,
   isSwapRouter,
   maxAmountIn,
+  minAmountOut,
   purchaseAmountFor,
   swapVenue,
   withinPremium,
@@ -101,6 +107,37 @@ describe('the calldata', () => {
     expect(data.toLowerCase()).toContain(USDC.slice(2).toLowerCase());
     expect(data.toLowerCase()).toContain(USDT.slice(2).toLowerCase());
     expect(data).toContain((100).toString(16).padStart(64, '0'));
+  });
+
+  describe('selling a set amount', () => {
+    const sale = {
+      tokenIn: USDT,
+      tokenOut: USDC,
+      recipient: WALLET,
+      amountIn: BigInt(20_000_000),
+      amountOutMinimum: BigInt(19_873_232),
+    };
+
+    it('reads back exactly what was asked: tokens, recipient, the amount leaving and the floor', () => {
+      expect(decodeSale(encodeSale(base, sale))).toEqual(sale);
+    });
+
+    it('is the router\'s exactInputSingle, and neither kind of call is read as the other', () => {
+      expect(encodeSale(base, sale).slice(0, 10)).toBe('0x04e45aaf');
+      expect(decodeSale(encodeSwap(base, call))).toBeNull();
+      expect(decodeSwap(encodeSale(base, sale))).toBeNull();
+    });
+
+    it('accepts half a percent less than the quote, and no less', () => {
+      expect(minAmountOut(BigInt(19_973_097))).toBe(BigInt(19_973_097) - BigInt(99_865));
+    });
+
+    it('asks the quoter what an exact amount in would bring, and reads the answer', () => {
+      const data = encodeSaleQuote(base, USDT, USDC, BigInt(20_000_000));
+      expect(data).not.toBe(encodeQuote(base, USDT, USDC, BigInt(20_000_000)));
+      const answer = ethers.AbiCoder.defaultAbiCoder().encode(['uint256', 'uint160', 'uint32', 'uint256'], [19_973_097, 1, 0, 80_000]);
+      expect(decodeSaleQuote(answer)).toBe(BigInt(19_973_097));
+    });
   });
 
   it('knows its own router and no other address', () => {

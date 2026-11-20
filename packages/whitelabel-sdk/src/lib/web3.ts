@@ -12,7 +12,7 @@ import { asSwapApproval, asSwapConversion } from '@/lib/swapSteps';
 import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement';
 
 // ERC20 ABI for USDC interactions
-import { decodeQuote, decodeSwap, encodeQuote, isSwapRouter, type SwapVenue } from './stablecoinSwap';
+import { decodeQuote, decodeSale, decodeSaleQuote, decodeSwap, encodeQuote, encodeSaleQuote, isSwapRouter, type SwapVenue } from './stablecoinSwap';
 
 export const ERC20_ABI = [
   'function balanceOf(address owner) view returns (uint256)',
@@ -739,6 +739,18 @@ export class Web3Service {
       data: encodeQuote(venue, tokenIn, tokenOut, amountOut),
     });
     return decodeQuote(result);
+  }
+
+  /**
+   * What selling exactly `amountIn` of `tokenIn` would bring in `tokenOut`, in base units. The
+   * same read-only call to the quoter, asked the other way round.
+   */
+  async quoteStablecoinSale(venue: SwapVenue, tokenIn: string, tokenOut: string, amountIn: bigint): Promise<bigint> {
+    const result = await this.rpcClient.getProvider().call({
+      to: venue.quoter,
+      data: encodeSaleQuote(venue, tokenIn, tokenOut, amountIn),
+    });
+    return decodeSaleQuote(result);
   }
 
   // Hash description for smart contract compatibility
@@ -2163,7 +2175,7 @@ export class Web3Service {
           const amount = ethers.formatUnits(value, token.decimals);
           // An approval to a swap router is the first half of a conversion, and is said as one.
           if (type === 'approve' && isSwapRouter(counterparty)) {
-            return `allowing up to ${amount} ${token.symbol} to be converted for this payment`;
+            return `allowing up to ${amount} ${token.symbol} to be converted in your own wallet`;
           }
           return type === 'transfer'
             ? `sending ${amount} ${token.symbol} to ${shorten(counterparty)}`
@@ -2188,6 +2200,15 @@ export class Web3Service {
         return (
           `converting up to ${ethers.formatUnits(swap.amountInMaximum, tokenIn.decimals)} ${tokenIn.symbol} ` +
           `into ${ethers.formatUnits(swap.amountOut, tokenOut.decimals)} ${tokenOut.symbol} in your own wallet`
+        );
+      }
+      const sale = decodeSale(tx.data || '');
+      const sold = sale && this.tokenForPrompt(sale.tokenIn);
+      const bought = sale && this.tokenForPrompt(sale.tokenOut);
+      if (sale && sold && bought) {
+        return (
+          `converting ${ethers.formatUnits(sale.amountIn, sold.decimals)} ${sold.symbol} ` +
+          `into at least ${ethers.formatUnits(sale.amountOutMinimum, bought.decimals)} ${bought.symbol} in your own wallet`
         );
       }
     }

@@ -64,6 +64,11 @@ export function maxAmountIn(quoted: bigint): bigint {
   return quoted + (quoted * BigInt(SWAP_SLIPPAGE_BPS)) / BigInt(10000);
 }
 
+/** The least a sale of an exact amount may bring: the quote less the slippage allowance. */
+export function minAmountOut(quoted: bigint): bigint {
+  return quoted - (quoted * BigInt(SWAP_SLIPPAGE_BPS)) / BigInt(10000);
+}
+
 /** Whether paying `amountIn` for `amountOut` stays inside the premium cap. Both in base units. */
 export function withinPremium(amountIn: bigint, amountOut: bigint, decimalsIn: number, decimalsOut: number): boolean {
   if (amountOut <= BigInt(0)) return false;
@@ -85,10 +90,12 @@ let routerInterface: ethers.Interface | null = null;
 const QUOTER = () =>
   (quoterInterface ??= new ethers.Interface([
     'function quoteExactOutputSingle((address tokenIn,address tokenOut,uint256 amount,uint24 fee,uint160 sqrtPriceLimitX96)) returns (uint256 amountIn,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)',
+    'function quoteExactInputSingle((address tokenIn,address tokenOut,uint256 amountIn,uint24 fee,uint160 sqrtPriceLimitX96)) returns (uint256 amountOut,uint160 sqrtPriceX96After,uint32 initializedTicksCrossed,uint256 gasEstimate)',
   ]));
 const ROUTER = () =>
   (routerInterface ??= new ethers.Interface([
     'function exactOutputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountOut,uint256 amountInMaximum,uint160 sqrtPriceLimitX96)) payable returns (uint256 amountIn)',
+    'function exactInputSingle((address tokenIn,address tokenOut,uint24 fee,address recipient,uint256 amountIn,uint256 amountOutMinimum,uint160 sqrtPriceLimitX96)) payable returns (uint256 amountOut)',
   ]));
 
 export function encodeQuote(venue: SwapVenue, tokenIn: string, tokenOut: string, amountOut: bigint): string {
@@ -123,6 +130,53 @@ export function decodeSwap(data: string): SwapCall | null {
       recipient: params.recipient,
       amountOut: params.amountOut,
       amountInMaximum: params.amountInMaximum,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/*
+ * Selling an exact amount: the wallet page's conversion, where somebody wants rid of a whole
+ * balance (USDT, to cash out as USDC) and "exactly this much arrives" would leave dust behind.
+ * Same pool, same router, the other pair of calls.
+ */
+
+/** Asks what selling exactly `amountIn` would bring. */
+export function encodeSaleQuote(venue: SwapVenue, tokenIn: string, tokenOut: string, amountIn: bigint): string {
+  return QUOTER().encodeFunctionData('quoteExactInputSingle', [
+    { tokenIn, tokenOut, amountIn, fee: venue.fee, sqrtPriceLimitX96: 0 },
+  ]);
+}
+
+export function decodeSaleQuote(result: string): bigint {
+  return QUOTER().decodeFunctionResult('quoteExactInputSingle', result)[0] as bigint;
+}
+
+export interface SaleCall {
+  tokenIn: string;
+  tokenOut: string;
+  recipient: string;
+  /** Exactly what leaves. */
+  amountIn: bigint;
+  /** The least that may arrive; less, and the router refuses. */
+  amountOutMinimum: bigint;
+}
+
+export function encodeSale(venue: SwapVenue, call: SaleCall): string {
+  return ROUTER().encodeFunctionData('exactInputSingle', [{ ...call, fee: venue.fee, sqrtPriceLimitX96: 0 }]);
+}
+
+/** A sale's terms read back out of its calldata; null for anything else, a swap for exact output included. */
+export function decodeSale(data: string): SaleCall | null {
+  try {
+    const [params] = ROUTER().decodeFunctionData('exactInputSingle', data);
+    return {
+      tokenIn: params.tokenIn,
+      tokenOut: params.tokenOut,
+      recipient: params.recipient,
+      amountIn: params.amountIn,
+      amountOutMinimum: params.amountOutMinimum,
     };
   } catch {
     return null;

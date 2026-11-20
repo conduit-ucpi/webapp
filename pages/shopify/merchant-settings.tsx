@@ -2,6 +2,8 @@ import { apiFetch } from '@/lib/apiFetch';
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
+import { useAuth } from '@/components/auth';
+import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 
 export default function MerchantSettings() {
   const router = useRouter();
@@ -10,6 +12,11 @@ export default function MerchantSettings() {
   const [payoutDelayDays, setPayoutDelayDays] = useState(14);
   const [isLoading, setIsLoading] = useState(false);
   const [isFetching, setIsFetching] = useState(true);
+  // Why the settings could not be shown, when they could not: the server's own sentence.
+  const [refusal, setRefusal] = useState<string | null>(null);
+  // A shop's settings belong to one Stabledrop account, so there is nothing to show or save
+  // until we know whose browser this is. The server decides; this only saves asking in vain.
+  const { user, isLoading: authLoading } = useAuth();
 
   useEffect(() => {
     if (success === 'true') {
@@ -18,10 +25,16 @@ export default function MerchantSettings() {
   }, [success]);
 
   useEffect(() => {
-    if (shop) {
+    if (shop && user) {
+      setIsFetching(true);
+      setRefusal(null);
       // Fetch existing settings
       apiFetch(`/api/shopify/settings?shop=${encodeURIComponent(shop as string)}`)
-        .then(res => res.json())
+        .then(async res => {
+          const data = await res.json();
+          if (!res.ok) setRefusal(data.error || 'These settings could not be loaded');
+          return data;
+        })
         .then(data => {
           if (data.walletAddress) {
             setWalletAddress(data.walletAddress);
@@ -33,7 +46,7 @@ export default function MerchantSettings() {
         })
         .finally(() => setIsFetching(false));
     }
-  }, [shop]);
+  }, [shop, user]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,7 +87,35 @@ export default function MerchantSettings() {
     }
   };
 
-  if (isFetching) {
+  const page = { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', margin: 0, padding: '40px', background: '#fafbfb', minHeight: '100vh' };
+  const card = { maxWidth: '600px', margin: '0 auto', background: 'white', borderRadius: '8px', padding: '40px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' };
+
+  if (!authLoading && !user) {
+    return (
+      <div style={page}>
+        <div style={card}>
+          <h1 style={{ color: '#202223', marginBottom: '16px', fontSize: '28px' }}>Sign in to manage this shop</h1>
+          <p style={{ color: '#6d7175', fontSize: '16px', marginBottom: '24px' }}>
+            Your shop&apos;s payout settings belong to your Stabledrop account. Sign in, and only that account will be able to see or change them.
+          </p>
+          <ConnectWalletEmbedded useSmartRouting={true} />
+        </div>
+      </div>
+    );
+  }
+
+  if (refusal) {
+    return (
+      <div style={page}>
+        <div style={card}>
+          <h1 style={{ color: '#202223', marginBottom: '16px', fontSize: '28px' }}>These settings can&apos;t be opened</h1>
+          <p role="alert" style={{ color: '#6d7175', fontSize: '16px' }}>{refusal}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (authLoading || isFetching) {
     return (
       <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif', margin: 0, padding: '40px', background: '#fafbfb', minHeight: '100vh' }}>
         <div style={{ maxWidth: '600px', margin: '0 auto', background: 'white', borderRadius: '8px', padding: '40px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', textAlign: 'center' }}>

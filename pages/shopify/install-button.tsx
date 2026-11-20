@@ -7,6 +7,8 @@ import Fade from '@/components/ui/Fade';
 import { Tabs, TabPanel } from '@/components/ui/Tabs';
 import { btnPrimary } from '@/utils/landingStyles';
 import WalletRegistrationPrereq from '@/components/ui/WalletRegistrationPrereq';
+import { useAuth } from '@/components/auth';
+import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 
 const integrationTabs = [
   { id: 'simple', label: 'Simple (Copy & Paste)' },
@@ -60,7 +62,10 @@ function StepNumber({ n }: { n: number }) {
 
 export default function InstallButton() {
   const router = useRouter();
-  const { shop, configured } = router.query;
+  const { shop, configured, connect, signin } = router.query;
+  // A shop is connected to the account that is signed in, so there has to be one first. The
+  // server enforces it (/api/shopify/auth); this is so nobody is sent there only to come back.
+  const { user, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('simple');
   const [shopDomain, setShopDomain] = useState('');
   const [isConfigured, setIsConfigured] = useState(false);
@@ -73,6 +78,11 @@ export default function InstallButton() {
       toast.success('Settings saved! Now add the button to your store.');
     }
   }, [configured, shop]);
+
+  // Sent back here to sign in: keep the shop they were connecting.
+  useEffect(() => {
+    if (typeof connect === 'string' && connect) setShopDomain((current) => current || connect);
+  }, [connect]);
 
   const handleShopifyConnect = (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,6 +166,14 @@ export default function InstallButton() {
                 <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-8 max-w-md">
                   Link your Shopify store to configure payment routing and settlement parameters.
                 </p>
+                {!authLoading && !user ? (
+                  <div className="max-w-lg">
+                    <p role={signin === 'required' ? 'alert' : undefined} className="text-sm text-secondary-700 dark:text-secondary-200 mb-4">
+                      Sign in first. Your store is connected to the account you are signed in to, and only that account can change where its payments go.
+                    </p>
+                    <ConnectWalletEmbedded useSmartRouting={true} />
+                  </div>
+                ) : (
                 <form onSubmit={handleShopifyConnect} className="flex flex-col sm:flex-row gap-3 sm:gap-4 max-w-lg">
                   <input
                     type="text"
@@ -169,6 +187,7 @@ export default function InstallButton() {
                     Connect Store
                   </button>
                 </form>
+                )}
                 <p className="text-xs text-secondary-400 dark:text-secondary-500 mt-4">
                   You will be redirected to Shopify&apos;s OAuth flow to authorize secure API access.
                 </p>

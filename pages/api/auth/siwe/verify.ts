@@ -7,6 +7,7 @@
 
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { forwardSetCookie } from '@/lib/auth/forwardSetCookie'
+import { logBackendAnswer } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -31,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!response.ok) {
       const error = await response.text()
-      console.error('Signature verification failed:', error)
+      logBackendAnswer('Sign-in: userservice', response.status, error)
       return res.status(response.status).json({ error: 'Verification failed' })
     }
 

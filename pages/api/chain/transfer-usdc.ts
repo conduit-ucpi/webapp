@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuth } from '@/utils/api-auth';
+import { requireAuth, logApiFailure } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(response.status).json(responseData);
   } catch (error) {
-    console.error('Transfer token API error:', error);
+    logApiFailure('Transfer token API error:', error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {

@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { isPathSegment } from '@/lib/server/serviceProxy';
-import { requireAuth } from '@/utils/api-auth';
+import { requireAuth, logApiFailure } from '@/utils/api-auth';
 
 /**
  * The arbiter seat state of one escrow (MARKETPLACE_OPENSPEC §15.6c).
@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (error) {
-    console.error('Arbiter state API error:', error);
+    logApiFailure('Arbiter state API error:', error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuth } from '@/utils/api-auth';
+import { requireAuth, logApiFailure } from '@/utils/api-auth';
 import { buildRootViews, draftToCreateRequest, fanoutServiceUrl, serviceHeaders } from '@/utils/projectsServer';
 import { blockedByProjectsFlag } from '@/utils/featureFlags';
 
@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(response.status).json(data);
   } catch (error) {
-    console.error('projects index API error:', error);
+    logApiFailure('projects index API error:', error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {

@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuth } from '@/utils/api-auth';
+import { requireAuth, logApiFailure, logBackendAnswer } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     if (!contractsResponse.ok) {
-      console.error('Failed to fetch contracts:', contractsResponse.status);
+      logBackendAnswer('Contract service', contractsResponse.status);
       return res.status(contractsResponse.status).json({ error: 'Failed to fetch contracts' });
     }
 
@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(200).json(deduplicatedContracts);
   } catch (error) {
-    console.error('Get all contracts API error:', error);
+    logApiFailure('Get all contracts API error:', error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {

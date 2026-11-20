@@ -8,7 +8,10 @@ import support from '@/pages/api/chain/contract/[contractAddress]/signed-calls';
 import signed from '@/pages/api/chain/signed/[action]';
 import raiseDispute from '@/pages/api/chain/raise-dispute';
 
-jest.mock('@/utils/api-auth', () => ({ requireAuth: jest.fn(() => 'user-token') }));
+jest.mock('@/utils/api-auth', () => ({
+  ...jest.requireActual('@/utils/api-auth'),
+  requireAuth: jest.fn(() => 'user-token'),
+}));
 const { requireAuth } = jest.requireMock('@/utils/api-auth');
 
 const CONTRACT = '0x9a4264B3173FA692bDd159cB226e4ae491e2989c';

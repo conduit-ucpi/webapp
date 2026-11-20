@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { isPathSegment } from '@/lib/server/serviceProxy';
 import { SubmitDisputeEntryRequest } from '@/types';
-import { requireAuth } from '@/utils/api-auth';
+import { requireAuth, logApiFailure } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
@@ -72,7 +72,7 @@ async function handleSubmitDisputeEntry(req: NextApiRequest, res: NextApiRespons
     
     res.status(response.status).json(responseData);
   } catch (error) {
-    console.error('Submit dispute entry API error:', error);
+    logApiFailure('Submit dispute entry API error:', error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {

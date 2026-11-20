@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { isPathSegment } from '@/lib/server/serviceProxy';
+import { logBackendAnswer } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
@@ -20,7 +21,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Contract service error:', response.status, errorText);
+        logBackendAnswer('Contract service', response.status, errorText);
         return res.status(response.status).json({ 
           error: response.status === 404 ? 'Contract not found' : 'Failed to fetch contract notes' 
         });
@@ -42,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Contract service error:', response.status, errorText);
+        logBackendAnswer('Contract service', response.status, errorText);
         return res.status(response.status).json({ 
           error: response.status === 404 ? 'Contract not found' : 'Failed to add note' 
         });

@@ -7,7 +7,10 @@ import { createMocks } from 'node-mocks-http';
 import approvalHandler from '@/pages/api/chain/fund-swap-approval';
 import swapHandler from '@/pages/api/chain/fund-swap';
 
-jest.mock('@/utils/api-auth', () => ({ requireAuth: jest.fn(() => 'user-token') }));
+jest.mock('@/utils/api-auth', () => ({
+  ...jest.requireActual('@/utils/api-auth'),
+  requireAuth: jest.fn(() => 'user-token'),
+}));
 const { requireAuth } = jest.requireMock('@/utils/api-auth');
 
 const WALLET = '0x78A67E815db3D0D60F5018F1DbFF173fFB25afBD';

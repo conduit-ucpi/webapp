@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { extractAuthToken, requireAuth } from '@/utils/api-auth';
+import { extractAuthToken, requireAuth, logApiFailure } from '@/utils/api-auth';
 
 /**
  * Forward an authenticated API call to one of the backend services.
@@ -140,7 +140,7 @@ export async function proxyToService(
     }
     res.status(options.statusFor ? options.statusFor(response.status, body) : response.status).json(body);
   } catch (error) {
-    console.error(`Proxy to ${options.service}service ${options.path} failed:`, error);
+    logApiFailure(`Proxy to ${options.service}service ${options.path} failed:`, error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {

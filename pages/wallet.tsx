@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { GetServerSideProps } from 'next';
+import type { GetStaticProps } from 'next';
+import { isr } from '@/utils/isr';
 import SEO from '@/components/SEO';
-import { rampFacts, type RampFacts } from '@/lib/server/rampFacts';
+import { rampFactsAtBuild, type RampFacts } from '@/lib/server/rampFacts';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
@@ -250,7 +251,7 @@ export default function Wallet({ ramps }: { ramps?: RampFacts }) {
    *    This used to be a spinner while sign-in resolved and a bare "connect your wallet" after,
    *    and the page a bot was sent had no content at all (2026-11-20).
    *
-   *    So it must not wait on anything the browser loads: `ramps` (getServerSideProps) says which
+   *    So it must not wait on anything the browser loads: `ramps` (getStaticProps) says which
    *    chain, tokens and providers, and only the connect button waits for sign-in to settle.
    */
   if (authLoading || isWalletAddressLoading || !user || !walletAddress || isInFarcaster) {
@@ -632,9 +633,11 @@ export default function Wallet({ ramps }: { ramps?: RampFacts }) {
 }
 
 /**
- * Run per request so the page the server writes already names the chain, the tokens and the
- * providers this deployment has: see the signed-out branch above. Environment only, no calls out.
+ * Written at build time, not per request: the public site is a static export with no server
+ * behind its pages, so getServerSideProps cannot be used here (see rampFactsAtBuild). The box
+ * build refreshes it every few minutes from its own environment.
  */
-export const getServerSideProps: GetServerSideProps<{ ramps: RampFacts }> = async () => ({
-  props: { ramps: rampFacts() },
+export const getStaticProps: GetStaticProps<{ ramps: RampFacts }> = async () => ({
+  props: { ramps: await rampFactsAtBuild() },
+  ...isr(300),
 });

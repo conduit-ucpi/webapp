@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import type { GetServerSideProps } from 'next';
+import type { GetStaticProps } from 'next';
+import { isr } from '@/utils/isr';
 import SEO from '@/components/SEO';
-import { rampFacts, type RampFacts } from '@/lib/server/rampFacts';
+import { rampFactsAtBuild, type RampFacts } from '@/lib/server/rampFacts';
 import { useMemo, useState } from 'react';
 import { useAuth } from '@/components/auth';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
@@ -27,7 +28,7 @@ const blurb = 'mt-1 text-sm text-secondary-600 dark:text-secondary-300';
  * ⚠️ SIGNED OUT, IT IS THE SAME LIST WITH NOTHING TO PRESS, and that is also what the SERVER
  *    writes, since the server never has a user: it is the HTML a search engine or an AI agent
  *    reads. It used to be a spinner until sign-in and the config had loaded, so the page a bot
- *    was sent had no content (2026-11-20). `ramps` (getServerSideProps) says which chain, tokens
+ *    was sent had no content (2026-11-20). `ramps` (getStaticProps) says which chain, tokens
  *    and providers, so nothing but the connect button waits on the browser. /wallet does the same.
  */
 export default function BuyToken({ ramps }: { ramps?: RampFacts }) {
@@ -183,7 +184,12 @@ export default function BuyToken({ ramps }: { ramps?: RampFacts }) {
   );
 }
 
-/** Per request, from the environment alone, so the page the server writes is already the list. */
-export const getServerSideProps: GetServerSideProps<{ ramps: RampFacts }> = async () => ({
-  props: { ramps: rampFacts() },
+/**
+ * Written at build time, not per request: the public site is a static export with no server
+ * behind its pages, so getServerSideProps cannot be used here (see rampFactsAtBuild). The box
+ * build refreshes it every few minutes from its own environment.
+ */
+export const getStaticProps: GetStaticProps<{ ramps: RampFacts }> = async () => ({
+  props: { ramps: await rampFactsAtBuild() },
+  ...isr(300),
 });

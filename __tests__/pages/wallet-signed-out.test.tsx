@@ -7,8 +7,8 @@
  * and to cash out, from what the server itself knows.
  */
 import { renderToString } from 'react-dom/server';
-import Wallet, { getServerSideProps } from '@/pages/wallet';
-import { rampFacts } from '@/lib/server/rampFacts';
+import Wallet, { getStaticProps } from '@/pages/wallet';
+import { rampFacts, rampFactsAtBuild, rampFactsFromConfig } from '@/lib/server/rampFacts';
 
 // The server's view: sign-in unresolved, no config yet.
 const auth = { user: null, state: null, isLoading: true, canFundWallet: () => false, fundWallet: jest.fn() };
@@ -96,8 +96,62 @@ describe('what the server knows without asking anyone', () => {
     expect(rampFacts({} as never)).toEqual({ chainId: 8453, tokenSymbols: ['USDC'], coinbase: false, card: false });
   });
 
-  it('is what getServerSideProps hands the page', async () => {
-    const result = (await getServerSideProps({} as never)) as { props: { ramps: unknown } };
+  it('is what getStaticProps hands the page', async () => {
+    const result = (await getStaticProps({} as never)) as { props: { ramps: unknown } };
     expect(result.props.ramps).toEqual(rampFacts());
+  });
+});
+
+/**
+ * The public site is a static export: no server, and none of the server's environment at build.
+ * getServerSideProps broke that build (2026-11-20), and the environment alone would have baked a
+ * page without Coinbase or the card route. The export asks the running API instead.
+ */
+describe('the static export, which has no server and no server environment', () => {
+  const realFetch = global.fetch;
+  afterEach(() => {
+    global.fetch = realFetch;
+  });
+
+  it('neither page uses getServerSideProps, which cannot be exported', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    expect(require('@/pages/wallet').getServerSideProps).toBeUndefined();
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    expect(require('@/pages/buy-token').getServerSideProps).toBeUndefined();
+  });
+
+  it("asks the running API's config which chain, tokens and providers there are", async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        chainId: 8453,
+        supportedTokens: [{ symbol: 'USDC' }, { symbol: 'USDT' }],
+        defaultToken: { symbol: 'USDT' },
+        coinbaseProjectId: 'p',
+        privyAppId: 'q',
+      }),
+    });
+    global.fetch = fetchMock as never;
+    const facts = await rampFactsAtBuild({ STATIC_EXPORT: 'true', NEXT_PUBLIC_API_BASE_URL: 'https://api.example/' } as never);
+    expect(fetchMock.mock.calls[0][0]).toBe('https://api.example/api/config');
+    expect(facts).toEqual({ chainId: 8453, tokenSymbols: ['USDT', 'USDC'], coinbase: true, card: true });
+  });
+
+  it('fails the build rather than publish a page that leaves providers out', async () => {
+    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 503 }) as never;
+    await expect(
+      rampFactsAtBuild({ STATIC_EXPORT: 'true', NEXT_PUBLIC_API_BASE_URL: 'https://api.example' } as never),
+    ).rejects.toThrow(/503/);
+    await expect(rampFactsAtBuild({ STATIC_EXPORT: 'true' } as never)).rejects.toThrow(/NEXT_PUBLIC_API_BASE_URL/);
+  });
+
+  it('on the box, reads its own environment and asks nobody', async () => {
+    global.fetch = jest.fn() as never;
+    expect(await rampFactsAtBuild({ CHAIN_ID: '8453', COINBASE_PROJECT_ID: 'p' } as never)).toEqual(rampFacts({ CHAIN_ID: '8453', COINBASE_PROJECT_ID: 'p' } as never));
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  it('a config with nothing in it still names USDC on Base', () => {
+    expect(rampFactsFromConfig({})).toEqual({ chainId: 8453, tokenSymbols: ['USDC'], coinbase: false, card: false });
   });
 });

@@ -7,7 +7,7 @@
  * and to cash out, from what the server itself knows.
  */
 import { renderToString } from 'react-dom/server';
-import BuyToken, { getServerSideProps } from '@/pages/buy-token';
+import BuyToken, { getStaticProps } from '@/pages/buy-token';
 import { rampFacts } from '@/lib/server/rampFacts';
 
 // The server's view: sign-in unresolved, no config yet.
@@ -80,7 +80,7 @@ describe('/buy-token as the server writes it', () => {
   });
 });
 
-it('getServerSideProps hands the page what the server knows', async () => {
-  const result = (await getServerSideProps({} as never)) as { props: { ramps: unknown } };
+it('getStaticProps hands the page what the server knows', async () => {
+  const result = (await getStaticProps({} as never)) as { props: { ramps: unknown } };
   expect(result.props.ramps).toEqual(rampFacts());
 });

@@ -1,5 +1,4 @@
-import { useState, type ReactNode } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import type { ReactNode } from 'react';
 import { useLocale } from '@conduit-ucpi/whitelabel-sdk';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import Fade from '@/components/ui/Fade';
@@ -23,9 +22,17 @@ export function useFaqContent(): FaqContent {
 export const EYEBROW = 'text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500';
 
 // ---------------------------------------------------------------------------
-// Collapsible FAQ item — question as clickable heading, answer toggles
+// Collapsible FAQ item — the question opens and closes its answer
 // ---------------------------------------------------------------------------
 
+/**
+ * ⚠️ THE ANSWER IS ALWAYS IN THE PAGE, OPEN OR NOT. This used to render the answer only once its
+ *    question had been clicked, so the HTML we publish carried 79 questions and no answers:
+ *    nothing for a search engine or an assistant reading the page, nothing for the browser's
+ *    find-in-page, and nothing at all without JavaScript. A native <details> keeps the answer
+ *    in the markup and leaves the opening and closing to the browser, which also opens the
+ *    right one when find-in-page lands inside it.
+ */
 export function FAQItem({
   question,
   children,
@@ -35,39 +42,22 @@ export function FAQItem({
   children: ReactNode;
   defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div>
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full text-left group cursor-pointer flex items-start justify-between gap-4 py-4"
-      >
+    <details open={defaultOpen || undefined} className="group">
+      <summary className="w-full text-left cursor-pointer flex items-start justify-between gap-4 py-4 list-none [&::-webkit-details-marker]:hidden">
         <h3 className="text-sm font-medium text-secondary-900 dark:text-white leading-relaxed">
           {question}
         </h3>
-        <span className="mt-0.5 flex-shrink-0 text-secondary-400 dark:text-secondary-500 transition-transform duration-300" style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+        <span className="mt-0.5 flex-shrink-0 text-secondary-400 dark:text-secondary-500 transition-transform duration-300 group-open:rotate-180" aria-hidden="true">
           <svg width="16" height="16" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </span>
-      </button>
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: [0.25, 0.4, 0.25, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="pb-4">
-              {children}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+      </summary>
+      <div className="pb-4">
+        {children}
+      </div>
+    </details>
   );
 }
 

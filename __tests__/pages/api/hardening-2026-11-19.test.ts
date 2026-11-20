@@ -18,6 +18,11 @@ import search from '@/pages/api/users/search';
 import byFid from '@/pages/api/users/fid/[fid]';
 import adminDatabase from '@/pages/api/contracts/admin/database';
 
+
+// These tests are about what the route does once an admin is through the door; who gets through
+// it is __tests__/api/admin/admin-routes-need-an-admin.test.ts.
+jest.mock('@/lib/server/requireAdmin', () => ({ requireAdmin: async () => 'a-token' }));
+
 const fetchMock = jest.fn();
 const answer = (status: number, body: string) => ({
   ok: status >= 200 && status < 300,

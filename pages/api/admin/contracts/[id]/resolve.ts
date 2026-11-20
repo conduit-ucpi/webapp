@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { isPathSegment } from '@/lib/server/serviceProxy';
+import { requireAdmin } from '@/lib/server/requireAdmin';
 import { logBackendAnswer } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -13,6 +14,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!(await requireAdmin(req, res))) return;
 
   const { 
     buyerPercentage, 

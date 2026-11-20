@@ -21,6 +21,11 @@ import projectTree from '@/pages/api/projects/[groupId]/index';
 import projectDeploy from '@/pages/api/projects/[groupId]/deploy';
 import nodeReady from '@/pages/api/projects/[groupId]/nodes/[nodeId]/ready';
 
+
+// These tests are about what the route does once an admin is through the door; who gets through
+// it is __tests__/api/admin/admin-routes-need-an-admin.test.ts.
+jest.mock('@/lib/server/requireAdmin', () => ({ requireAdmin: async () => 'a-token' }));
+
 // What Next hands a handler after decoding %2F, %23 and %3F.
 const SENT = [
   '../../contracts#',

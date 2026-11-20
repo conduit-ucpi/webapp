@@ -1,9 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { requireAdmin } from '@/lib/server/requireAdmin';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
+
+  if (!(await requireAdmin(req, res))) return;
 
   try {
     // Forward the request to the contract service

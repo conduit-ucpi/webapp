@@ -62,6 +62,20 @@ describe('starting to connect a shop', () => {
   });
 });
 
+describe('where the browser is sent', () => {
+  const before = process.env.SERVICE_LINK;
+  beforeEach(() => { process.env.SERVICE_LINK = 'https://site.example/'; });
+  afterEach(() => {
+    if (before === undefined) delete process.env.SERVICE_LINK;
+    else process.env.SERVICE_LINK = before;
+  });
+
+  it('is the site the pages are on, not the API host these routes answer from', async () => {
+    expect((await run(startConnecting, false)).location).toBe(`https://site.example${SIGN_IN}`);
+    expect((await run(finishConnecting, true)).location).toBe(`https://site.example/shopify/merchant-settings?shop=${encodeURIComponent(SHOP)}&success=true`);
+  });
+});
+
 describe('coming back from Shopify', () => {
   it('signed in: the shop is saved as that user\'s', async () => {
     const answer = await run(finishConnecting, true);

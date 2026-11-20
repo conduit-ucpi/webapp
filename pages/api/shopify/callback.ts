@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { shopifyApi, ApiVersion } from '@shopify/shopify-api';
 import { saveMerchantSettings } from '@/lib/mongodb';
-import { shopifyUser, signInToConnect } from '@/lib/server/shopifyOwner';
+import { shopifyUser, signInToConnect, sitePage } from '@/lib/server/shopifyOwner';
 import '@shopify/shopify-api/adapters/node';
 
 const shopify = shopifyApi({
@@ -68,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('Merchant settings saved for shop:', session.shop);
 
     // Redirect to settings page
-    const settingsUrl = `/shopify/merchant-settings?shop=${encodeURIComponent(session.shop)}&success=true`;
+    const settingsUrl = sitePage(`/shopify/merchant-settings?shop=${encodeURIComponent(session.shop)}&success=true`);
     console.log('Redirecting to:', settingsUrl);
     res.redirect(settingsUrl);
   } catch (error) {

@@ -21,6 +21,16 @@ export async function shopifyUser(req: NextApiRequest): Promise<(UserIdentity & 
   return identity?.userId ? { ...identity, userId: identity.userId } : null;
 }
 
+/**
+ * A page of the site, as somewhere to send a browser from an API route.
+ *
+ * ⚠️ ABSOLUTE, BECAUSE THE PAGES ARE NOT ON THIS HOST. The API answers on api.stabledrop.me and
+ *    the pages are the static site on stabledrop.me (SERVICE_LINK), so a relative redirect
+ *    lands on the API host and 404s. Relative only when SERVICE_LINK is unset (local dev,
+ *    where one server is both).
+ */
+export const sitePage = (path: string) => `${(process.env.SERVICE_LINK || '').replace(/\/+$/, '')}${path}`;
+
 /** Where a browser is sent to sign in before connecting `shop`: the form, with the shop kept. */
 export const signInToConnect = (shop: string) =>
-  `/shopify/install-button?signin=required&connect=${encodeURIComponent(shop)}`;
+  sitePage(`/shopify/install-button?signin=required&connect=${encodeURIComponent(shop)}`);

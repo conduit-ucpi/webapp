@@ -9,7 +9,14 @@ import { cdpRequest, getCdpCredentials } from '@/lib/server/coinbaseCdp';
  * ⚠️ BEING LISTED IS NOT ENOUGH. Mexico, Colombia, Argentina, Chile and Peru are in Coinbase's list
  *    with only CRYPTO_ACCOUNT, an existing Coinbase balance: no card and no bank, so a buyer with no
  *    crypto cannot buy there (checked 2026-11-06). Venezuela is not listed at all.
+ *
+ * ⚠️ THE UK IS LISTED, WITH CARDS, AND STILL TURNS OUR BUYERS AWAY. Coinbase only serves UK users of
+ *    apps it has approved under the FCA rules, and ours is not one: every flow ends at "Not available
+ *    in your country". No API reports this; it is the `ukFcaApproved` flag in pay.coinbase.com's page
+ *    config (false on 2026-11-21). Remove GB from APP_BLOCKED_COUNTRIES when Coinbase grants it.
  */
+
+const APP_BLOCKED_COUNTRIES = new Set(['GB']);
 
 const CACHE_MS = 60 * 60 * 1000;
 let cache: { countries: Map<string, string[]>; at: number } | null = null;
@@ -55,5 +62,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   const methods = cache.countries.get(country) ?? [];
-  return res.status(200).json({ country, supported: methods.some((method) => method !== 'CRYPTO_ACCOUNT') });
+  const supported = !APP_BLOCKED_COUNTRIES.has(country) && methods.some((method) => method !== 'CRYPTO_ACCOUNT');
+  return res.status(200).json({ country, supported });
 }

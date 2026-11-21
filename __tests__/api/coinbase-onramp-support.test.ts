@@ -11,6 +11,7 @@ jest.mock('@/lib/server/coinbaseCdp', () => ({ cdpRequest: jest.fn(), getCdpCred
 const config = {
   countries: [
     { id: 'GB', payment_methods: [{ id: 'CARD' }, { id: 'CRYPTO_ACCOUNT' }] },
+    { id: 'FR', payment_methods: [{ id: 'CARD' }, { id: 'CRYPTO_ACCOUNT' }] },
     { id: 'MX', payment_methods: [{ id: 'CRYPTO_ACCOUNT' }] },
   ],
 };
@@ -34,7 +35,12 @@ describe('GET /api/coinbase/onramp-support', () => {
 
   it('says yes where a buyer can pay with money', async () => {
     answer();
-    await expect(supported('GB')).resolves.toBe(true);
+    await expect(supported('FR')).resolves.toBe(true);
+  });
+
+  it('says no for the UK, which Coinbase lists but closes to apps without FCA approval', async () => {
+    answer();
+    await expect(supported('GB')).resolves.toBe(false);
   });
 
   it('says no where only an existing Coinbase balance works', async () => {

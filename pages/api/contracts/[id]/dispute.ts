@@ -67,9 +67,30 @@ async function handleSubmitDisputeEntry(req: NextApiRequest, res: NextApiRespons
       body: JSON.stringify(disputeEntry)
     });
 
-    const responseData = await response.json();
-    console.log('Contract Service response:', responseData);
-    
+    // contractservice answers its refusals (403 not a party, 404 no such contract) with an empty
+    // body, so the body is read as text and only parsed when there is one. Parsing it blindly
+    // turned every refusal into a 500.
+    const text = await response.text();
+    let responseData: unknown = null;
+    try {
+      responseData = text ? JSON.parse(text) : null;
+    } catch {
+      responseData = null;
+    }
+    console.log('Contract Service response:', response.status, responseData);
+
+    if (!response.ok) {
+      const message =
+        (responseData as { error?: string; message?: string } | null)?.error ??
+        (responseData as { message?: string } | null)?.message ??
+        (response.status === 403 ? 'Only the buyer, seller or Third Voter can add a dispute entry'
+          : response.status === 404 ? 'Contract not found'
+          : response.status === 409 ? 'This payment has not been funded, so there is nothing to dispute yet'
+          : response.status === 503 ? 'Could not confirm this payment’s funding right now. Try again shortly.'
+          : 'Dispute entry was refused');
+      return res.status(response.status).json({ error: message });
+    }
+
     res.status(response.status).json(responseData);
   } catch (error) {
     logApiFailure('Submit dispute entry API error:', error);

@@ -183,7 +183,7 @@ describe('ConduitCheckout SDK', () => {
       expect(result.currencyRaw).toBe('microUSDC'); // Original currency
     });
 
-    const fundedResult = (state: string) => ({
+    const fundedResult = (state: string, activatedAt: number | null = null) => ({
       ok: true,
       json: async () => ({
         count: 1,
@@ -194,6 +194,7 @@ describe('ConduitCheckout SDK', () => {
           amount: 50.0,
           currency: 'USDC',
           state,
+          activatedAt,
         }],
       }),
     });
@@ -232,6 +233,20 @@ describe('ConduitCheckout SDK', () => {
         await assertion;
       }
     );
+
+    // A live, funded escrow reads OK: funding is recorded as activatedAt beside the state.
+    it('verifies a live escrow in state OK once activatedAt says it was funded', async () => {
+      mockFetch.mockResolvedValueOnce(fundedResult('OK', 1795244000));
+
+      const result = await ConduitCheckout.verifyPayment('abc123');
+      expect(result.verified).toBe(true);
+    });
+
+    it('fails a refunded escrow even though it was once funded', async () => {
+      mockFetch.mockResolvedValueOnce(fundedResult('REFUNDED', 1795244000));
+
+      await expect(ConduitCheckout.verifyPayment('abc123')).rejects.toThrow(/verification failed/i);
+    });
 
     it('should poll when contract not found initially', async () => {
       mockFetch

@@ -26,7 +26,8 @@
 
   // Contract state constants
   // Error states that indicate payment failed
-  const FAILED_STATES = ['NEVER_FUNDED', 'ERROR', 'FAILED'];
+  // REFUNDED: paid after the payout date and returned to the buyer, so the merchant was not paid.
+  const FAILED_STATES = ['NEVER_FUNDED', 'REFUNDED', 'ERROR', 'FAILED'];
 
   /**
    * The states in which the money is genuinely in the escrow.
@@ -39,8 +40,20 @@
    *
    * EXPIRED is deliberately absent: it covers both an escrow that matured with funds in it
    * and a quote that simply lapsed, and those must not be confused.
+   *
+   * ⚠️ A LIVE, FUNDED ESCROW READS `OK`, NOT ONE OF THESE. Since counterfactual escrows,
+   *    funding is recorded as `activatedAt` beside the state, and the state stays OK until the
+   *    money moves. So `activatedAt` is the main signal (see isFunded); these states only cover
+   *    escrows that have moved on (disputed, settled) and older ones funded before
+   *    `activatedAt` was recorded.
    */
   const FUNDED_STATES = ['ACTIVE', 'DISPUTED', 'RESOLVED', 'CLAIMED', 'COMPLETED'];
+
+  /** Whether /api/results says the money reached this escrow. Callers rule out FAILED_STATES first. */
+  function isFunded(result) {
+    return (result.activatedAt !== null && result.activatedAt !== undefined) ||
+      FUNDED_STATES.includes(result.state);
+  }
 
   const ConduitCheckout = {
     config: {
@@ -306,11 +319,12 @@
           //    page, before they send anything — so waiting for it to appear would clear an
           //    order the moment someone looked at it.
           //
-          // `state` is the signal, and it is tested as an allowlist rather than by ruling out
-          // the failures. A state nobody here has heard of must not be read as payment: the
-          // cost of waiting for one that is fine is a slower poll, the cost of clearing one
-          // that is not is goods shipped for money that never arrived.
-          if (!FUNDED_STATES.includes(result.state)) {
+          // `activatedAt` is the signal (our services set it when the escrow is funded), with
+          // the moved-on states as an allowlist for escrows past that point. A state nobody here
+          // has heard of must not be read as payment: the cost of waiting for one that is fine
+          // is a slower poll, the cost of clearing one that is not is goods shipped for money
+          // that never arrived.
+          if (!isFunded(result)) {
             console.log('⏳ Not funded yet (state: ' + result.state + '), polling again in', interval, 'ms');
             await this.sleep(interval);
             continue;

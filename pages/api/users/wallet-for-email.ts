@@ -57,6 +57,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     if (response.status === 404) {
       return res.status(404).json({ error: create ? `No wallet could be found or made for ${email}.` : `Nobody has signed in with ${email} yet.` });
     }
+    // Also an answer: userservice (or Privy behind it) is a stricter judge of an email than the
+    // check above. The visitor's to fix, so not logged as a fault of ours.
+    if (response.status === 400) {
+      return res.status(400).json({ error: 'That is not a valid email address.' });
+    }
     // userservice's own errors name its side (a 401 is a key mismatch, a 502 is Privy); log them
     // in full, and tell the visitor only what they can act on.
     console.error(`wallet-for-email: userservice answered ${response.status}: ${(await response.text()).substring(0, 500)}`);

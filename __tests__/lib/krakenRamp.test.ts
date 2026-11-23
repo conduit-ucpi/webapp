@@ -47,6 +47,17 @@ describe('krakenRampUrl', () => {
     });
   });
 
+  // GBP and EUR were seen to be taken on 2026-11-23; one Kraken does not sell in it replaces with USD itself.
+  it("opens in the buyer's currency when given one, and in USD for anything that is not a currency code", () => {
+    const fiat = (fiatCurrency?: string) =>
+      new URL(krakenRampUrl({ walletAddress: WALLET, tokenSymbol: 'USDC', chainId: 8453, amount: 20, fiatCurrency })!).searchParams.get('fiat');
+    expect(fiat('gbp')).toBe('GBP');
+    expect(fiat('EUR')).toBe('EUR');
+    expect(fiat('')).toBe('USD');
+    expect(fiat('pounds')).toBe('USD');
+    expect(fiat()).toBe('USD');
+  });
+
   it('has no address for a token or chain Kraken does not deliver', () => {
     expect(krakenRampUrl({ walletAddress: WALLET, tokenSymbol: 'USDT', chainId: 8453, amount: 20 })).toBeNull();
     expect(krakenRampUrl({ walletAddress: WALLET, tokenSymbol: 'USDC', chainId: 1, amount: 20 })).toBeNull();

@@ -21,6 +21,52 @@ export interface Exchange {
   /** Where it mainly serves, in a few words, shown beside the name. */
   serves: string;
   countries?: string[];
+  /**
+   * Its purchase page with this purchase filled in, where one has been seen to open that way
+   * without a partner key; null for a purchase it is not known to take, when `url` is used.
+   */
+  buyUrl?: (purchase: ExchangePurchase) => string | null;
+}
+
+/** What is being bought, for a link that can carry it. */
+export interface ExchangePurchase {
+  tokenSymbol: string;
+  chainId?: number;
+  /** Where it is to be delivered. */
+  walletAddress?: string;
+  /** In whole tokens. */
+  amount?: number;
+}
+
+/**
+ * ⚠️ USDC ON BASE ONLY: it is the one purchase these addresses were opened with (2026-11-23), and
+ *    each names the token and network in its own spelling. Anything else gets the plain link.
+ */
+const isUsdcOnBase = (purchase: ExchangePurchase) =>
+  purchase.chainId === 8453 && purchase.tokenSymbol.toUpperCase() === 'USDC';
+
+function filledIn(base: string, fixed: Record<string, string>, address: [string, string | undefined], amount: [string, number | undefined]): string {
+  const query = new URLSearchParams(fixed);
+  if (address[1]) query.set(address[0], address[1]);
+  if (amount[1] && amount[1] > 0) query.set(amount[0], String(amount[1]));
+  return `${base}?${query.toString()}`;
+}
+
+/** Seen to open on "Buy USDC" (Base) with the amount filled in, in the visitor's own currency. */
+function moonPayBuyUrl(purchase: ExchangePurchase): string | null {
+  if (!isUsdcOnBase(purchase)) return null;
+  return filledIn('https://buy.moonpay.com/', { currencyCode: 'usdc_base' }, ['walletAddress', purchase.walletAddress], ['quoteCurrencyAmount', purchase.amount]);
+}
+
+/** Seen to open on "Buy USDC on BASE". `appId=1` is the one its own public links carry. */
+function onrampMoneyBuyUrl(purchase: ExchangePurchase): string | null {
+  if (!isUsdcOnBase(purchase)) return null;
+  return filledIn('https://onramp.money/main/buy/', { appId: '1', coinCode: 'usdc', network: 'base' }, ['walletAddress', purchase.walletAddress], ['coinAmount', purchase.amount]);
+}
+
+/** Where this exchange's link goes for this purchase: filled in when it can be, its site otherwise. */
+export function exchangeLink(exchange: Exchange, purchase?: ExchangePurchase): string {
+  return (purchase && exchange.buyUrl?.(purchase)) || exchange.url;
 }
 
 export type ExchangeRegionId =
@@ -40,6 +86,25 @@ export interface ExchangeRegion {
 }
 
 export const EXCHANGE_REGIONS: ExchangeRegion[] = [
+  // First, since 2026-11-23: these are the nearest thing to paying by card with no exchange
+  // account, and under seventeen exchanges in a closed list nobody found them.
+  {
+    id: 'card-services',
+    exchanges: [
+      { name: 'MoonPay', url: 'https://www.moonpay.com/buy', serves: 'Most countries', buyUrl: moonPayBuyUrl },
+      // Its own site (transak.com) is for businesses; this is where a person buys. It reads no
+      // purchase from its address without a partner key, and refuses one carrying a wallet address.
+      { name: 'Transak', url: 'https://global.transak.com', serves: 'Most countries' },
+      // Every filled-in address tried answered "Something went wrong"; its home page holds the form.
+      { name: 'Ramp Network', url: 'https://rampnetwork.com', serves: 'Most countries' },
+      // Where a person buys (banxa.com is for businesses). Refuses an address carrying a wallet address.
+      { name: 'Banxa', url: 'https://checkout.banxa.com', serves: 'Most countries' },
+      // Where a person buys (mercuryo.io is for businesses).
+      { name: 'Mercuryo', url: 'https://exchange.mercuryo.io', serves: 'Most countries' },
+      { name: 'Guardarian', url: 'https://guardarian.com', serves: 'Most countries' },
+      { name: 'Onramp.money', url: 'https://onramp.money', serves: 'India and emerging markets', countries: ['IN'], buyUrl: onrampMoneyBuyUrl },
+    ],
+  },
   {
     id: 'worldwide',
     exchanges: [
@@ -60,18 +125,6 @@ export const EXCHANGE_REGIONS: ExchangeRegion[] = [
       { name: 'WhiteBIT', url: 'https://whitebit.com', serves: 'Europe and most countries outside the US' },
       { name: 'Bitstamp', url: 'https://www.bitstamp.net', serves: 'US, UK and Europe' },
       { name: 'Uphold', url: 'https://uphold.com', serves: 'US, UK and Europe' },
-    ],
-  },
-  {
-    id: 'card-services',
-    exchanges: [
-      { name: 'MoonPay', url: 'https://www.moonpay.com/buy', serves: 'Most countries' },
-      { name: 'Transak', url: 'https://transak.com', serves: 'Most countries' },
-      { name: 'Ramp Network', url: 'https://rampnetwork.com', serves: 'Most countries' },
-      { name: 'Banxa', url: 'https://banxa.com', serves: 'Most countries' },
-      { name: 'Mercuryo', url: 'https://mercuryo.io', serves: 'Most countries' },
-      { name: 'Guardarian', url: 'https://guardarian.com', serves: 'Most countries' },
-      { name: 'Onramp.money', url: 'https://onramp.money', serves: 'India and emerging markets', countries: ['IN'] },
     ],
   },
   {
@@ -167,4 +220,36 @@ export function exchangesIn(country: string | null | undefined): Exchange[] {
   return EXCHANGE_REGIONS.flatMap((region) => region.exchanges).filter((exchange) =>
     exchange.countries?.includes(country.toUpperCase())
   );
+}
+
+/*
+ * Which region's exchanges to show a visitor first, by ISO country code. The list is long, and
+ * most of it is other people's countries: a visitor is shown Worldwide and their own region, and
+ * the rest only on asking (components/funding/ExchangeDirectory).
+ *
+ * Only the regions an exchange is listed under. A country in none of them (and an unknown one)
+ * has no region of its own, and is shown Worldwide alone until it asks for the rest.
+ */
+const REGION_COUNTRIES: Partial<Record<ExchangeRegionId, string>> = {
+  'north-america': 'US CA',
+  oceania: 'AU NZ',
+  europe:
+    'GB IE FR DE ES PT IT NL BE LU AT CH LI DK SE NO FI IS EE LV LT PL CZ SK HU SI HR RO BG GR CY MT ' +
+    'RS BA ME MK AL XK MD UA TR AD MC SM',
+  'latin-america':
+    'MX GT BZ SV HN NI CR PA CU DO PR JM HT TT BS BB CO VE EC PE BO CL AR UY PY BR GY SR',
+  'africa-middle-east':
+    'ZA NG KE GH TZ UG RW ET EG MA DZ TN SN CI CM ZM ZW BW NA MZ AO MU ' +
+    'AE BH SA QA KW OM JO LB IL IQ',
+  asia: 'IN PK BD LK NP PH ID MY SG TH VN KH LA MM HK TW JP KR CN MN KZ UZ',
+};
+
+/** The region a visitor's country falls in, or null for a country in none of them or unknown. */
+export function regionOf(country: string | null | undefined): ExchangeRegionId | null {
+  if (!country) return null;
+  const code = country.toUpperCase();
+  for (const [region, countries] of Object.entries(REGION_COUNTRIES)) {
+    if (countries.split(' ').includes(code)) return region as ExchangeRegionId;
+  }
+  return null;
 }

@@ -8,7 +8,8 @@ const WALLET = '0x1234567890abcdef1234567890abcdef12345678';
 const TOKEN = '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb';
 
 describe('depositFundsOptions', () => {
-  it('funds this wallet on this chain, with the amount as a starting point', () => {
+  // Not raised for the seller's fee: that differs by seller, so the buyer is told to check it.
+  it('funds this wallet on this chain, with the amount needed as a starting point', () => {
     expect(depositFundsOptions(WALLET, { amount: '15.00', asset: 'USDC', chainId: 8453 }, 8453)).toEqual({
       destination: { wallet: WALLET, chain: 'eip155:8453', asset: 'usdc' },
       fiat: { source: { defaultAsset: 'usd' }, defaultAmount: '15.00' },

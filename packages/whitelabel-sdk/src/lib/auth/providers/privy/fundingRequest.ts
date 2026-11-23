@@ -11,6 +11,12 @@ import type { FundWalletRequest, FundWalletResult } from '@/lib/auth/types/unifi
  *    whichever currency is selected. Starting in USD makes it about right for a dollar stablecoin,
  *    but Privy keeps the number when the buyer changes currency: 32.39 USDC became 32.39 MXN when
  *    tried on 2026-11-06, under $2. Short purchases stay in the buyer's wallet, and they can edit it.
+ *
+ * ⚠️ AND IT IS MONEY SPENT, NOT TOKENS RECEIVED. The seller of the tokens takes its fee out of
+ *    what is paid: $100.00 was quoted 95.876733 USDC on 2026-11-23 (Blockchain.com, through
+ *    Privy), which leaves a buyer who needed 100 still short. The fee differs by seller and is
+ *    not ours to guess, so the amount is NOT raised here: the buyer is told, where this is
+ *    opened, to check what they will receive and raise the amount there (addFunds.cardFeeNote).
  */
 export function depositFundsOptions(address: string, request: FundWalletRequest, chainId: number) {
   // Privy takes "a token symbol or address". A symbol, lower-case like its own 'usdc', is what its

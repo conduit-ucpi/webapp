@@ -117,5 +117,19 @@ export function usePayableContract(params: UsePayableContractParams): UsePayable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contractId, isConnected, address]);
 
-  return { contract, isLoadingContract, contractError };
+  /*
+   * ⚠️ "ABOUT TO FETCH" COUNTS AS LOADING. The fetch starts in an effect, one render after the
+   *    wallet connects, and for that render nothing is loading and nothing is loaded. The page
+   *    read that as "no such request" and showed "Payment Request Not Found" for one frame on
+   *    the way to every payment (seen 2026-11-23). Worked out here, during the render, so there
+   *    is no frame in which a fetch that is certain to happen has not been counted.
+   */
+  const aboutToFetch =
+    typeof contractId === 'string' &&
+    !!contractId &&
+    (isConnected || !!address) &&
+    !!authenticatedFetch &&
+    fetchedContractIdRef.current !== contractId;
+
+  return { contract, isLoadingContract: isLoadingContract || aboutToFetch, contractError };
 }

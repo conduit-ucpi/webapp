@@ -68,6 +68,27 @@ describe('usePayableContract', () => {
     await waitFor(() => expect(result.current.isLoadingContract).toBe(false));
   });
 
+  // Seen 2026-11-23: the fetch starts one render after the wallet connects, and for that render
+  // the page was told "not loading, nothing loaded" and showed "Payment Request Not Found".
+  it('is never "not loading, nothing loaded" between the wallet connecting and the fetch starting', async () => {
+    const renders: { connected: boolean; idle: boolean }[] = [];
+    const { result, rerender } = renderHook(
+      (connected: boolean) => {
+        const value = usePayableContract(params(connected ? {} : { isConnected: false, address: null }));
+        renders.push({ connected, idle: !value.isLoadingContract && !value.contract && !value.contractError });
+        return value;
+      },
+      { initialProps: false }
+    );
+    await waitFor(() => expect(result.current.isLoadingContract).toBe(false));
+
+    rerender(true);
+    await waitFor(() => expect(result.current.contract).toEqual(validContract));
+
+    expect(renders.filter((render) => render.connected && render.idle)).toEqual([]);
+    expect(authenticatedFetch).toHaveBeenCalledTimes(1);
+  });
+
   it('fetches the contract and exposes it on the happy path', async () => {
     const { result } = renderHook(() => usePayableContract(params()));
     await waitFor(() => expect(result.current.contract).toEqual(validContract));

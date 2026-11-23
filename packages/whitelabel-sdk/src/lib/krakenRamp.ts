@@ -8,6 +8,14 @@
  *    `wallet_address` arrives filled in. It is sent regardless, and the buyer is shown the address
  *    to check against, because a purchase delivered anywhere else never reaches this wallet.
  *
+ * ⚠️ SEEN SINCE (2026-11-23): the page removes `wallet_address` from its own address as it loads,
+ *    and its second step is a Kraken sign-in followed by a "wallet-selector". So the buyer needs a
+ *    Kraken account and is, as far as can be seen without one, asked for the address there. It is
+ *    therefore copied for them wherever this is opened, and the screen says both.
+ *
+ *    `fiat` takes GBP and EUR as well as USD (100 USDC quoted 81.40 GBP and 97.18 EUR). One it
+ *    does not sell in (MXN was tried) it replaces with USD by itself, so any currency is safe to send.
+ *
  * A token and network are added to KRAKEN_DELIVERS when a purchase of them has been seen to work.
  */
 
@@ -41,10 +49,12 @@ export function krakenRampUrl(purchase: {
   chainId: number | undefined;
   /** In whole tokens: Kraken is asked for this much of the token, not this much money. */
   amount: number;
+  /** The money the buyer pays in (ISO code). Kraken falls back to USD for one it does not take. */
+  fiatCurrency?: string;
 }): string | null {
   if (!krakenDelivers(purchase.tokenSymbol, purchase.chainId)) return null;
   const query = new URLSearchParams({
-    fiat: 'USD',
+    fiat: /^[A-Za-z]{3}$/.test(purchase.fiatCurrency ?? '') ? (purchase.fiatCurrency as string).toUpperCase() : 'USD',
     amount: String(purchase.amount),
     amount_type: 'crypto',
     payment_method: 'creditCard',

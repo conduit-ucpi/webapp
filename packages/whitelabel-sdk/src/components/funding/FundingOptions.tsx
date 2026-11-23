@@ -1,23 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import Button from '@/components/ui/Button';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { useAuth } from '@/components/auth/SimpleAuthProvider';
-import { ONRAMP_RETURN_MESSAGE, openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
 import { reportFundingEvent } from '@/lib/reportFundingEvent';
 import { canBuyToken } from '@/utils/buyableToken';
-import { linkDelivers, linkOnrampUrl } from '@/lib/stripeLinkOnramp';
 import { useLinkAvailability } from '@/hooks/useLinkAvailability';
-import { KRAKEN_MINIMUM_USD, krakenDelivers, krakenPurchaseAmount, krakenRampUrl } from '@/lib/krakenRamp';
+import { ONRAMP_MIN_CRYPTO, useWalletFunding } from '@/hooks/useWalletFunding';
+import { KRAKEN_MINIMUM_USD } from '@/lib/krakenRamp';
 import { useT, withNodes } from '../../i18n';
 import ExchangeDirectory from './ExchangeDirectory';
 import WalletAddressBox from './WalletAddressBox';
 
-/**
- * Coinbase enforces a minimum purchase, so presetting a smaller amount bounces. Expressed in
- * tokens because that is what is asked for, and USDC tracks the dollar closely enough for the floor.
- */
-const ONRAMP_MIN_CRYPTO = 5;
 /** What the amount box starts at when nothing says how much is needed. */
 const DEFAULT_AMOUNT = '50';
 
@@ -110,11 +103,8 @@ export default function FundingOptions({
 }: FundingOptionsProps) {
   const t = useT();
   const { config } = useConfig();
-  const chainId = givenChainId ?? config?.chainId;
   const [showTransfer, setShowTransfer] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [onrampError, setOnrampError] = useState<string | null>(null);
-  const [onrampLoading, setOnrampLoading] = useState(false);
   const [amountText, setAmountText] = useState(DEFAULT_AMOUNT);
 
   // What is short is known, or it is asked for.
@@ -127,12 +117,29 @@ export default function FundingOptions({
   const shortfall = asksAmount ? typed : needed;
   const hasAmount = Number.isFinite(shortfall) && shortfall > 0;
 
+  // The routes themselves, shared with the pay screen (hooks/useWalletFunding).
+  const funding = useWalletFunding({
+    walletAddress,
+    tokenSymbol,
+    tokenAddress,
+    chainId: givenChainId,
+    shortfall,
+    minimumPurchase,
+    returnPath,
+    purpose,
+    onFunded,
+  });
+  const { chainId, copy } = funding;
+  const onrampError = funding.error;
+  const onrampLoading = funding.coinbase.busy;
+  const providerFundingBusy = funding.card.busy;
+  const handleProviderFunding = funding.card.start;
+  const handleOnramp = funding.coinbase.start;
+  const handleKraken = funding.kraken.start;
+  const handleLink = funding.link.start;
+
   const showCoinbase = !!config?.coinbaseProjectId || !!catalogue?.coinbase;
-  // The wallet provider's own on-ramp (Privy's funding window). Absent for Reown, so the
-  // guard is on capability, not on provider name.
-  const { canFundWallet, fundWallet } = useAuth();
-  const showProviderFunding = (typeof canFundWallet === 'function' && canFundWallet()) || !!catalogue?.card;
-  const [providerFundingBusy, setProviderFundingBusy] = useState(false);
+  const showProviderFunding = funding.card.available || !!catalogue?.card;
   // No onramp delivers this token: the buying routes are greyed out and say so (utils/buyableToken).
   const cannotBuy = canBuyToken(tokenSymbol) ? undefined : t('addFunds.cannotBuyToken', { token: tokenSymbol });
 
@@ -143,110 +150,20 @@ export default function FundingOptions({
       ? `ethereum:${tokenAddress}@${chainId}/transfer?address=${walletAddress}&uint256=${BigInt(Math.ceil(shortfall * 10 ** tokenDecimals))}`
       : null;
 
-  const copy = async (value: string) => {
-    try {
-      await navigator.clipboard.writeText(value);
-      return true;
-    } catch {
-      // Clipboard can be blocked; both values are on screen to copy by hand.
-      return false;
-    }
-  };
-
-  // The desktop popup posts back here when Coinbase is done. The holder re-reads the balance -
-  // otherwise the user comes back to a screen still telling them they are short.
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
-      if (event.data?.type !== ONRAMP_RETURN_MESSAGE) return;
-      setOnrampLoading(false);
-      onFunded?.();
-    };
-
-    window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
-  }, [onFunded]);
-
-  const handleProviderFunding = async () => {
-    setOnrampError(null);
-    setProviderFundingBusy(true);
-    // Same rounding as the Coinbase route: ask for tokens, rounded up to the cent, so a
-    // >= balance gate cannot fail on dust.
-    const asked = Math.max(Math.ceil(shortfall * 100) / 100, minimumPurchase).toFixed(2);
-    const logged = { wallet: walletAddress, amount: asked };
-    void reportFundingEvent('privy-started', logged);
-    try {
-      const result = await fundWallet({
-        amount: asked,
-        asset: tokenSymbol === 'USDC' || !tokenAddress ? 'USDC' : { erc20: tokenAddress, symbol: tokenSymbol },
-        chainId: chainId ?? 0
-      });
-      const completed = result?.status === 'completed';
-      void reportFundingEvent(completed ? 'privy-completed' : 'privy-cancelled', { ...logged, detail: result?.detail });
-      if (completed) onFunded?.();
-    } catch (e) {
-      const message = e instanceof Error ? e.message : t('addFunds.couldNotOpenFunding');
-      void reportFundingEvent('privy-failed', { ...logged, detail: message });
-      setOnrampError(message);
-    } finally {
-      setProviderFundingBusy(false);
-    }
-  };
-
-  const handleOnramp = async () => {
-    setOnrampError(null);
-    setOnrampLoading(true);
-    try {
-      await openCoinbaseOnramp({
-        destinationAddress: walletAddress,
-        purpose,
-        asset: tokenSymbol,
-        // Ask for the tokens needed, not the dollars spent. Coinbase's fee comes
-        // out of a fiat amount, so presetting fiat delivered a few percent less
-        // USDC than the shortfall - and the payment's activation gate is a
-        // >= check on the token balance, which then never passes.
-        // Rounded up to the cent so the gate cannot fail on dust.
-        presetCryptoAmount: Math.max(Math.ceil(shortfall * 100) / 100, minimumPurchase),
-        returnPath,
-      });
-    } catch (e) {
-      setOnrampError(e instanceof Error ? e.message : t('addFunds.couldNotOpenCoinbase'));
-    } finally {
-      setOnrampLoading(false);
-    }
-  };
-
-  // Kraken's purchase page, for what it has been seen to deliver (lib/krakenRamp). Offered to
-  // everyone and greyed out, with the reason, for a token or network it cannot.
-  const krakenUnavailable = krakenDelivers(tokenSymbol, chainId)
+  // Kraken is offered to everyone and greyed out, with the reason, for a token or network it
+  // cannot deliver (lib/krakenRamp).
+  const krakenUnavailable = funding.kraken.delivers
     ? undefined
     : t('addFunds.krakenCannotDeliver', { token: tokenSymbol, network: networkName });
-  const handleKraken = () => {
-    const asked = krakenPurchaseAmount(shortfall);
-    const url = krakenRampUrl({ walletAddress, tokenSymbol, chainId, amount: asked });
-    if (!url) return;
-    void reportFundingEvent('kraken-opened', { wallet: walletAddress, amount: String(asked) });
-    // A new tab: Kraken has no way back here that we know of, and the payment waits in this one.
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
 
-  // Stripe's Link page (lib/stripeLinkOnramp). It takes no wallet address, so the address is
-  // copied for the buyer to paste there, and shown to check against.
+  // Stripe's Link page (lib/stripeLinkOnramp), greyed out where it cannot deliver or does not sell.
   const linkCountry = useLinkAvailability();
-  const linkCanDeliver = linkDelivers(tokenSymbol, chainId);
+  const linkCanDeliver = funding.link.delivers;
   const linkUnavailable = !linkCanDeliver
     ? t('addFunds.linkCannotDeliver', { token: tokenSymbol, network: networkName })
     : linkCountry.unavailable
       ? t('addFunds.linkNotInCountry', { country: linkCountry.countryName ?? '' })
       : undefined;
-  const handleLink = () => {
-    const asked = Math.ceil(shortfall * 100) / 100;
-    const url = linkOnrampUrl({ tokenSymbol, chainId, amount: asked });
-    if (!url) return;
-    void reportFundingEvent('link-opened', { wallet: walletAddress, amount: String(asked) });
-    void copy(walletAddress);
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
 
   const choiceBox =
     'w-full text-left rounded-xl border border-secondary-200 dark:border-secondary-600 p-4 transition-colors ' +
@@ -334,6 +251,12 @@ export default function FundingOptions({
           <p className={choiceFact}>
             {cannotBuy ?? t('addFunds.buyWithCard', { token: tokenSymbol })}
           </p>
+          {/* The window opens on money to spend, and the fee comes out of it (fundingRequest): said first. */}
+          {!cannotBuy && !lookOnly && hasAmount && (
+            <p className={choiceNote.replace(' break-all', '')}>
+              {t('addFunds.cardFeeNote', { amount: Math.max(Math.ceil(shortfall * 100 - 1e-7) / 100, minimumPurchase).toFixed(2), token: tokenSymbol })}
+            </p>
+          )}
         </button>
       )}
 
@@ -404,7 +327,14 @@ export default function FundingOptions({
       <details open={exchangesOpen} className="rounded-xl border border-secondary-200 dark:border-secondary-600 p-4">
         <summary className={`cursor-pointer ${choiceTitle}`}>{t('funding.exchanges.more', { token: tokenSymbol })}</summary>
         <div className="mt-3">
-          <ExchangeDirectory tokenSymbol={tokenSymbol} networkName={networkName} walletAddress={walletAddress || undefined} preview={lookOnly && !catalogue} />
+          <ExchangeDirectory
+            tokenSymbol={tokenSymbol}
+            networkName={networkName}
+            walletAddress={walletAddress || undefined}
+            preview={lookOnly && !catalogue}
+            chainId={chainId}
+            amount={hasAmount ? Math.ceil(shortfall * 100 - 1e-7) / 100 : undefined}
+          />
         </div>
       </details>
     </fieldset>

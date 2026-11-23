@@ -9,6 +9,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import PaymentOptions from '@/components/contracts/PaymentOptions';
+import { canBuyToken } from '@/utils/buyableToken';
 import type { PaymentConversion } from '@/components/contracts/PaymentActionPanel';
 import { useToast } from '@/components/ui/Toast';
 import PaymentTermsForm from '@/components/contracts/PaymentTermsForm';
@@ -286,7 +287,16 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
   const owedUnits = BigInt(Math.max(Math.round(baseUnits), 0));
   const heldUnits = unitsOf(tokenBalance, selectedToken?.decimals ?? 6);
   const shortfallUnits = owedUnits > heldUnits ? owedUnits - heldUnits : ZERO;
+  /*
+   * ⚠️ ONLY FOR A REQUEST IN A TOKEN THAT CANNOT BE BOUGHT (USDT), IN A WALLET SHORT OF IT. That is
+   *    the one case converting is needed for: its buyer has no card route to the token itself.
+   *    A request in USDC is paid with USDC, bought by card if need be, and nothing about
+   *    converting is read, priced or shown. It used to be offered both ways round, and on every
+   *    USDC payment a button reading "Checking what it costs to convert your USDT…" appeared
+   *    above the ways of paying for a tenth of a second and went away again (seen 2026-11-23).
+   */
   const conversionOffered =
+    !canBuyToken(selectedTokenSymbol) &&
     !!venue && !!otherToken && stage === 'review' && transferOffered && !ownRequest && !isLoadingBalance && shortfallUnits > ZERO;
   const {
     tokenBalance: otherBalance,
@@ -864,10 +874,39 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     <div className="py-10">
       <div className="w-full max-w-2xl mx-auto px-4">
         <CreateProgressSteps
-          current={stage === 'details' && !ownRequest ? 0 : stage === 'done' ? 2 : 1}
+          // A request's terms are already settled: its payer starts at confirming them.
+          current={stage === 'details' && !ownRequest && !locked ? 0 : stage === 'done' ? 2 : 1}
           steps={PUSH_JOURNEY_STEPS}
+          // Closer to what follows on the review screen, where the ways of paying have to be in view.
+          className={(stage === 'review' && prepared) || ownRequest || locked ? 'mb-8' : undefined}
+          // The screen that asks how to pay has enough to read: the steps keep their names only.
+          titlesOnly={(stage === 'review' && !!prepared) || ownRequest || !!locked}
         />
 
+        {/* The terms are known before the payment is ready, and getting it ready takes seconds
+            (2026-11-23: 4.7s). What is owed is shown at once, and the wait is for the ways of
+            paying only, instead of a screen with one line on it. */}
+        {stage === 'details' && locked && !ownRequest && !checkoutError && (
+          <div className="mb-5">
+            <ReviewRequest
+              title={t('push.review')}
+              amount={amount}
+              tokenSymbol={selectedTokenSymbol}
+              networkLabel={networkLabel}
+              description={description}
+              payoutTimestamp={expiryTimestamp}
+              isInstantPayment={instant}
+              extraRows={[
+                { label: t('push.paying'), value: request?.sellerLabel || seller.trim() },
+                { label: t('push.sellerReceives'), value: previewFigure((fee) => amountInTokens - fee) },
+                { label: t('push.fee'), value: previewFigure((fee) => fee) },
+              ]}
+              nextBody={null}
+              compact
+              moneyFirst
+            />
+          </div>
+        )}
         {stage === 'details' && locked && !ownRequest && (
           <div className="rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-6 sm:p-8 text-center">
             {checkoutError ? (
@@ -879,7 +918,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
                 </div>
               </>
             ) : (
-              <p className="text-secondary-600 dark:text-secondary-300">{t('push.checkoutPreparing')}</p>
+              <p role="status" className="text-secondary-600 dark:text-secondary-300">{t('push.checkoutPreparing')}</p>
             )}
           </div>
         )}
@@ -981,6 +1020,8 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
               ]}
               // PaymentOptions states what happens, once, over every way of paying.
               nextBody={null}
+              compact
+              moneyFirst
             />
             {/* Not on file means nothing would finish a payment whose settle failed, so no way
                 of paying is offered. Said, not left as a dead button. */}
@@ -994,7 +1035,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
             {/* Outside the fieldset: a seller's preview opens the two choices to look at, and the
                 panel itself turns off everything in them that would pay (preview). */}
             <div>
-              <div className="mt-8">
+              <div className="mt-5">
                 <PaymentOptions
                   paymentSteps={paymentSteps}
                   reassurance={t(instant ? 'pay.escrowInstant' : 'pay.escrowHeld', { amount: `${amount} ${selectedTokenSymbol}` })}
@@ -1023,6 +1064,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
                   // still has a card payment completed by the sweep.)
                   addFundsReturnPath={resumeHref}
                   resolveEscrowAddress={transferOffered || ownRequest ? async () => prepared?.escrow_address ?? null : undefined}
+                  escrowAddress={transferOffered ? prepared?.escrow_address : undefined}
                   onRefreshBalance={refreshBalances}
                   elsewhere={
                     transferOffered || ownRequest

@@ -69,6 +69,19 @@ export default function PaymentOptions({
       amountInTokens={actionPanel.amountInTokens}
     />
   ) : null;
+  // The same address for someone who bought by card and had it sent there: nothing to scan or send.
+  const paidCheckPanel = elsewhere ? (
+    <QrPaymentPanel
+      {...elsewhere}
+      variant="check"
+      isMobileDevice={isMobileDevice}
+      copiedAddress={copiedAddress}
+      onCopyAddress={handleCopyAddress}
+      networkName={actionPanel.networkName}
+      tokenSymbol={actionPanel.tokenSymbol}
+      amountInTokens={actionPanel.amountInTokens}
+    />
+  ) : null;
 
   return (
     <>
@@ -90,6 +103,7 @@ export default function PaymentOptions({
       <PaymentActionPanel
         {...actionPanel}
         elsewherePanel={elsewhere && !isPaymentInProgress && !isSameAddress ? elsewherePanel : undefined}
+        paidCheckPanel={elsewhere && !isPaymentInProgress && !isSameAddress ? paidCheckPanel : undefined}
       />
     </>
   );

@@ -39,6 +39,12 @@ interface QrPaymentPanelProps {
   successMessage: string;
   /** A seller's preview of their own request: a picture in place of the code, which would pay nothing. */
   preview?: boolean;
+  /**
+   * 'send' (the default): for someone sending from a wallet, so the code to scan, the wallet link
+   * and what to send. 'check': for someone who has just bought by card and had it sent here, who
+   * scans nothing and sends nothing: only the address, to check against, and "I have paid".
+   */
+  variant?: 'send' | 'check';
 }
 
 /**
@@ -61,7 +67,9 @@ export default function QrPaymentPanel({
   onCancel,
   successMessage,
   preview = false,
+  variant = 'send',
 }: QrPaymentPanelProps) {
+  const sending = variant === 'send';
   const t = useT();
   /**
    * Hold everything back until the escrow has been read.
@@ -132,7 +140,7 @@ export default function QrPaymentPanel({
           )}
 
           {/* QR Code (desktop) or Deep Link button (mobile) */}
-          {isMobileDevice ? (
+          {!sending ? null : isMobileDevice ? (
             <div className="mb-4 space-y-3">
               <Button
                 onClick={() => { window.location.href = qr.buildEip681Uri(); }}
@@ -184,22 +192,16 @@ export default function QrPaymentPanel({
             </div>
           </div>
 
-          {/* Payment instructions */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4 mb-4">
-            <h4 className="font-medium text-blue-900 dark:text-blue-200 text-sm mb-2">{t('qrPaymentPanel.paymentInstructions')}</h4>
-            <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1.5">
-              <li>{t('qrPaymentPanel.network')} <span className="font-medium">{networkName}</span></li>
-              <li>{t('qrPaymentPanel.token')} <span className="font-medium">{tokenSymbol}</span></li>
-              <li>{t('qrPaymentPanel.amount')} <span className="font-medium">{amountInTokens.toFixed(4)} {tokenSymbol}</span></li>
-            </ul>
-          </div>
-
-          {/* Warning */}
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 mb-4">
-            <p className="text-xs text-yellow-800 dark:text-yellow-300 font-medium">
-              {t('qrPaymentPanel.sendExactly', { amount: amountInTokens.toFixed(4), token: tokenSymbol })}
-            </p>
-          </div>
+          {/* ⚠️ ONE WARNING, SAYING ALL OF IT ONCE: the amount, the token and the network. It was a
+              box of instructions (network, token, amount), then a warning repeating the amount,
+              under a third on the screen above repeating the network. */}
+          {sending && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 mb-4">
+              <p className="text-xs text-yellow-800 dark:text-yellow-300 font-medium">
+                {t('qrPaymentPanel.sendExactlyOn', { amount: amountInTokens.toFixed(4), token: tokenSymbol, network: networkName })}
+              </p>
+            </div>
+          )}
 
           {/* Activation controls. The check runs when the user presses the
               button — there is no live status to report before that, so the

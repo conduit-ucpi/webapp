@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { EXCHANGE_REGIONS, exchangesIn, type Exchange, type ExchangeRegionId } from '@/lib/exchangeDirectory';
+import { EXCHANGE_REGIONS, exchangeLink, exchangesIn, regionOf, type Exchange, type ExchangePurchase, type ExchangeRegionId } from '@/lib/exchangeDirectory';
 import { visitorCountry } from '@/lib/visitorCountry';
 import { useT, withNodes, type MessageKey } from '../../i18n';
 import WalletAddressBox from './WalletAddressBox';
@@ -31,13 +31,13 @@ function countryName(country: string): string {
   }
 }
 
-function ExchangeLinks({ exchanges }: { exchanges: Exchange[] }) {
+function ExchangeLinks({ exchanges, purchase }: { exchanges: Exchange[]; purchase?: ExchangePurchase }) {
   return (
     <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
       {exchanges.map((exchange) => (
         <li key={exchange.name}>
           <a
-            href={exchange.url}
+            href={exchangeLink(exchange, purchase)}
             target="_blank"
             rel="noopener noreferrer"
             className="block rounded-lg border border-secondary-200 dark:border-secondary-600 px-4 py-3 transition-colors hover:border-primary-500"
@@ -64,6 +64,22 @@ interface ExchangeDirectoryProps {
    * card services are left out: they are listed for buying, and nobody here has seen them buy back.
    */
   mode?: 'buy' | 'sell';
+  /** With these, a link that can carry the purchase opens with it filled in (exchangeDirectory.exchangeLink). */
+  chainId?: number;
+  /** How much is being bought, in whole tokens. */
+  amount?: number;
+  /**
+   * Which of the list this is. 'card-services': only the companies that sell by card and send to
+   * an address, with what to give them, for a buyer with no exchange account. 'exchanges': only
+   * the exchanges, for one who has. 'all' (the default) is both, card services first.
+   */
+  show?: 'all' | 'card-services' | 'exchanges';
+  /**
+   * Show Worldwide and the visitor's own region, and the other regions only on asking. For the
+   * pay screen, where the list sits among other things. NOT on /buy-token, whose whole list is
+   * there to be read, by people and by the bots sent its HTML.
+   */
+  ownRegionFirst?: boolean;
 }
 
 /**
@@ -73,9 +89,21 @@ interface ExchangeDirectoryProps {
  *
  * Written with `dark:` classes: on a page as it is, and in a modal only a `themed` one (ui/Modal).
  */
-export default function ExchangeDirectory({ tokenSymbol, networkName, walletAddress, preview = false, mode = 'buy' }: ExchangeDirectoryProps) {
+export default function ExchangeDirectory({
+  tokenSymbol,
+  networkName,
+  walletAddress,
+  preview = false,
+  mode = 'buy',
+  chainId,
+  amount,
+  show = 'all',
+  ownRegionFirst = false,
+}: ExchangeDirectoryProps) {
   const t = useT();
   const [country, setCountry] = useState<string | null>(null);
+  /** The other regions' exchanges, asked for. */
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -88,11 +116,58 @@ export default function ExchangeDirectory({ tokenSymbol, networkName, walletAddr
   }, []);
 
   const selling = mode === 'sell';
+  // Nothing is filled in for a seller looking, or for cashing out, where nothing is bought.
+  const purchase: ExchangePurchase | undefined =
+    selling || preview ? undefined : { tokenSymbol, chainId, walletAddress, amount };
   const cardServices = new Set(
     EXCHANGE_REGIONS.find((region) => region.id === 'card-services')?.exchanges.map((exchange) => exchange.name),
   );
-  const local = exchangesIn(country).filter((exchange) => !selling || !cardServices.has(exchange.name));
+  const onlyCards = show === 'card-services' && !selling;
+  const withCards = show !== 'exchanges' && !selling;
+  const local = exchangesIn(country).filter((exchange) =>
+    onlyCards ? cardServices.has(exchange.name) : withCards || !cardServices.has(exchange.name)
+  );
   const localNames = new Set(local.map((exchange) => exchange.name));
+
+  /*
+   * ⚠️ WORLDWIDE AND THE VISITOR'S OWN REGION, THEN THE REST ON ASKING. The whole list is some
+   *    eighty companies, most of them other countries' exchanges, and opened in one go it buried
+   *    the few a visitor could use. A country in no region, or an unknown one, gets Worldwide.
+   */
+  const ownRegion = regionOf(country);
+  const regions = EXCHANGE_REGIONS.filter((region) =>
+    region.id === 'card-services' ? withCards : !onlyCards
+  )
+    .map((region) => ({ region, rest: region.exchanges.filter((exchange) => !localNames.has(exchange.name)) }))
+    .filter(({ rest }) => rest.length > 0);
+  const isFirst = (id: ExchangeRegionId) => !ownRegionFirst || ['card-services', 'worldwide', ownRegion].includes(id);
+  const first = regions.filter(({ region }) => isFirst(region.id));
+  const others = regions.filter(({ region }) => !isFirst(region.id));
+  const group = ({ region, rest }: (typeof regions)[number]) => {
+    const note = REGION_NOTE[region.id];
+    return (
+      <div key={region.id} className="mt-6">
+        <h3 className={groupHeading}>{t(REGION_LABEL[region.id])}</h3>
+        {note && !onlyCards && <p className={`mt-1 ${small}`}>{t(note)}</p>}
+        <ExchangeLinks exchanges={rest} purchase={purchase} />
+      </div>
+    );
+  };
+
+  // Card services alone: no steps about withdrawing, because there is nothing to withdraw.
+  if (onlyCards) {
+    return (
+      <div>
+        <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('funding.region.cardServicesNote')}</p>
+        {walletAddress && !preview && <WalletAddressBox walletAddress={walletAddress} />}
+        <p className="mt-4 rounded-md border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 p-3 text-xs text-yellow-800 dark:text-yellow-300">
+          {t('addFunds.sendOnly', { token: tokenSymbol, network: networkName })}
+        </p>
+        <ExchangeLinks exchanges={[...local, ...regions.flatMap(({ rest }) => rest)]} purchase={purchase} />
+        <p className={`mt-6 ${small}`}>{t('funding.exchanges.independent')}</p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -120,22 +195,21 @@ export default function ExchangeDirectory({ tokenSymbol, networkName, walletAddr
       {local.length > 0 && country && (
         <div className="mt-6">
           <h3 className={groupHeading}>{t('funding.exchanges.popularIn', { country: countryName(country) })}</h3>
-          <ExchangeLinks exchanges={local} />
+          <ExchangeLinks exchanges={local} purchase={purchase} />
         </div>
       )}
 
-      {EXCHANGE_REGIONS.map((region) => {
-        const rest = region.exchanges.filter((exchange) => !localNames.has(exchange.name));
-        if (rest.length === 0 || (selling && region.id === 'card-services')) return null;
-        const note = REGION_NOTE[region.id];
-        return (
-          <div key={region.id} className="mt-6">
-            <h3 className={groupHeading}>{t(REGION_LABEL[region.id])}</h3>
-            {note && <p className={`mt-1 ${small}`}>{t(note)}</p>}
-            <ExchangeLinks exchanges={rest} />
-          </div>
-        );
-      })}
+      {first.map(group)}
+      {showAll && others.map(group)}
+      {!showAll && others.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowAll(true)}
+          className="mt-4 py-2 text-sm underline text-secondary-600 dark:text-secondary-300 hover:text-secondary-900 dark:hover:text-white"
+        >
+          {t('funding.exchanges.showAll')}
+        </button>
+      )}
       <p className={`mt-6 ${small}`}>{t('funding.exchanges.independent')}</p>
     </div>
   );

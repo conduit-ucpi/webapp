@@ -248,7 +248,7 @@ describe('paying a USDT request with USDC', () => {
     mockHeld.usdc = '5';
     render(<PayPage request={request()} />);
 
-    expect(await screen.findByRole('button', { name: /Add USDC to this wallet, then pay.*About 15\.19 USDC/ })).toBeEnabled();
+    expect(await screen.findByText('About 15.19 USDC by card or exchange, converted to USDT as you pay')).toBeInTheDocument();
     expect(screen.getByText(/USDT can't be bought by card or bank on .*Add USDC to your wallet/)).toBeInTheDocument();
     // Paying is not the next step, so there is no greyed-out pay button above the one that is.
     expect(screen.queryByRole('button', { name: /Pay 20 USDT/ })).toBeNull();
@@ -289,5 +289,58 @@ describe('paying a USDT request with USDC', () => {
     expect(await screen.findByRole('button', { name: /Pay 20 USDT from this wallet/ })).toBeDisabled();
     expect(mockQuote).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: /^Buy/ })).toBeNull();
+  });
+});
+
+/*
+ * The other way round: a request in USDC. It can be bought by card, so converting has nothing to
+ * do with it, whatever else the wallet holds.
+ */
+describe('paying a USDC request', () => {
+  const usdcRequest = () => ({ ...request(), terms: { ...request().terms, tokenSymbol: 'USDC' } });
+  /** Everything the screen ever said, including what was shown and then taken away. */
+  const everShown = () => {
+    const seen: string[] = [];
+    const observer = new MutationObserver(() => seen.push(document.body.textContent ?? ''));
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    return { seen, stop: () => observer.disconnect() };
+  };
+
+  beforeEach(() => {
+    (useAuth as jest.Mock).mockReturnValue({
+      user: { email: 'buyer@example.com', walletAddress: PAYER },
+      isLoading: false,
+      isConnected: true,
+      address: PAYER,
+      authenticatedFetch: jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          ...prepared,
+          fund_by_transfer: { payment_uri: `ethereum:${USDC}@8453/transfer?address=${ESCROW}&uint256=20000000` },
+        }),
+      }),
+    });
+  });
+
+  // Seen 2026-11-23: "Checking what it costs to convert your USDT…" flashed above the ways of
+  // paying for a tenth of a second on every USDC payment from a wallet that was short.
+  it.each([
+    ['holds no USDT', '0'],
+    ['holds plenty of USDT', '40'],
+  ])('never mentions converting, not even for a moment, to a wallet that %s', async (_, usdt) => {
+    Object.assign(mockHeld, { usdc: '0', usdt });
+    const shown = everShown();
+    render(<PayPage request={usdcRequest()} />);
+
+    expect(await screen.findByRole('heading', { name: 'How do you want to pay?' })).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    shown.stop();
+
+    expect(shown.seen.some((text) => /Checking what it costs to convert/.test(text))).toBe(false);
+    expect(shown.seen.some((text) => /with your USDT/.test(text))).toBe(false);
+    // Nothing is priced either: a quote is a chain read spent on a question nobody asked.
+    expect(mockQuote).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: /from this wallet$/ })).toBeNull();
   });
 });

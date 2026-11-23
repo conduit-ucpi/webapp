@@ -79,9 +79,18 @@ describe('FundingOptions for a token that cannot be bought', () => {
       expect(new URL(open.mock.calls[0][0]).searchParams.get('amount')).toBe('32.4');
     });
 
-    it('shows the wallet to check against on Kraken', () => {
+    // Kraken drops the address it is sent and asks for one after sign-in (seen 2026-11-23).
+    it('says Kraken will ask for the wallet, shows it, and copies it before the tab opens', () => {
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, { clipboard: { writeText } });
       render(modal('USDC'));
-      expect(screen.getByText(/check the Base address is this wallet: 0x1234567890abcdef1234567890abcdef12345678/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Kraken will ask where to send it. Paste this wallet \(Base\), copied for you: 0x1234567890abcdef1234567890abcdef12345678/)
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Needs a Kraken account/)).toBeInTheDocument();
+      fireEvent.click(krakenOption());
+      expect(writeText).toHaveBeenCalledWith('0x1234567890abcdef1234567890abcdef12345678');
+      expect(writeText.mock.invocationCallOrder[0]).toBeLessThan(open.mock.invocationCallOrder[0]);
     });
 
     it('is greyed out, with the reason, for a token Kraken does not deliver on this network', () => {
@@ -122,7 +131,9 @@ describe('FundingOptions for a token that cannot be bought', () => {
         destination_amount: '9.58',
       });
       expect(writeText).toHaveBeenCalledWith('0x1234567890abcdef1234567890abcdef12345678');
-      expect(screen.getByText(/Paste this wallet \(Base\), copied for you: 0x1234567890abcdef1234567890abcdef12345678/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/Link will ask where to send it. Paste this wallet \(Base\), copied for you: 0x1234567890abcdef1234567890abcdef12345678/)
+      ).toBeInTheDocument();
     });
 
     it('is greyed out, with the reason, for a token Link does not deliver here', () => {

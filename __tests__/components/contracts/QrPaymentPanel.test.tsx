@@ -141,11 +141,27 @@ describe('QrPaymentPanel', () => {
       expect(props.onCopyAddress).toHaveBeenCalledWith('0xEscrow');
     });
 
-    it('renders network, token, and amount in the instructions', () => {
+    // It was a box of instructions, then a warning repeating the amount. Said once now.
+    it('says the amount, the token and the network once, in one warning', () => {
       render(<QrPaymentPanel {...baseProps(qr())} networkName="Base" tokenSymbol="USDC" amountInTokens={10} />);
-      expect(screen.getByText('Base')).toBeInTheDocument();
-      // amount appears formatted to 4dp
-      expect(screen.getAllByText(/10\.0000 USDC/).length).toBeGreaterThan(0);
+      expect(
+        screen.getByText('Send exactly 10.0000 USDC on Base: no more, no less. Sent on another network, it may be lost.')
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Payment Instructions')).toBeNull();
+      expect(screen.getAllByText(/10\.0000 USDC/)).toHaveLength(1);
+    });
+
+    // Someone who bought by card and had it sent here scans nothing and sends nothing.
+    it('as a check after a card purchase, shows the address and "I have paid" and nothing to scan or send', () => {
+      const q = qr();
+      render(<QrPaymentPanel {...baseProps(q)} variant="check" />);
+      expect(screen.getByDisplayValue(q.qrContractAddress!)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /I have paid/i })).toBeInTheDocument();
+      expect(screen.queryByTestId('qr-code')).toBeNull();
+      expect(screen.queryByText(/wallet app/i)).toBeNull();
+      expect(screen.queryByText(/Send exactly/)).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: /I have paid/i }));
+      expect(q.checkAndActivate).toHaveBeenCalled();
     });
 
     it('fires checkAndActivate from "I have paid"', () => {
@@ -205,7 +221,7 @@ describe("a seller's preview", () => {
     render(<QrPaymentPanel {...baseProps(previewQr())} preview />);
 
     expect(screen.getByDisplayValue('Protected payment address')).toBeInTheDocument();
-    expect(screen.getByText('Payment Instructions')).toBeInTheDocument();
+    expect(screen.getByText(/^Send exactly /)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /I have paid/i })).toBeInTheDocument();
   });
 

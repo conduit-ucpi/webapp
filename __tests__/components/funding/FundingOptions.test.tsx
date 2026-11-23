@@ -58,6 +58,22 @@ describe('FundingOptions', () => {
     expect(fundWallet).toHaveBeenCalledWith({ amount: '40.00', asset: 'USDC', chainId: 8453 });
   });
 
+  // The card window opens on money to spend, and the seller's fee comes out of it ($100 bought 95.88 USDC).
+  it('tells the buyer, on the card option, to check they will receive what they need', () => {
+    render(options({ amount: 100, balance: 60 }));
+    expect(screen.getByRole('button', { name: /Add funds with a card/ })).toHaveTextContent(
+      'Check what you will receive before you pay. The seller takes its fee out of the amount, so raise it there until you receive at least 40.00 USDC.'
+    );
+  });
+
+  it('fills in the links that can carry the purchase, in the list of more places to buy', () => {
+    render(options({ amount: 100, balance: 60 }));
+    const moonPay = new URL(screen.getByRole('link', { name: /MoonPay/ }).getAttribute('href')!);
+    expect(moonPay.searchParams.get('currencyCode')).toBe('usdc_base');
+    expect(moonPay.searchParams.get('quoteCurrencyAmount')).toBe('40');
+    expect(screen.getByRole('link', { name: /Transak/ })).toHaveAttribute('href', 'https://global.transak.com');
+  });
+
   it('asks how much when the balance already covers it', () => {
     render(options({ amount: 20, balance: 60 }));
     expect(screen.getByLabelText('How much USDC do you need?')).toBeInTheDocument();

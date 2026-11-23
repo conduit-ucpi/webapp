@@ -118,16 +118,18 @@ export default function ContractPay() {
       </div>
     );
 
-  if ((authLoading || returning) && !signedIn && !authWaitElapsed) {
-    return screen(
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center p-6">
-          <LoadingSpinner size="lg" />
-          <p className="mt-4 text-secondary-600 dark:text-secondary-300">{t('pay.loading')}</p>
-        </div>
+  // One loading screen for both waits (signing in, then reading the request), so the second does
+  // not replace the first with a bare spinner: the line of text vanishing read as a flicker.
+  const loading = screen(
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center p-6">
+        <LoadingSpinner size="lg" />
+        <p className="mt-4 text-secondary-600 dark:text-secondary-300">{t('pay.loading')}</p>
       </div>
-    );
-  }
+    </div>
+  );
+
+  if ((authLoading || returning) && !signedIn && !authWaitElapsed) return loading;
 
   if (router.isReady && !contractId) return message(t('pay.invalidLink'), t('pay.noId'));
 
@@ -156,13 +158,7 @@ export default function ContractPay() {
       candidate.symbol.toUpperCase() === (contract?.currencySymbol || 'USDC').toUpperCase()
   );
   const request = contract ? requestFrom(contract, token?.decimals) : null;
-  if (!request) {
-    return screen(
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
+  if (!request) return loading;
 
   // Keyed by the request, so a different one in the same tab starts from nothing.
   return screen(<PayPage key={request.id} request={request} />);

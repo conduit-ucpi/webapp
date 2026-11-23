@@ -53,6 +53,7 @@ const props = (overrides: Record<string, unknown> = {}) => ({
   isPaymentInProgress: false,
   onPay: jest.fn(),
   onPayFromExternalWallet: jest.fn(),
+  onRefreshBalance: jest.fn(),
   resolveEscrowAddress: async () => '0xcontract',
   elsewherePanel: <div>the payment address panel</div>,
   conversion: conversion(),
@@ -269,11 +270,66 @@ describe('a USDT request, wallet holding neither', () => {
     expect(onPay).toHaveBeenCalledTimes(1);
   });
 
-  it('USDT held elsewhere can still be sent straight to the payment', () => {
-    render(<PaymentActionPanel {...short()} />);
-    fireEvent.click(screen.getByRole('button', { name: /Crypto I already have.*USDT on Base/ }));
-    expect(screen.getByText('the payment address panel')).toBeInTheDocument();
-    expect(screen.getByText('Or add USDC to your wallet here, then pay from it')).toBeInTheDocument();
+  /*
+   * Under "Crypto I already have" a USDT request can be paid with either coin. It used to offer
+   * only "send USDT", with USDC as a collapsed line beneath: a buyer holding USDC and no USDT was
+   * shown nothing they could do.
+   */
+  describe('with crypto they already hold', () => {
+    const crypto = () => fireEvent.click(screen.getByRole('button', { name: /Crypto I already have/ }));
+    const holds = (token: 'USDT' | 'USDC') =>
+      within(screen.getByRole('group', { name: 'Which do you hold?' })).getByRole('button', { name: token });
+
+    it('says on the answer itself that either coin will do', () => {
+      render(<PaymentActionPanel {...short()} />);
+      expect(screen.getByRole('button', { name: /Crypto I already have/ })).toHaveTextContent('USDT or USDC on Base');
+    });
+
+    it('asks which they hold, both in plain sight, and starts on USDT: sent straight to the payment', () => {
+      render(<PaymentActionPanel {...short()} />);
+      crypto();
+      expect(steps().map((button) => button.textContent)).toEqual([
+        '1Step 1: Send USDT or USDC',
+        '2Step 2: I have paid',
+        '3Step 3: Payment protected',
+      ]);
+      expect(holds('USDT')).toHaveAttribute('aria-pressed', 'true');
+      expect(holds('USDC')).toHaveAttribute('aria-pressed', 'false');
+      expect(screen.getByText('the payment address panel')).toBeInTheDocument();
+      // Not a collapsed line any more.
+      expect(screen.queryByText(/Or add USDC to your wallet here/)).toBeNull();
+    });
+
+    it('holding USDC: it goes to this wallet, and step 2 is the button that converts and pays', () => {
+      render(<PaymentActionPanel {...short()} />);
+      crypto();
+      fireEvent.click(holds('USDC'));
+
+      expect(steps()[1]).toHaveTextContent('Step 2: Convert and pay');
+      // 19.985028 plus 1%, up to the cent, is 20.19; the wallet holds 5.
+      expect(
+        screen.getByText('Send about 15.19 USDC to your wallet here. Then, in step 2, one button converts it and pays in USDT.')
+      ).toBeInTheDocument();
+      expect((within(stepBody()).getByLabelText('Your wallet address') as HTMLInputElement).value).toBe('0x1234567890abcdef1234567890abcdef12345678');
+      expect(screen.getByText('Send only USDC on Base. Funds sent on another network may be lost.')).toBeInTheDocument();
+      // The payment's own address takes USDT only: it is not shown to someone sending USDC.
+      expect(screen.queryByText('the payment address panel')).toBeNull();
+
+      fireEvent.click(step(2));
+      expect(convertAndPay()).toBeDisabled();
+      expect(screen.getByRole('status')).toHaveTextContent('Finish step 1 first. This button works once the USDC is in your wallet.');
+      expect(screen.getByRole('button', { name: "I've added it: check my balance" })).toBeInTheDocument();
+      expect(screen.queryByText('the payment address panel')).toBeNull();
+    });
+
+    it('going back to USDT brings back the payment address and "I have paid"', () => {
+      render(<PaymentActionPanel {...short()} />);
+      crypto();
+      fireEvent.click(holds('USDC'));
+      fireEvent.click(holds('USDT'));
+      expect(steps()[1]).toHaveTextContent('Step 2: I have paid');
+      expect(screen.getByText('the payment address panel')).toBeInTheDocument();
+    });
   });
 
   it('buys USDC, not USDT: the cost plus a margin, less what is already held', () => {

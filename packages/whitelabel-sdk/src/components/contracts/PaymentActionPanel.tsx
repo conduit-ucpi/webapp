@@ -269,6 +269,12 @@ export default function PaymentActionPanel({
   /** The same, for the two flows of a token that can be bought: buying it, and sending it. */
   const [buyView, setBuyView] = useState<1 | 2 | 3 | null>(null);
   const [sendView, setSendView] = useState<1 | 2 | 3 | null>(null);
+  /**
+   * For a token paid by converting another: which of the two the buyer says they hold. 'asked' is
+   * the token of the request, sent to the payment; 'other' is the one that converts, sent to this
+   * wallet and then converted and paid.
+   */
+  const [holds, setHolds] = useState<'asked' | 'other'>('asked');
   /** A company has been opened: what to do on coming back is now the next thing on screen. */
   const [started, setStarted] = useState<{ id: CardRow['id']; route: CardRow['route'] } | null>(null);
   /** Which company a purchase straight to the payment was started with, for cardSent. */
@@ -1061,12 +1067,48 @@ export default function PaymentActionPanel({
    * and settle; it can be pressed at any time, since looking costs nothing.
    */
   const sendOpen = sendView ?? 1;
+  /*
+   * ⚠️ A REQUEST IN A TOKEN PAID BY CONVERTING ANOTHER (USDT, FROM USDC) CAN BE PAID WITH EITHER,
+   *    AND BOTH ARE OFFERED IN PLAIN SIGHT. Someone holding USDC elsewhere sends it to this wallet
+   *    and then converts and pays; that was a collapsed line under "send USDT", and a buyer with
+   *    USDC and no USDT was shown nothing they could do (2026-11-23). Step 1 asks which they hold.
+   */
+  const eitherToken = flow;
+  const sendingOther = eitherToken && holds === 'other';
+  const holdOption = (selected: boolean) =>
+    `flex-1 min-w-0 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+      selected
+        ? 'border-secondary-900 dark:border-white bg-secondary-50 dark:bg-secondary-700/40 text-secondary-900 dark:text-white'
+        : 'border-secondary-200 dark:border-secondary-700 text-secondary-700 dark:text-secondary-200 hover:border-primary-500'
+    }`;
+  /** This wallet's address and code, to send the token that lands here. */
+  const walletToSendTo = (
+    <>
+      {/* The seller's own wallet means nothing in a preview of their customer's screen. */}
+      {!preview && (
+        <>
+          {walletDestination}
+          <div className="flex justify-center">
+            <div className="bg-white p-3 rounded-lg border border-secondary-200">
+              <QRCodeSVG value={walletAddress} size={160} level="M" marginSize={4} />
+            </div>
+          </div>
+        </>
+      )}
+      <p className={onNetwork}>{t('addFunds.sendOnly', { token: walletToken, network: networkName })}</p>
+    </>
+  );
   const sendFlowBlock = (
     <div className="space-y-4">
       {stepRow(
         [
-          { n: 1, title: t('paymentActionPanel.flowSend', { token: tokenSymbol }) },
-          { n: 2, title: t('paymentActionPanel.flowConfirm') },
+          {
+            n: 1,
+            title: eitherToken
+              ? t('paymentActionPanel.flowSendEither', { token: tokenSymbol, from: flowFrom })
+              : t('paymentActionPanel.flowSend', { token: tokenSymbol }),
+          },
+          { n: 2, title: sendingOther ? t('paymentActionPanel.flowConvert') : t('paymentActionPanel.flowConfirm') },
           { n: 3, title: t('paymentActionPanel.flowProtected') },
         ],
         1,
@@ -1076,47 +1118,84 @@ export default function PaymentActionPanel({
 
       {sendOpen === 1 && (
         <div className="space-y-3">
-          {offerElsewhere && (
-            <>
-              {/* The network and the exact amount are said once, by the panel itself, beside the address. */}
-              <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('pay.elsewhereLead')}</p>
-              {shown(sendPanel ?? elsewherePanel)}
-            </>
-          )}
-          {offerTopUp && (
-            <details open={!offerElsewhere} className={rowBox}>
-              <summary className="cursor-pointer font-semibold text-secondary-900 dark:text-white">
-                {t('paymentActionPanel.orAddToWallet', { token: walletToken })}
-              </summary>
-              <div className="mt-3 space-y-3">
-                {/* The seller's own wallet means nothing in a preview of their customer's screen. */}
-                {!preview && (
-                  <>
-                    {walletDestination}
-                    <div className="flex justify-center">
-                      <div className="bg-white p-3 rounded-lg border border-secondary-200">
-                        <QRCodeSVG value={walletAddress} size={160} level="M" marginSize={4} />
-                      </div>
-                    </div>
-                  </>
-                )}
-                <p className={onNetwork}>{t('addFunds.sendOnly', { token: walletToken, network: networkName })}</p>
-                {!preview && <p className="text-sm text-secondary-600 dark:text-secondary-300">{thenPay}</p>}
+          {eitherToken && (
+            <div role="group" aria-label={t('paymentActionPanel.holdWhich')} className="space-y-2">
+              <p className="text-sm font-medium text-secondary-900 dark:text-white">{t('paymentActionPanel.holdWhich')}</p>
+              <div className="flex gap-2">
+                <button type="button" aria-pressed={holds === 'asked'} onClick={() => setHolds('asked')} className={holdOption(holds === 'asked')}>
+                  {tokenSymbol}
+                </button>
+                <button type="button" aria-pressed={holds === 'other'} onClick={() => setHolds('other')} className={holdOption(holds === 'other')}>
+                  {flowFrom}
+                </button>
               </div>
-            </details>
+            </div>
+          )}
+
+          {sendingOther ? (
+            <>
+              <p className="text-sm text-secondary-600 dark:text-secondary-300">
+                {!preview && viaConversion && conversion.cost != null && fundingShortfall > 0
+                  ? t('paymentActionPanel.sendOtherLead', { amount: upToCent(fundingShortfall), from: flowFrom, token: tokenSymbol })
+                  : t('paymentActionPanel.sendOtherLeadAny', { from: flowFrom, token: tokenSymbol })}
+              </p>
+              {walletToSendTo}
+            </>
+          ) : (
+            <>
+              {offerElsewhere && (
+                <>
+                  {/* The network and the exact amount are said once, by the panel itself, beside the address. */}
+                  <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('pay.elsewhereLead')}</p>
+                  {shown(sendPanel ?? elsewherePanel)}
+                </>
+              )}
+              {/* Where either token can be sent, sending the other one is the option above, not this line. */}
+              {offerTopUp && !eitherToken && (
+                <details open={!offerElsewhere} className={rowBox}>
+                  <summary className="cursor-pointer font-semibold text-secondary-900 dark:text-white">
+                    {t('paymentActionPanel.orAddToWallet', { token: walletToken })}
+                  </summary>
+                  <div className="mt-3 space-y-3">
+                    {walletToSendTo}
+                    {!preview && <p className="text-sm text-secondary-600 dark:text-secondary-300">{thenPay}</p>}
+                  </div>
+                </details>
+              )}
+            </>
           )}
         </div>
       )}
 
       {sendOpen === 2 && (
         <div className="space-y-3">
-          {offerElsewhere ? shown(paidCheckPanel ?? elsewherePanel) : greyedPayFromWallet}
-          {/* For whoever sent it to this wallet instead: the balance is what to look at. */}
-          {offerTopUp && !preview && (
-            <p className={`${small} flex flex-wrap items-center gap-x-2`}>
-              {offerElsewhere && <span>{t('paymentActionPanel.flowWalletInstead')}</span>}
-              {checkBalance}
-            </p>
+          {sendingOther ? (
+            <>
+              {/* The real button, as it will be: greyed until the token that converts is in the wallet. */}
+              <Button type="button" size="lg" disabled className={twoLineButton}>
+                <span className="font-medium">{t('pay.payWithOther', { amount: amountLabel, from: flowFrom })}</span>
+                <span className="text-xs font-normal leading-snug opacity-80">
+                  {t('paymentActionPanel.flowConvertNote', { from: flowFrom })}
+                </span>
+              </Button>
+              {!preview && (
+                <>
+                  <p role="status" className={stepHint}>{waitingFor}</p>
+                  {checkBalance}
+                </>
+              )}
+            </>
+          ) : (
+            <>
+              {offerElsewhere ? shown(paidCheckPanel ?? elsewherePanel) : greyedPayFromWallet}
+              {/* For whoever sent it to this wallet instead: the balance is what to look at. */}
+              {offerTopUp && !eitherToken && !preview && (
+                <p className={`${small} flex flex-wrap items-center gap-x-2`}>
+                  {offerElsewhere && <span>{t('paymentActionPanel.flowWalletInstead')}</span>}
+                  {checkBalance}
+                </p>
+              )}
+            </>
           )}
         </div>
       )}
@@ -1247,7 +1326,11 @@ export default function PaymentActionPanel({
               </button>
               <button type="button" aria-pressed={shownChoice === 'crypto'} onClick={() => choose('crypto')} disabled={isPaymentInProgress} className={tile(shownChoice === 'crypto')}>
                 <span className={tileTitle}>{t('paymentActionPanel.choiceCrypto')}</span>
-                <span className={tileFact}>{t('paymentActionPanel.choiceCryptoFact', { token: tokenSymbol, network: networkName })}</span>
+                <span className={tileFact}>
+                  {flow
+                    ? t('paymentActionPanel.choiceCryptoFactEither', { token: tokenSymbol, from: conversion?.fromSymbol ?? previewOther ?? '', network: networkName })
+                    : t('paymentActionPanel.choiceCryptoFact', { token: tokenSymbol, network: networkName })}
+                </span>
               </button>
             </div>
           )}

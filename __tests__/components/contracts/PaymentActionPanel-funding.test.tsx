@@ -523,6 +523,15 @@ describe('PaymentActionPanel', () => {
   });
 
   describe('b. crypto I already have', () => {
+    // Only a request paid by converting another coin asks which is held. This one is paid in USDC.
+    it('does not ask which coin they hold: there is only the one', () => {
+      render(<PaymentActionPanel {...props()} />);
+      choose(CRYPTO);
+      expect(screen.queryByRole('group', { name: 'Which do you hold?' })).toBeNull();
+      expect(tile(CRYPTO)).toHaveTextContent('USDC on Base');
+      expect(screen.getByText('Or add USDC to your wallet here, then pay from it')).toBeInTheDocument();
+    });
+
     it('is three steps too: send it, "I have paid", protected', () => {
       render(<PaymentActionPanel {...props({ sendPanel: <div>the address and code to send to</div>, paidCheckPanel: <button type="button">I have paid</button> })} />);
       choose(CRYPTO);

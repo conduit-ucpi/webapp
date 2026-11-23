@@ -61,9 +61,12 @@ const choose = (name: RegExp) => fireEvent.click(tile(name)!);
 const provider = (name: RegExp) => screen.queryByRole('button', { name });
 /** The row a company is listed in: its name, what it needs, where it delivers, and its button. */
 const row = (name: RegExp) => provider(name)!.closest('li') as HTMLElement;
-/** What the chosen company's row says to do next, or null while it has not been chosen. */
-const nextStep = (name: RegExp) =>
-  within(row(name)).queryByText('When you have paid there:')?.parentElement ?? null;
+/** The three steps across the top of the open answer, in order. */
+const steps = () => within(screen.getByRole('list', { name: 'The three steps to pay this' })).getAllByRole('button');
+const step = (n: 1 | 2 | 3) => steps()[n - 1];
+const opened = () => steps().filter((button) => button.getAttribute('aria-expanded') === 'true').map((button) => button.textContent);
+/** The steps and whatever is opened beneath them. */
+const stepBody = () => screen.getByRole('list', { name: 'The three steps to pay this' }).parentElement as HTMLElement;
 const payButton = () => screen.queryByRole('button', { name: /Pay 32.39 USDC from this wallet/ });
 const QUESTION = 'How do you want to pay?';
 /** What a row says, in full: its name, its one line, and its button. */
@@ -208,24 +211,53 @@ describe('PaymentActionPanel', () => {
     });
 
     /*
-     * The next step was a box under the whole list headed "After you pay with Kraken", which read
-     * as belonging to every company above it. It is inside the chosen company's own row.
+     * The buyer used to set off on step 1 having to trust the next thing would be revealed. All
+     * three steps are in a row from the start, and any of them can be opened to look at.
      */
-    it("puts what to do next inside the chosen company's row, and nowhere else", async () => {
+    it('shows the three steps from the start, on step 1, with the companies beneath', () => {
       render(<PaymentActionPanel {...props()} />);
-      expect(screen.queryByText('When you have paid there:')).toBeNull();
+      expect(steps().map((button) => button.textContent)).toEqual([
+        '1Step 1: Buy USDC',
+        '2Step 2: Finish the payment',
+        '3Step 3: Payment protected',
+      ]);
+      expect(opened()).toEqual(['1Step 1: Buy USDC']);
+      expect(step(1)).toHaveAttribute('aria-current', 'step');
+      expect(provider(/Continue with Kraken/)).toBeEnabled();
+    });
 
+    it('step 2 can be opened before a company is chosen: a greyed button, and what to do first', () => {
+      render(<PaymentActionPanel {...props()} />);
+      fireEvent.click(step(2));
+      expect(opened()).toEqual(['2Step 2: Finish the payment']);
+      expect(within(stepBody()).getByRole('button', { name: 'Finish the payment' })).toBeDisabled();
+      expect(screen.getByRole('status')).toHaveTextContent('Finish step 1 first: choose a company and buy the USDC.');
+      expect(provider(/Continue with Kraken/)).toBeNull();
+      // Still on step 1, and back to the companies in one press.
+      expect(step(1)).toHaveAttribute('aria-current', 'step');
+      fireEvent.click(step(1));
+      expect(provider(/Continue with Kraken/)).toBeEnabled();
+
+      fireEvent.click(step(3));
+      expect(screen.getByText(/once step 2 is done, the payment is held until the release date above/)).toBeInTheDocument();
+    });
+
+    it("choosing a company moves on to step 2, which is what that company's route needs", async () => {
+      render(<PaymentActionPanel {...props()} />);
       fireEvent.click(provider(/Continue with Kraken/)!);
+      // Straight to the payment: the address to check, and "I have paid".
       expect(await screen.findByText('the contract address panel')).toBeInTheDocument();
-      expect(screen.getAllByText('When you have paid there:')).toHaveLength(1);
-      expect(within(row(/Continue with Kraken/)).getByText('the contract address panel')).toBeInTheDocument();
-      expect(nextStep(/Continue with Coinbase/)).toBeNull();
+      expect(opened()).toEqual(['2Step 2: Finish the payment']);
+      expect(step(1)).toHaveTextContent('✓');
+      expect(step(2)).toHaveAttribute('aria-current', 'step');
 
-      // Choosing another moves it to that one's row.
+      // Another company, another route: into the wallet, so the button is Pay, greyed until it arrives.
+      fireEvent.click(step(1));
       fireEvent.click(provider(/Continue with Card/)!);
-      expect(screen.getAllByText('When you have paid there:')).toHaveLength(1);
-      expect(nextStep(/Continue with Card/)).toHaveTextContent('press Pay');
-      expect(nextStep(/Continue with Kraken/)).toBeNull();
+      expect(opened()).toEqual(['2Step 2: Finish the payment']);
+      expect(screen.queryByText('the contract address panel')).toBeNull();
+      expect(within(stepBody()).getByRole('button', { name: 'Pay 32.39 USDC from this wallet' })).toBeDisabled();
+      expect(screen.getByRole('status')).toHaveTextContent('Finish step 1 first. This button works once the USDC is in your wallet.');
     });
 
     // It changes nothing about which to choose, and is said as what to do next once one is chosen.
@@ -268,7 +300,8 @@ describe('PaymentActionPanel', () => {
       it('then shows the wallet it lands in, and how to finish', () => {
         render(<PaymentActionPanel {...props()} />);
         fireEvent.click(provider(/Continue with Card/)!);
-        const after = nextStep(/Continue with Card/)!;
+        const after = stepBody();
+        expect(opened()).toEqual(['2Step 2: Finish the payment']);
         expect(after).toHaveTextContent('When it arrives, come back to this page and press Pay. Your wallet will ask you to approve the transfer.');
         expect((within(after).getByLabelText('Your wallet address') as HTMLInputElement).value).toBe(WALLET);
         expect(within(after).getByText('Send only USDC on Base. Funds sent on another network may be lost.')).toBeInTheDocument();
@@ -298,7 +331,7 @@ describe('PaymentActionPanel', () => {
 
         act(() => options.onPopupClosed());
         expect(await screen.findByText('the contract address panel')).toBeInTheDocument();
-        expect(nextStep(/Continue with Coinbase/)).not.toBeNull();
+        expect(opened()).toEqual(['2Step 2: Finish the payment']);
         expect(onPayFromExternalWallet).toHaveBeenCalled();
       });
 
@@ -313,7 +346,7 @@ describe('PaymentActionPanel', () => {
         fireEvent.click(provider(/Continue with Coinbase/)!);
         await waitFor(() => expect(mockOpenCoinbase).toHaveBeenCalled());
         expect(mockOpenCoinbase.mock.calls[0][0]).toMatchObject({ destinationAddress: WALLET, asset: 'USDC', presetCryptoAmount: 22.4 });
-        expect(nextStep(/Continue with Coinbase/)!).toHaveTextContent('press Pay');
+        expect(stepBody()).toHaveTextContent('press Pay');
       });
 
       it('is set aside, with the reason and a way to overrule it, in a country Coinbase does not serve', () => {
@@ -348,7 +381,7 @@ describe('PaymentActionPanel', () => {
         expect(url.searchParams.get('amount')).toBe('32.4');
         expect(tab.opener).toBeNull();
         expect(await screen.findByText('the contract address panel')).toBeInTheDocument();
-        expect(nextStep(/Continue with Kraken/)).not.toBeNull();
+        expect(opened()).toEqual(['2Step 2: Finish the payment']);
       });
 
       it('says it will ask for the address, which is copied', () => {
@@ -365,7 +398,7 @@ describe('PaymentActionPanel', () => {
         expect(url.searchParams.get('wallet_address')).toBe(WALLET);
         expect(url.searchParams.get('amount')).toBe('11');
         expect(navigator.clipboard.writeText).toHaveBeenCalledWith(WALLET);
-        expect(nextStep(/Continue with Kraken/)!).toHaveTextContent('press Pay');
+        expect(stepBody()).toHaveTextContent('press Pay');
       });
 
       it('closes the tab and says so when the contract address cannot be prepared', async () => {
@@ -374,7 +407,8 @@ describe('PaymentActionPanel', () => {
         await waitFor(() => expect(tab.close).toHaveBeenCalled());
         expect(onPayFromExternalWallet).not.toHaveBeenCalled();
         expect(await screen.findByRole('alert')).toBeInTheDocument();
-        expect(nextStep(/Continue with Kraken/)).toBeNull();
+        // Nothing was started, so the buyer is still choosing.
+        expect(opened()).toEqual(['1Step 1: Buy USDC']);
       });
     });
 
@@ -413,6 +447,7 @@ describe('PaymentActionPanel', () => {
       render(<PaymentActionPanel {...props()} />);
       fireEvent.click(provider(/Continue with Link by Stripe/)!);
       await waitFor(() => expect(tab.location.href).toContain('https://crypto.link.com/?'));
+      fireEvent.click(step(1));
       fireEvent.click(provider(/Continue with Kraken/)!);
       await waitFor(() => expect(tab.location.href).toContain('https://ramp.kraken.com/entry?'));
     });
@@ -445,7 +480,8 @@ describe('PaymentActionPanel', () => {
       open.mockImplementation(() => null);
       fireEvent.click(provider(/Continue with Kraken/)!);
       expect(new URL(open.mock.calls[0][0]).searchParams.get('wallet_address')).toBe(WALLET);
-      expect(nextStep(/Continue with Kraken/)!).toHaveTextContent('press Pay');
+      expect(stepBody()).toHaveTextContent('press Pay');
+      fireEvent.click(step(1));
       fireEvent.click(provider(/Continue with Link by Stripe/)!);
       expect(navigator.clipboard.writeText).toHaveBeenLastCalledWith(WALLET);
     });
@@ -487,6 +523,31 @@ describe('PaymentActionPanel', () => {
   });
 
   describe('b. crypto I already have', () => {
+    it('is three steps too: send it, "I have paid", protected', () => {
+      render(<PaymentActionPanel {...props({ sendPanel: <div>the address and code to send to</div>, paidCheckPanel: <button type="button">I have paid</button> })} />);
+      choose(CRYPTO);
+      expect(steps().map((button) => button.textContent)).toEqual([
+        '1Step 1: Send USDC',
+        '2Step 2: I have paid',
+        '3Step 3: Payment protected',
+      ]);
+      // Step 1: where to send it, without the button that comes next.
+      expect(opened()).toEqual(['1Step 1: Send USDC']);
+      expect(screen.getByText('the address and code to send to')).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'I have paid' })).toBeNull();
+      expect(screen.getByText(/Then press “I have paid” in step 2/)).toBeInTheDocument();
+
+      // Step 2: the button, pressable at any time, and the way on for whoever topped up the wallet instead.
+      fireEvent.click(step(2));
+      expect(screen.getByRole('button', { name: 'I have paid' })).toBeEnabled();
+      expect(screen.queryByText('the address and code to send to')).toBeNull();
+      expect(screen.getByText('Sent it to your wallet here instead?')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: "I've added it: check my balance" })).toBeEnabled();
+
+      fireEvent.click(step(3));
+      expect(screen.getByText(/once step 2 is done, the payment is held until the release date above/)).toBeInTheDocument();
+    });
+
     it('shows the contract address panel, stresses the network, and starts the address', () => {
       render(<PaymentActionPanel {...props()} />);
       expect(onPayFromExternalWallet).not.toHaveBeenCalled();
@@ -521,6 +582,8 @@ describe('PaymentActionPanel', () => {
     it('reads the balance again when asked, and when the buyer comes back to the tab, but not over and over', () => {
       render(<PaymentActionPanel {...props()} />);
       choose(CRYPTO);
+      // "I've added it" belongs with confirming: step 2.
+      fireEvent.click(step(2));
       fireEvent.click(screen.getByRole('button', { name: "I've added it: check my balance" }));
       expect(onRefreshBalance).toHaveBeenCalledTimes(1);
       fireEvent.focus(window);

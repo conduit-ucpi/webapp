@@ -167,15 +167,18 @@ beforeEach(() => {
 });
 
 /**
- * The payment address, its QR and "I have paid" are under "Crypto I already have", for the
- * buyer whose money is elsewhere. Chooses that, once.
+ * Paying from somewhere else is under "Crypto I already have", as three steps: 1 the payment
+ * address and its QR to send to, 2 "I have paid", 3 protected.
  */
 async function openElsewhere() {
-  if (screen.queryByRole('button', { name: 'I have paid' })) return;
-  fireEvent.click(await screen.findByRole('button', { name: /Crypto I already have/ }));
+  const tile = await screen.findByRole('button', { name: /Crypto I already have/ });
+  if (tile.getAttribute('aria-pressed') !== 'true') fireEvent.click(tile);
 }
 async function iHavePaid() {
-  await openElsewhere();
+  if (!screen.queryByRole('button', { name: 'I have paid' })) {
+    await openElsewhere();
+    fireEvent.click(await screen.findByRole('button', { name: 'Step 2: I have paid' }));
+  }
   return screen.findByRole('button', { name: 'I have paid' });
 }
 
@@ -428,8 +431,10 @@ describe('/pay', () => {
     await openElsewhere();
     // Said for the payment's address, and again inside the closed "or add it to your wallet" beneath.
     expect((await screen.findAllByText(/^Send only USDC on /)).length).toBeGreaterThan(0);
+    // Step 1: where to send it. The button that confirms is the next step.
     expect(await screen.findByDisplayValue(ESCROW)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'I have paid' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'I have paid' })).toBeNull();
+    expect(await iHavePaid()).toBeEnabled();
   });
 
   // ── a sanctions refusal is final: nothing to pay with is left on the page ──
@@ -1153,7 +1158,7 @@ describe('/pay for a payment request (/contract-pay)', () => {
 
       expect(screen.getByTestId('qr-placeholder')).toBeInTheDocument();
       expect(screen.getByDisplayValue('Protected payment address')).toBeDisabled();
-      expect(screen.getByRole('button', { name: 'I have paid' })).toBeDisabled();
+      expect(await iHavePaid()).toBeDisabled();
     });
 
     it('lets them open the card providers to look at, with none that can be continued with', async () => {

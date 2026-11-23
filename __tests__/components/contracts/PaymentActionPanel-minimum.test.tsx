@@ -52,9 +52,8 @@ const props = (overrides: Record<string, unknown> = {}) => ({
 const available = { unavailable: false, countryName: null, overrule: jest.fn() };
 const provider = (name: RegExp) => screen.queryByRole('button', { name });
 const row = (name: RegExp) => provider(name)!.closest('li') as HTMLElement;
-/** What the chosen company's row says to do next, or null while it has not been chosen. */
-const nextStep = (name: RegExp) =>
-  within(row(name)).queryByText('When you have paid there:')?.parentElement ?? null;
+/** The steps and whatever is opened beneath them. */
+const stepBody = () => screen.getByRole('list', { name: 'The three steps to pay this' }).parentElement as HTMLElement;
 const COINBASE = /Continue with Coinbase/;
 
 beforeEach(() => {
@@ -69,7 +68,7 @@ describe("below the exchange's minimum", () => {
     render(<PaymentActionPanel {...props()} />);
     expect(row(COINBASE)).toHaveTextContent('Its minimum is 2 USD, so you buy a little extra.');
     fireEvent.click(provider(COINBASE)!);
-    expect(nextStep(/Continue with Coinbase/)!).toHaveTextContent(
+    expect(stepBody()).toHaveTextContent(
       'When it arrives, come back to this page and press Pay.'
     );
   });
@@ -142,10 +141,14 @@ describe("as a seller's preview", () => {
 
   it('for a token no card can buy, shows how the customer will get it: by buying the one that converts', () => {
     render(<PaymentActionPanel {...preview({ amountLabel: '32 USDT', tokenSymbol: 'USDT' })} />);
-    // Said once above the companies, and at the head of the two lists under them.
+    // The three steps their customer will see, with why; and the same said at the head of the two lists under the companies.
+    expect(
+      screen.getByText("USDT can't be bought by card or bank on Base, so you buy USDC and it is converted as you pay.")
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Step 2: Convert and pay' })).toBeEnabled();
     expect(
       screen.getAllByText('Buys USDC into your wallet here, then one button converts it and pays in USDT.')
-    ).toHaveLength(3);
+    ).toHaveLength(2);
     expect(row(/Continue with Kraken/)).not.toHaveTextContent(/converts/);
     expect(provider(/Continue with Kraken/)).toBeDisabled();
     expect(screen.getByText('None of these work for you? More card services')).toBeInTheDocument();

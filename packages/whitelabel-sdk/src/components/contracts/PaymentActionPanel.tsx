@@ -97,6 +97,11 @@ interface PaymentActionPanelProps {
    * there: that buyer scans and sends nothing. Falls back to `elsewherePanel`.
    */
   paidCheckPanel?: ReactNode;
+  /**
+   * The same address with its code and what to send, WITHOUT "I have paid": step 1 of sending,
+   * where pressing it comes next, in step 2. Falls back to `elsewherePanel`.
+   */
+  sendPanel?: ReactNode;
 }
 
 /**
@@ -181,6 +186,7 @@ export default function PaymentActionPanel({
   conversion,
   elsewherePanel,
   paidCheckPanel,
+  sendPanel,
 }: PaymentActionPanelProps) {
   const t = useT();
   const { config } = useConfig();
@@ -227,6 +233,10 @@ export default function PaymentActionPanel({
 
   // Balance gates both wallet-dependent actions, in opposite directions.
   const canConvertAndPay = converting && conversion.status === 'ready';
+  // A step completing moves the buyer on: whatever they had opened to look at gives way to it.
+  useEffect(() => {
+    setFlowView(null);
+  }, [canConvertAndPay]);
   const canPayFromThisWallet =
     (!hasInsufficientBalance || canConvertAndPay) && !isSameAddress && !isLoadingBalance && !isPreparing;
   // Rounded up, so the figure on the button is never less than what leaves the wallet.
@@ -254,11 +264,18 @@ export default function PaymentActionPanel({
   /** Which answer to "How do you want to pay?" is open. Null until chosen, when the default shows. */
   type Choice = 'card' | 'crypto';
   const [chosen, setChosen] = useState<Choice | null>(null);
+  /** Which step of the three-step flow the buyer has opened to look at; null shows the one they are on. */
+  const [flowView, setFlowView] = useState<1 | 2 | 3 | null>(null);
+  /** The same, for the two flows of a token that can be bought: buying it, and sending it. */
+  const [buyView, setBuyView] = useState<1 | 2 | 3 | null>(null);
+  const [sendView, setSendView] = useState<1 | 2 | 3 | null>(null);
   /** A company has been opened: what to do on coming back is now the next thing on screen. */
   const [started, setStarted] = useState<{ id: CardRow['id']; route: CardRow['route'] } | null>(null);
   /** Which company a purchase straight to the payment was started with, for cardSent. */
   const cardSent = (id: CardRow['id'] = 'coinbase') => {
     setStarted({ id, route: 'payment' });
+    // On to step 2, whatever step the buyer had opened to look at.
+    setBuyView(null);
     setChosen('card');
     onPayFromExternalWallet();
   };
@@ -404,6 +421,9 @@ export default function PaymentActionPanel({
   // What a seller's preview shows as bought, where the token itself is not sold.
   const previewOther = preview && !buyable ? convertibleFrom(chainId, tokenSymbol) : null;
 
+  // Paid by buying the token that converts into it: shown as three steps (see flowBlock).
+  const flow = viaConversion || (preview && !!previewOther);
+
   // The three ways on, and whether each exists for this payment.
   const offerCard = !!resolveEscrowAddress && buyable;
   const offerElsewhere = !!elsewherePanel;
@@ -428,7 +448,10 @@ export default function PaymentActionPanel({
   const showWays = isShort && (offerCard || offerElsewhere || offerTopUp);
   // No greyed-out pay button above the ways on, except while a conversion is still being priced
   // or cannot be made, when that button is what says so.
-  const showPayButton = !preview && !(showWays && (buyable ? conversion?.status !== 'quoting' : buysOther));
+  // ⚠️ ONE ROW OF STEPS ON SCREEN AT A TIME. While a token nobody sells cannot yet be converted
+  //    (the price still being read, or none usable), its three steps belong under "Card or bank"
+  //    with the other answer beside it, not above the question as a second row (2026-11-23).
+  const showPayButton = !preview && !(showWays && (buyable ? conversion?.status !== 'quoting' : buysOther || flow));
 
   // The buyer has been away at a provider or an exchange: coming back is the moment to look
   // again. Not on a timer, which would spend the RPC's rate limit on a page left open.
@@ -470,6 +493,9 @@ export default function PaymentActionPanel({
 
   const startWalletRoute = (id: CardRow['id'], start: () => void) => () => {
     setStarted({ id, route: 'wallet' });
+    // On to step 2 in whichever flow this is: where the purchase lands and what is pressed next.
+    setBuyView(null);
+    setFlowView(2);
     start();
   };
   const cents = (value: number) => (Math.ceil(value * 100 - 1e-7) / 100).toFixed(2);
@@ -605,7 +631,7 @@ export default function PaymentActionPanel({
   const unableRows = rows.filter((row) => row.unavailable);
 
   // The two answers, and whether each exists for this payment.
-  const hasCard = offerCard || offerTopUp;
+  const hasCard = offerCard || offerTopUp || flow;
   const hasCrypto = offerElsewhere || offerTopUp;
   // Card is open to begin with: it is the answer for a buyer who holds no crypto, which is who
   // arrives here short. Choosing is a selection, not a toggle: one is always open.
@@ -682,153 +708,59 @@ export default function PaymentActionPanel({
     ? t('paymentActionPanel.topUpThenConvert', { token: tokenSymbol, from: conversion.fromSymbol })
     : t('paymentActionPanel.topUpThen');
 
-  return (
-    <div className="rounded-xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 p-5">
-      {/* The wallet and balance are the buyer's own. A seller looking at a preview would be shown
-          theirs, which means nothing here and reads as if it did. */}
-      {preview && (
-        <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('paymentActionPanel.previewWallet')}</p>
-      )}
-      {/* At the top only while the wallet is what pays. Short, it is one line at the foot: a red
-          "99.9999 USDC short" as the first thing told a buyer with no crypto that something had
-          gone wrong, before it told them anything they could do. */}
-      {!preview && !showWays && (
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold text-secondary-900 dark:text-white">{t('paymentActionPanel.connectedWallet')}</p>
-          <div className="mt-1 flex items-center gap-2">
-            <p className="text-sm font-mono text-secondary-500 dark:text-secondary-400">
-              {shortAddress}
-            </p>
-            {copyButton}
-          </div>
-        </div>
-        <div className="text-right">
-          {/* ⚠️ THE BALANCE OF THE TOKEN ASKED FOR IS ALWAYS SHOWN: it is what the payment is in, and
-              the first thing a buyer checks. The other stablecoin is listed only when the wallet
-              holds some and it can go towards this payment; otherwise it has nothing to do with
-              it. Red, and "short", only while the wallet cannot pay by either means. */}
-          <p
-            className={`text-lg font-bold ${
-              hasInsufficientBalance && !canConvertAndPay
-                ? 'text-red-600 dark:text-red-400'
-                : 'text-green-600 dark:text-green-400'
+  /*
+   * ⚠️ EVERY WAY OF PAYING THAT TAKES MORE THAN ONE ACTION IS SHOWN AS THREE STEPS IN A ROW, with
+   *    the one the buyer is on opened beneath (2026-11-23). The buyer used to set off on the first
+   *    action having to trust that the next would be revealed. Pressing a step opens it, whether
+   *    or not it can be done yet: a later step shows exactly what it will be, with anything that
+   *    cannot be pressed yet greyed, and why.
+   */
+  type StepNumber = 1 | 2 | 3;
+  const stepRow = (
+    steps: { n: StepNumber; title: string; done?: boolean }[],
+    current: StepNumber,
+    open: StepNumber,
+    onOpen: (n: StepNumber) => void
+  ) => (
+    <ol className="flex items-stretch gap-2" aria-label={t('paymentActionPanel.flowLabel')}>
+      {steps.map((step, index) => (
+        <li key={step.n} className="flex-1 min-w-0 flex items-stretch gap-2">
+          <button
+            type="button"
+            onClick={() => onOpen(step.n)}
+            aria-expanded={open === step.n}
+            aria-current={current === step.n ? 'step' : undefined}
+            className={`flex-1 min-w-0 rounded-xl border p-3 text-left transition-colors ${
+              open === step.n
+                ? 'border-secondary-900 dark:border-white bg-secondary-50 dark:bg-secondary-700/40'
+                : 'border-secondary-200 dark:border-secondary-700 hover:border-primary-500'
             }`}
           >
-            {isLoadingBalance ? (
-              <span className="animate-pulse text-secondary-500">{t('paymentActionPanel.loading')}</span>
-            ) : (
-              `${balanceFloat.toFixed(4)} ${tokenSymbol}`
-            )}
-          </p>
-          {!isLoadingBalance && hasInsufficientBalance && !canConvertAndPay && (
-            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-              {t('paymentActionPanel.short', { amount: shortfall.toFixed(4), token: tokenSymbol })}
-            </p>
+            <span
+              aria-hidden="true"
+              className={`w-6 h-6 rounded-full grid place-items-center text-xs font-semibold ${
+                step.done || current === step.n
+                  ? 'bg-secondary-900 text-white dark:bg-white dark:text-secondary-900'
+                  : 'border border-secondary-300 dark:border-secondary-600 text-secondary-700 dark:text-secondary-200'
+              }`}
+            >
+              {step.done ? '✓' : step.n}
+            </span>
+            <span className="sr-only">{t('paymentActionPanel.flowStep', { n: step.n })} </span>
+            <span className="mt-2 block text-sm font-semibold leading-snug text-secondary-900 dark:text-white">{step.title}</span>
+          </button>
+          {index < steps.length - 1 && (
+            <span aria-hidden="true" className="self-center text-secondary-400">→</span>
           )}
-          {!isLoadingBalance && converting && conversion.fromBalance > 0 && (
-            <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
-              {`${conversion.fromBalance.toFixed(4)} ${conversion.fromSymbol}`}
-            </p>
-          )}
-        </div>
-      </div>
-      )}
+        </li>
+      ))}
+    </ol>
+  );
+  const stepHint = 'text-sm text-secondary-700 dark:text-secondary-200';
 
-      {isSameAddress && (
-        <p className="mt-4 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-sm text-red-700 dark:text-red-400">
-          {t('paymentActionPanel.sameAddress')}
-        </p>
-      )}
-
-      {(showPayButton || (isShort && !buyable && !viaConversion) || (converting && !isSameAddress && conversion.status === 'unavailable')) && (
-      <div className={`${showWays ? '' : 'mt-5 '}space-y-3`}>
-        {showPayButton && (
-          <Button
-            type="button"
-            onClick={onPay}
-            size="lg"
-            disabled={!canPayFromThisWallet || isPaymentInProgress}
-            className={canConvertAndPay && !isPaymentInProgress && !isPreparing ? twoLineButton : actionButton}
-          >
-            {isPaymentInProgress ? (
-              <>
-                <LoadingSpinner className="w-4 h-4 mr-2" />
-                {loadingMessage || t('pay.processing')}
-              </>
-            ) : isPreparing ? (
-              // Named rather than spinning on its own: a disabled button with no explanation
-              // reads as broken, and this one is unavailable for about a second.
-              <>
-                <LoadingSpinner className="w-4 h-4 mr-2" />
-                {t('pay.preparing')}
-              </>
-            ) : canConvertAndPay ? (
-              <>
-                <span className="font-medium">{t('pay.payWithOther', { amount: amountLabel, from: conversion.fromSymbol })}</span>
-                <span className="text-xs font-normal leading-snug opacity-80">
-                  {t('pay.payWithOtherNote', { cost: costLabel, from: conversion.fromSymbol })}
-                </span>
-              </>
-            ) : converting && conversion.status === 'quoting' ? (
-              t('paymentActionPanel.convertQuoting', { from: conversion.fromSymbol })
-            ) : (
-              t('pay.payFromThisWallet', { amount: amountLabel })
-            )}
-          </Button>
-        )}
-        {converting && !isSameAddress && conversion.status === 'unavailable' &&
-          reason(t('paymentActionPanel.convertUnavailable', { from: conversion.fromSymbol, token: tokenSymbol }))}
-
-        {/* Paying from this wallet is a transfer the wallet signs: said before it asks. */}
-        {showPayButton && canPayFromThisWallet && !isPaymentInProgress && (
-          <p className="text-xs text-center text-secondary-500 dark:text-secondary-400">{t('paymentActionPanel.signNote')}</p>
-        )}
-        {isShort && !buyable && !viaConversion && reason(cannotBuyReason)}
-      </div>
-      )}
-
-      {showWays && (
-        <div className={`${showPayButton || preview ? 'mt-5 ' : ''}space-y-4`}>
-          <h3 className="text-lg font-semibold text-secondary-900 dark:text-white">{t('paymentActionPanel.howToPay')}</h3>
-          {!preview && buysOther && (
-            <p className="text-sm text-secondary-700 dark:text-secondary-200">
-              {t('paymentActionPanel.convertFirst', { token: tokenSymbol, from: conversion.fromSymbol, network: networkName })}
-            </p>
-          )}
-          {preview && <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('paymentActionPanel.previewFunding')}</p>}
-
-          {/* Side by side on a phone too: stacked, the two answers filled the screen and pushed
-              every way of paying below it. */}
-          {hasCard && hasCrypto && (
-            <div className="flex gap-3">
-              <button type="button" aria-pressed={shownChoice === 'card'} onClick={() => choose('card')} disabled={isPaymentInProgress} className={tile(shownChoice === 'card')}>
-                <span className={tileTitle}>{t('paymentActionPanel.choiceCard')}</span>
-                <span className={tileFact}>{t('paymentActionPanel.choiceCardFact')}</span>
-              </button>
-              <button type="button" aria-pressed={shownChoice === 'crypto'} onClick={() => choose('crypto')} disabled={isPaymentInProgress} className={tile(shownChoice === 'crypto')}>
-                <span className={tileTitle}>{t('paymentActionPanel.choiceCrypto')}</span>
-                <span className={tileFact}>{t('paymentActionPanel.choiceCryptoFact', { token: tokenSymbol, network: networkName })}</span>
-              </button>
-            </div>
-          )}
-
-          {shownChoice === 'card' && (
-            <section aria-label={t('paymentActionPanel.choiceCard')} className="space-y-3">
-              {/* How much of the other token is bought, where the token asked for is not sold. */}
-              {!preview && viaConversion && (
-                <p className="text-sm text-secondary-700 dark:text-secondary-200">
-                  {belowMinimumForWallet
-                    ? t('paymentActionPanel.buyOtherAndPayMinimum', { minimum: minimumLabel, token: tokenSymbol })
-                    : t('paymentActionPanel.buyOtherAndPayNote', { amount: upToCent(fundingShortfall), from: conversion.fromSymbol, token: tokenSymbol })}
-                </p>
-              )}
-              {/* The same, for a seller looking at what their customer will see. */}
-              {preview && previewOther && (
-                <p className="text-sm text-secondary-700 dark:text-secondary-200">
-                  {t('paymentActionPanel.routeWalletConvert', { from: previewOther, token: tokenSymbol })}
-                </p>
-              )}
+  /** The companies to buy from, and under them the quiet links to more. */
+  const cardBody = (
+    <>
               {ableRows.length > 0 && <p className={small}>{t('paymentActionPanel.feesNote')}</p>}
               {shown(
                 <ul className="space-y-3">
@@ -852,28 +784,6 @@ export default function PaymentActionPanel({
                           {row.busy ? t('addFunds.opening') : t('paymentActionPanel.continue')}
                         </Button>
                       </div>
-                      {/* ⚠️ THE NEXT STEP IS INSIDE THE ROW OF THE COMPANY THAT WAS CHOSEN. It was a box
-                          under the whole list headed "After you pay with Kraken", which read as
-                          belonging to every company above it (2026-11-23). Here it can only be
-                          Kraken's: what to do on coming back, and the address to check against. */}
-                      {!preview && started?.id === row.id && (
-                        <div className="mt-4 pt-4 border-t border-secondary-200 dark:border-secondary-700 space-y-3">
-                          <p className="text-sm font-semibold text-secondary-900 dark:text-white">{t('paymentActionPanel.afterTitle')}</p>
-                          {row.route === 'payment' ? (
-                            <>
-                              <p className="text-sm text-secondary-700 dark:text-secondary-200">{t('paymentActionPanel.afterCard')}</p>
-                              {paidCheckPanel ?? elsewherePanel}
-                            </>
-                          ) : (
-                            <>
-                              <p className="text-sm text-secondary-700 dark:text-secondary-200">{thenPay}</p>
-                              {walletDestination}
-                              <p className={onNetwork}>{t('addFunds.sendOnly', { token: walletToken, network: networkName })}</p>
-                              {checkBalance}
-                            </>
-                          )}
-                        </div>
-                      )}
                     </li>
                   ))}
                 </ul>
@@ -954,41 +864,403 @@ export default function PaymentActionPanel({
                   </div>
                 </details>
               )}
+    </>
+  );
+
+  /*
+   * ⚠️ A TOKEN NOBODY SELLS (USDT) IS PAID IN TWO STEPS, AND BOTH ARE ON SCREEN FROM THE START.
+   *    The buyer buys the token that converts into it, then one button converts and pays. The
+   *    second step used to be a sentence until the money arrived, so the buyer set off having to
+   *    trust that the next thing would be revealed (2026-11-23). Now the whole way is shown:
+   *    1 buy, 2 convert and pay (the real button), 3 protected.
+   *
+   *    EVERY STEP CAN BE PRESSED. One that is not ready says which step to finish first, rather
+   *    than sitting greyed out and silent. A wallet already holding enough lands with step 1
+   *    ticked and step 2 live.
+   */
+  const flowFrom = conversion?.fromSymbol ?? previewOther ?? '';
+  const step1Done = canConvertAndPay;
+  /*
+   * ⚠️ THE THREE STEPS ARE ONE ROW ACROSS THE TOP, AND ONE OF THEM IS OPENED BENEATH.
+   *    First built as three boxes down the page, with the companies inside the first: that list
+   *    is long, so steps 2 and 3 were below the bottom of the screen and the buyer still set off
+   *    seeing only step 1 (2026-11-23).
+   *
+   * ⚠️ PRESSING A STEP OPENS IT, WHETHER OR NOT IT CAN BE DONE YET. The step the buyer is on is
+   *    open to begin with. A later one opens to show exactly what it will be (step 2 is the real
+   *    button, greyed and not pressable, with what it is waiting for), so the whole way can be
+   *    looked at before any of it is done. It follows the buyer on when a step completes.
+   */
+  const currentStep: 1 | 2 = step1Done ? 2 : 1;
+  const openStep = flowView ?? currentStep;
+  // Why step 2 cannot be done yet, which is not always the purchase.
+  const waitingFor =
+    conversion?.status === 'quoting'
+      ? t('paymentActionPanel.convertQuoting', { from: flowFrom })
+      : conversion?.status === 'unavailable'
+        ? t('paymentActionPanel.convertUnavailable', { from: flowFrom, token: tokenSymbol })
+        : t('paymentActionPanel.flowNeedBuy', { from: flowFrom });
+  const flowSteps: { n: StepNumber; title: string; done: boolean }[] = [
+    { n: 1, title: t('paymentActionPanel.flowBuy', { from: flowFrom }), done: step1Done },
+    { n: 2, title: t('paymentActionPanel.flowConvert'), done: false },
+    { n: 3, title: t('paymentActionPanel.flowProtected'), done: false },
+  ];
+  const flowBlock = (
+    <div className="space-y-4">
+      <p className={small}>
+        {t('paymentActionPanel.flowWhy', { token: tokenSymbol, from: flowFrom, network: networkName })}
+      </p>
+      {stepRow(flowSteps, currentStep, openStep, setFlowView)}
+
+      {openStep === 1 &&
+        (step1Done ? (
+          <p className={stepHint}>
+            {t('paymentActionPanel.flowHave', { amount: (conversion?.fromBalance ?? 0).toFixed(2), from: flowFrom })}
+          </p>
+        ) : conversion?.status === 'quoting' || conversion?.status === 'unavailable' ? (
+          <p className={stepHint}>{waitingFor}</p>
+        ) : (
+          <div className="space-y-3">
+            {/* How much is bought: what converting costs, less what the wallet already holds. */}
+            {!preview && viaConversion && (
+              <p className={stepHint}>
+                {belowMinimumForWallet
+                  ? t('paymentActionPanel.buyOtherAndPayMinimum', { minimum: minimumLabel, token: tokenSymbol })
+                  : t('paymentActionPanel.buyOtherAndPayNote', { amount: upToCent(fundingShortfall), from: flowFrom, token: tokenSymbol })}
+              </p>
+            )}
+            {cardBody}
+            {checkBalance}
+          </div>
+        ))}
+
+      {openStep === 2 && (
+        <div className="space-y-3">
+          {/* The real button, shown as it will be. Greyed and not pressable until step 1 is done. */}
+          <Button
+            type="button"
+            size="lg"
+            onClick={onPay}
+            disabled={preview || !step1Done || !canPayFromThisWallet || isPaymentInProgress}
+            className={twoLineButton}
+          >
+            {isPaymentInProgress ? (
+              <span className="flex items-center justify-center">
+                <LoadingSpinner className="w-4 h-4 mr-2" />
+                {loadingMessage || t('pay.processing')}
+              </span>
+            ) : step1Done && isPreparing ? (
+              <span className="flex items-center justify-center">
+                <LoadingSpinner className="w-4 h-4 mr-2" />
+                {t('pay.preparing')}
+              </span>
+            ) : (
+              <>
+                <span className="font-medium">{t('pay.payWithOther', { amount: amountLabel, from: flowFrom })}</span>
+                <span className="text-xs font-normal leading-snug opacity-80">
+                  {step1Done && costLabel
+                    ? t('pay.payWithOtherNote', { cost: costLabel, from: flowFrom })
+                    : t('paymentActionPanel.flowConvertNote', { from: flowFrom })}
+                </span>
+              </>
+            )}
+          </Button>
+          {step1Done
+            ? canPayFromThisWallet && !isPaymentInProgress && (
+                <p className="text-xs text-center text-secondary-500 dark:text-secondary-400">{t('paymentActionPanel.signNote')}</p>
+              )
+            : !preview && (
+                <>
+                  <p role="status" className={stepHint}>{waitingFor}</p>
+                  {/* Where the purchase has to land, to check against at the company, and the way to look again. */}
+                  {walletDestination}
+                  <p className={onNetwork}>{t('addFunds.sendOnly', { token: walletToken, network: networkName })}</p>
+                  {checkBalance}
+                </>
+              )}
+        </div>
+      )}
+
+      {openStep === 3 && <p className={stepHint}>{t('paymentActionPanel.flowNeedPay')}</p>}
+    </div>
+  );
+
+  /*
+   * Card or bank, for a token that can be bought: 1 buy it, 2 finish the payment, 3 protected.
+   *
+   * ⚠️ STEP 2 IS WHATEVER THE CHOSEN COMPANY'S ROUTE NEEDS, AND IT IS ALWAYS ONE PRESS ON THIS
+   *    PAGE. Delivered to the payment: check the address and press "I have paid". Delivered to
+   *    the wallet: press Pay. Which it is was decided with the company (see `rows`), so the buyer
+   *    is not asked. Before a company is chosen it opens on a greyed button saying to choose one.
+   *    Choosing a company moves the buyer on to it.
+   */
+  const buyCurrent: StepNumber = started ? 2 : 1;
+  const buyOpen = buyView ?? buyCurrent;
+  const greyedPayFromWallet = (
+    <>
+      <Button type="button" size="lg" disabled className={actionButton}>
+        {t('pay.payFromThisWallet', { amount: amountLabel })}
+      </Button>
+      {!preview && (
+        <p role="status" className={stepHint}>{t('paymentActionPanel.flowNeedBuy', { from: walletToken })}</p>
+      )}
+    </>
+  );
+  const buyFlowBlock = (
+    <div className="space-y-4">
+      {stepRow(
+        [
+          { n: 1, title: t('paymentActionPanel.flowBuy', { from: walletToken }), done: !!started },
+          { n: 2, title: t('paymentActionPanel.flowFinish') },
+          { n: 3, title: t('paymentActionPanel.flowProtected') },
+        ],
+        buyCurrent,
+        buyOpen,
+        setBuyView
+      )}
+
+      {buyOpen === 1 && <div className="space-y-3">{cardBody}</div>}
+
+      {buyOpen === 2 && (
+        <div className="space-y-3">
+          {!started || preview ? (
+            <>
+              <Button type="button" size="lg" disabled className={actionButton}>
+                {t('paymentActionPanel.flowFinish')}
+              </Button>
+              {!preview && (
+                <p role="status" className={stepHint}>{t('paymentActionPanel.flowNeedCompany', { token: walletToken })}</p>
+              )}
+            </>
+          ) : started.route === 'payment' ? (
+            <>
+              <p className={stepHint}>{t('paymentActionPanel.afterCard')}</p>
+              {paidCheckPanel ?? elsewherePanel}
+            </>
+          ) : (
+            <>
+              <p className={stepHint}>{thenPay}</p>
+              {greyedPayFromWallet}
+              {walletDestination}
+              <p className={onNetwork}>{t('addFunds.sendOnly', { token: walletToken, network: networkName })}</p>
+              {checkBalance}
+            </>
+          )}
+        </div>
+      )}
+
+      {buyOpen === 3 && <p className={stepHint}>{t('paymentActionPanel.flowNeedPay')}</p>}
+    </div>
+  );
+
+  /*
+   * Crypto I already have: 1 send it, 2 "I have paid", 3 protected.
+   *
+   * Step 1 is the payment's own address (code, wallet link), or more quietly this wallet's, for
+   * someone who would sooner top it up. Step 2 is the button that has the page look for the money
+   * and settle; it can be pressed at any time, since looking costs nothing.
+   */
+  const sendOpen = sendView ?? 1;
+  const sendFlowBlock = (
+    <div className="space-y-4">
+      {stepRow(
+        [
+          { n: 1, title: t('paymentActionPanel.flowSend', { token: tokenSymbol }) },
+          { n: 2, title: t('paymentActionPanel.flowConfirm') },
+          { n: 3, title: t('paymentActionPanel.flowProtected') },
+        ],
+        1,
+        sendOpen,
+        setSendView
+      )}
+
+      {sendOpen === 1 && (
+        <div className="space-y-3">
+          {offerElsewhere && (
+            <>
+              {/* The network and the exact amount are said once, by the panel itself, beside the address. */}
+              <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('pay.elsewhereLead')}</p>
+              {shown(sendPanel ?? elsewherePanel)}
+            </>
+          )}
+          {offerTopUp && (
+            <details open={!offerElsewhere} className={rowBox}>
+              <summary className="cursor-pointer font-semibold text-secondary-900 dark:text-white">
+                {t('paymentActionPanel.orAddToWallet', { token: walletToken })}
+              </summary>
+              <div className="mt-3 space-y-3">
+                {/* The seller's own wallet means nothing in a preview of their customer's screen. */}
+                {!preview && (
+                  <>
+                    {walletDestination}
+                    <div className="flex justify-center">
+                      <div className="bg-white p-3 rounded-lg border border-secondary-200">
+                        <QRCodeSVG value={walletAddress} size={160} level="M" marginSize={4} />
+                      </div>
+                    </div>
+                  </>
+                )}
+                <p className={onNetwork}>{t('addFunds.sendOnly', { token: walletToken, network: networkName })}</p>
+                {!preview && <p className="text-sm text-secondary-600 dark:text-secondary-300">{thenPay}</p>}
+              </div>
+            </details>
+          )}
+        </div>
+      )}
+
+      {sendOpen === 2 && (
+        <div className="space-y-3">
+          {offerElsewhere ? shown(paidCheckPanel ?? elsewherePanel) : greyedPayFromWallet}
+          {/* For whoever sent it to this wallet instead: the balance is what to look at. */}
+          {offerTopUp && !preview && (
+            <p className={`${small} flex flex-wrap items-center gap-x-2`}>
+              {offerElsewhere && <span>{t('paymentActionPanel.flowWalletInstead')}</span>}
+              {checkBalance}
+            </p>
+          )}
+        </div>
+      )}
+
+      {sendOpen === 3 && <p className={stepHint}>{t('paymentActionPanel.flowNeedPay')}</p>}
+    </div>
+  );
+
+  return (
+    <div className="rounded-xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-800 p-5">
+      {/* The wallet and balance are the buyer's own. A seller looking at a preview would be shown
+          theirs, which means nothing here and reads as if it did. */}
+      {preview && (
+        <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('paymentActionPanel.previewWallet')}</p>
+      )}
+      {/* At the top only while the wallet is what pays. Short, it is one line at the foot: a red
+          "99.9999 USDC short" as the first thing told a buyer with no crypto that something had
+          gone wrong, before it told them anything they could do. */}
+      {!preview && !showWays && (
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div>
+          <p className="text-sm font-semibold text-secondary-900 dark:text-white">{t('paymentActionPanel.connectedWallet')}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <p className="text-sm font-mono text-secondary-500 dark:text-secondary-400">
+              {shortAddress}
+            </p>
+            {copyButton}
+          </div>
+        </div>
+        <div className="text-right">
+          {/* ⚠️ THE BALANCE OF THE TOKEN ASKED FOR IS ALWAYS SHOWN: it is what the payment is in, and
+              the first thing a buyer checks. The other stablecoin is listed only when the wallet
+              holds some and it can go towards this payment; otherwise it has nothing to do with
+              it. Red, and "short", only while the wallet cannot pay by either means. */}
+          <p
+            className={`text-lg font-bold ${
+              hasInsufficientBalance && !canConvertAndPay
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-green-600 dark:text-green-400'
+            }`}
+          >
+            {isLoadingBalance ? (
+              <span className="animate-pulse text-secondary-500">{t('paymentActionPanel.loading')}</span>
+            ) : (
+              `${balanceFloat.toFixed(4)} ${tokenSymbol}`
+            )}
+          </p>
+          {!isLoadingBalance && hasInsufficientBalance && !canConvertAndPay && (
+            <p className="mt-1 text-sm text-red-600 dark:text-red-400">
+              {t('paymentActionPanel.short', { amount: shortfall.toFixed(4), token: tokenSymbol })}
+            </p>
+          )}
+          {!isLoadingBalance && converting && conversion.fromBalance > 0 && (
+            <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">
+              {`${conversion.fromBalance.toFixed(4)} ${conversion.fromSymbol}`}
+            </p>
+          )}
+        </div>
+      </div>
+      )}
+
+      {isSameAddress && (
+        <p className="mt-4 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 p-3 text-sm text-red-700 dark:text-red-400">
+          {t('paymentActionPanel.sameAddress')}
+        </p>
+      )}
+
+      {(showPayButton || (isShort && !buyable && !viaConversion) || (converting && !isSameAddress && conversion.status === 'unavailable')) && (
+      <div className={`${showWays ? '' : 'mt-5 '}space-y-3`}>
+        {showPayButton && flow && flowBlock}
+        {showPayButton && !flow && (
+          <Button
+            type="button"
+            onClick={onPay}
+            size="lg"
+            disabled={!canPayFromThisWallet || isPaymentInProgress}
+            className={canConvertAndPay && !isPaymentInProgress && !isPreparing ? twoLineButton : actionButton}
+          >
+            {isPaymentInProgress ? (
+              <>
+                <LoadingSpinner className="w-4 h-4 mr-2" />
+                {loadingMessage || t('pay.processing')}
+              </>
+            ) : isPreparing ? (
+              // Named rather than spinning on its own: a disabled button with no explanation
+              // reads as broken, and this one is unavailable for about a second.
+              <>
+                <LoadingSpinner className="w-4 h-4 mr-2" />
+                {t('pay.preparing')}
+              </>
+            ) : canConvertAndPay ? (
+              <>
+                <span className="font-medium">{t('pay.payWithOther', { amount: amountLabel, from: conversion.fromSymbol })}</span>
+                <span className="text-xs font-normal leading-snug opacity-80">
+                  {t('pay.payWithOtherNote', { cost: costLabel, from: conversion.fromSymbol })}
+                </span>
+              </>
+            ) : converting && conversion.status === 'quoting' ? (
+              t('paymentActionPanel.convertQuoting', { from: conversion.fromSymbol })
+            ) : (
+              t('pay.payFromThisWallet', { amount: amountLabel })
+            )}
+          </Button>
+        )}
+        {!flow && converting && !isSameAddress && conversion.status === 'unavailable' &&
+          reason(t('paymentActionPanel.convertUnavailable', { from: conversion.fromSymbol, token: tokenSymbol }))}
+
+        {/* Paying from this wallet is a transfer the wallet signs: said before it asks. */}
+        {showPayButton && !flow && canPayFromThisWallet && !isPaymentInProgress && (
+          <p className="text-xs text-center text-secondary-500 dark:text-secondary-400">{t('paymentActionPanel.signNote')}</p>
+        )}
+        {isShort && !buyable && !viaConversion && reason(cannotBuyReason)}
+      </div>
+      )}
+
+      {showWays && (
+        <div className={`${showPayButton || preview ? 'mt-5 ' : ''}space-y-4`}>
+          <h3 className="text-lg font-semibold text-secondary-900 dark:text-white">{t('paymentActionPanel.howToPay')}</h3>
+          {preview && <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('paymentActionPanel.previewFunding')}</p>}
+
+          {/* Side by side on a phone too: stacked, the two answers filled the screen and pushed
+              every way of paying below it. */}
+          {hasCard && hasCrypto && (
+            <div className="flex gap-3">
+              <button type="button" aria-pressed={shownChoice === 'card'} onClick={() => choose('card')} disabled={isPaymentInProgress} className={tile(shownChoice === 'card')}>
+                <span className={tileTitle}>{t('paymentActionPanel.choiceCard')}</span>
+                <span className={tileFact}>{t('paymentActionPanel.choiceCardFact')}</span>
+              </button>
+              <button type="button" aria-pressed={shownChoice === 'crypto'} onClick={() => choose('crypto')} disabled={isPaymentInProgress} className={tile(shownChoice === 'crypto')}>
+                <span className={tileTitle}>{t('paymentActionPanel.choiceCrypto')}</span>
+                <span className={tileFact}>{t('paymentActionPanel.choiceCryptoFact', { token: tokenSymbol, network: networkName })}</span>
+              </button>
+            </div>
+          )}
+
+          {shownChoice === 'card' && (
+            <section aria-label={t('paymentActionPanel.choiceCard')} className="space-y-3">
+              {flow ? flowBlock : buyFlowBlock}
             </section>
           )}
 
           {shownChoice === 'crypto' && (
             <section aria-label={t('paymentActionPanel.choiceCrypto')} className="space-y-3">
-              {offerElsewhere && (
-                <>
-                  {/* The network and the exact amount are said once, by the panel itself, beside the address. */}
-                  <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('pay.elsewhereLead')}</p>
-                  {shown(elsewherePanel)}
-                </>
-              )}
-              {offerTopUp && (
-                <details open={!offerElsewhere} className={rowBox}>
-                  <summary className="cursor-pointer font-semibold text-secondary-900 dark:text-white">
-                    {t('paymentActionPanel.orAddToWallet', { token: walletToken })}
-                  </summary>
-                  <div className="mt-3 space-y-3">
-                    {/* The seller's own wallet means nothing in a preview of their customer's screen. */}
-                    {!preview && (
-                      <>
-                        {walletDestination}
-                        <div className="flex justify-center">
-                          <div className="bg-white p-3 rounded-lg border border-secondary-200">
-                            <QRCodeSVG value={walletAddress} size={160} level="M" marginSize={4} />
-                          </div>
-                        </div>
-                      </>
-                    )}
-                    <p className={onNetwork}>{t('addFunds.sendOnly', { token: walletToken, network: networkName })}</p>
-                    {!preview && <p className="text-sm text-secondary-600 dark:text-secondary-300">{thenPay}</p>}
-                    {checkBalance}
-                  </div>
-                </details>
-              )}
+              {sendFlowBlock}
             </section>
           )}
 

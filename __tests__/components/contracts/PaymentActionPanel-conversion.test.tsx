@@ -1,9 +1,11 @@
 /**
  * A request in a token nobody sells here (USDT on Base) can be paid with the one they do (USDC).
  *
- * A wallet holding enough USDC gets one button that says so. One holding too little of both is
- * offered, under "Card or bank", the companies that sell USDC into it, and told it is converted
- * as they pay.
+ * It is shown as three steps in a row, all on screen from the start: 1 buy USDC -> 2 convert and
+ * pay -> 3 protected, with the one the buyer is on opened beneath. Pressing a step opens it,
+ * whether or not it can be done yet: step 2 shows the real button, greyed and not pressable, with
+ * what it is waiting for. A wallet already holding enough USDC lands with step 1 ticked and step 2
+ * open and live.
  */
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import PaymentActionPanel, { type PaymentConversion } from '@/components/contracts/PaymentActionPanel';
@@ -63,10 +65,16 @@ beforeEach(() => {
 });
 
 const provider = (name: RegExp) => screen.queryByRole('button', { name });
+/** The three steps across the top, in order. */
+const steps = () => within(screen.getByRole('list', { name: 'The three steps to pay this' })).getAllByRole('button');
+const step = (n: 1 | 2 | 3) => steps()[n - 1];
+const current = () => steps().filter((button) => button.getAttribute('aria-current') === 'step').map((button) => button.textContent);
+const opened = () => steps().filter((button) => button.getAttribute('aria-expanded') === 'true').map((button) => button.textContent);
+const convertAndPay = () => screen.getByRole('button', { name: /Pay 20 USDT with your USDC/ });
+const WHY = "USDT can't be bought by card or bank on Base, so you buy USDC and it is converted as you pay.";
 const row = (name: RegExp) => provider(name)!.closest('li') as HTMLElement;
-/** What the chosen company's row says to do next, or null while it has not been chosen. */
-const nextStep = (name: RegExp) =>
-  within(row(name)).queryByText('When you have paid there:')?.parentElement ?? null;
+/** The steps and whatever is opened beneath them. */
+const stepBody = () => screen.getByRole('list', { name: 'The three steps to pay this' }).parentElement as HTMLElement;
 
 /** What can be pressed or read as a button, top to bottom, without the copy-address icon. */
 const buttons = () =>
@@ -76,11 +84,45 @@ const buttons = () =>
     .map((button) => ({ says: button.textContent, live: !(button as HTMLButtonElement).disabled }));
 
 describe('a USDT request, wallet holding enough USDC', () => {
-  it('offers one thing: swap the USDC and pay, on one button', () => {
+  it('lands on step 2: the USDC is already there, and one button swaps it and pays', () => {
     render(<PaymentActionPanel {...props()} />);
-    expect(buttons()).toEqual([
-      { says: 'Pay 20 USDT with your USDCAbout 19.99 USDC, converted as you pay', live: true },
+    expect(steps().map((button) => button.textContent)).toEqual([
+      '✓Step 1: Buy USDC',
+      '2Step 2: Convert and pay',
+      '3Step 3: Payment protected',
     ]);
+    expect(current()).toEqual(['2Step 2: Convert and pay']);
+    // The current step is opened beneath: the button that pays, and nothing to buy.
+    expect(convertAndPay()).toBeEnabled();
+    expect(convertAndPay()).toHaveTextContent('About 19.99 USDC, converted as you pay');
+    expect(screen.queryByRole('button', { name: /^Continue with/ })).toBeNull();
+  });
+
+  it('pressing a step opens it: step 1 is done, step 3 follows by itself', () => {
+    render(<PaymentActionPanel {...props()} />);
+    expect(opened()).toEqual(['2Step 2: Convert and pay']);
+
+    fireEvent.click(step(1));
+    expect(opened()).toEqual(['✓Step 1: Buy USDC']);
+    expect(screen.getByText('Done: you hold 25.00 USDC, enough to pay this.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Pay 20 USDT/ })).toBeNull();
+
+    fireEvent.click(step(3));
+    expect(screen.getByText('Nothing to do here: once step 2 is done, the payment is held until the release date above.')).toBeInTheDocument();
+
+    // Still on step 2, whatever is open to look at; going back to it brings the button back.
+    expect(current()).toEqual(['2Step 2: Convert and pay']);
+    fireEvent.click(step(2));
+    expect(convertAndPay()).toBeEnabled();
+  });
+
+  it('pressing step 2 only opens it: paying takes the button', () => {
+    const onPay = jest.fn();
+    render(<PaymentActionPanel {...props({ onPay })} />);
+    fireEvent.click(step(2));
+    expect(onPay).not.toHaveBeenCalled();
+    fireEvent.click(convertAndPay());
+    expect(onPay).toHaveBeenCalledTimes(1);
   });
 
   it('pays on the click', () => {
@@ -161,20 +203,70 @@ describe('a USDT request, wallet holding neither', () => {
   });
   afterEach(() => open.mockRestore());
 
-  it('explains that USDC must be added first, then swapped and paid here, and has no dead pay button', () => {
+  /*
+   * The second step used to be a sentence until the money arrived: the buyer set off having to
+   * trust that the next thing would be revealed. All three are on screen from the start.
+   */
+  it('shows the whole way before the buyer sets off: buy USDC, convert and pay, protected', () => {
     render(<PaymentActionPanel {...short()} />);
-    expect(
-      screen.getByText(
-        "USDT can't be bought by card or bank on Base. Add USDC to your wallet with one of the ways below, then come back to this page: one button will swap it and pay in USDT."
-      )
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /from this wallet$/ })).toBeNull();
-    // 19.985028 plus 1%, up to the cent, is 20.19; the wallet holds 5.
+    expect(screen.getByText(WHY)).toBeInTheDocument();
+    expect(steps().map((button) => button.textContent)).toEqual([
+      '1Step 1: Buy USDC',
+      '2Step 2: Convert and pay',
+      '3Step 3: Payment protected',
+    ]);
+    expect(current()).toEqual(['1Step 1: Buy USDC']);
+    // The current step is opened beneath. 19.985028 plus 1%, up to the cent, is 20.19; the wallet holds 5.
     expect(screen.getByText('About 15.19 USDC by card or exchange, converted to USDT as you pay')).toBeInTheDocument();
-    // Nothing goes straight to the payment: nobody sells USDT, and nothing could convert what they send.
-    // The companies say what they need, in a line each; what is bought and why is said once, above.
+    expect(provider(/Continue with Kraken/)).toBeEnabled();
     expect(row(/Continue with Kraken/)).toHaveTextContent('Card. Needs a Kraken account.');
     expect(row(/Continue with Coinbase/)).toHaveTextContent('Card or bank transfer. Needs a Coinbase account.');
+    // Nothing goes straight to the payment: nobody sells USDT, and nothing could convert what they send.
+    expect(screen.queryByText(/straight to this payment/i)).toBeNull();
+    // Paying is not the open step, so the button that pays is not offered yet.
+    expect(screen.queryByRole('button', { name: /Pay 20 USDT/ })).toBeNull();
+  });
+
+  /*
+   * The whole way can be looked at before any of it is done. Step 2 opens to show the button that
+   * will pay, exactly as it will be, greyed and not pressable, with what it is waiting for.
+   */
+  it('step 2 can be opened and looked at before it can be done: the real button, greyed, with why', () => {
+    const onPay = jest.fn();
+    render(<PaymentActionPanel {...short()} onPay={onPay} />);
+    steps().forEach((button) => expect(button).toBeEnabled());
+    expect(opened()).toEqual(['1Step 1: Buy USDC']);
+
+    fireEvent.click(step(2));
+    expect(opened()).toEqual(['2Step 2: Convert and pay']);
+    expect(convertAndPay()).toBeDisabled();
+    expect(convertAndPay()).toHaveTextContent('Your USDC is converted as you pay');
+    expect(screen.getByRole('status')).toHaveTextContent('Finish step 1 first. This button works once the USDC is in your wallet.');
+    fireEvent.click(convertAndPay());
+    expect(onPay).not.toHaveBeenCalled();
+    // The companies belong to step 1, which is still where the buyer is.
+    expect(provider(/Continue with Kraken/)).toBeNull();
+    expect(current()).toEqual(['1Step 1: Buy USDC']);
+
+    fireEvent.click(step(3));
+    expect(screen.getByText(/once step 2 is done, the payment is held until the release date above/)).toBeInTheDocument();
+
+    fireEvent.click(step(1));
+    expect(provider(/Continue with Kraken/)).toBeEnabled();
+  });
+
+  it('moves the buyer on to step 2, live, when the USDC arrives, whatever they had open', () => {
+    const onPay = jest.fn();
+    const { rerender } = render(<PaymentActionPanel {...short()} onPay={onPay} />);
+    fireEvent.click(step(3));
+
+    rerender(<PaymentActionPanel {...props({ onPay })} />);
+    expect(step(1)).toHaveTextContent('✓');
+    expect(current()).toEqual(['2Step 2: Convert and pay']);
+    expect(opened()).toEqual(['2Step 2: Convert and pay']);
+    expect(screen.queryByText(/Finish step 1 first/)).toBeNull();
+    fireEvent.click(convertAndPay());
+    expect(onPay).toHaveBeenCalledTimes(1);
   });
 
   it('USDT held elsewhere can still be sent straight to the payment', () => {
@@ -190,9 +282,11 @@ describe('a USDT request, wallet holding neither', () => {
     const url = new URL(open.mock.calls[0][0]);
     expect(url.searchParams.get('crypto')).toBe('USDC');
     expect(url.searchParams.get('amount')).toBe('15.19');
-    expect(nextStep(/Continue with Kraken/)!).toHaveTextContent(
-      'When it arrives, come back to this page: one button will swap your USDC and pay in USDT.'
-    );
+    // On to step 2: the button that will convert and pay, greyed, and where the USDC has to land.
+    expect(opened()).toEqual(['2Step 2: Convert and pay']);
+    expect(convertAndPay()).toBeDisabled();
+    expect(stepBody()).toHaveTextContent('Finish step 1 first. This button works once the USDC is in your wallet.');
+    expect((within(stepBody()).getByLabelText('Your wallet address') as HTMLInputElement).value).toBe('0x1234567890abcdef1234567890abcdef12345678');
   });
 
   it("names the exchange's minimum when what is needed is less than it", () => {
@@ -210,25 +304,41 @@ describe('a USDT request, wallet holding neither', () => {
 });
 
 describe('a USDT request, while the conversion is not known or not possible', () => {
-  it('holds one button saying it is checking, and offers no purchase it cannot yet size', () => {
+  it('says it is checking the price, and offers no purchase it cannot yet size', () => {
     render(<PaymentActionPanel {...props({ conversion: conversion({ cost: null, status: 'quoting' }) })} />);
-    expect(buttons()).toEqual([{ says: 'Checking what it costs to convert your USDC…', live: false }]);
-    // What it holds elsewhere can be sent meanwhile: the one answer there is, so no tiles.
+    expect(screen.getByText('Checking what it costs to convert your USDC…')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /^Continue with/ })).toBeNull();
+    fireEvent.click(step(2));
+    expect(convertAndPay()).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent('Checking what it costs to convert your USDC…');
+    // One row of steps on screen at a time: what it holds elsewhere is the other answer, beside this one.
+    expect(screen.getAllByRole('list', { name: 'The three steps to pay this' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: /Crypto I already have/ }));
     expect(screen.getByText('the payment address panel')).toBeInTheDocument();
   });
 
   it('does not sell USDC for a conversion that cannot be made, and says why the wallet cannot pay', () => {
-    render(<PaymentActionPanel {...props({ conversion: conversion({ fromBalance: 0, cost: null, status: 'unavailable' }) })} />);
-    expect(buttons()).toEqual([{ says: 'Pay 20 USDT from this wallet', live: false }]);
+    const onPay = jest.fn();
+    render(<PaymentActionPanel {...props({ onPay, conversion: conversion({ fromBalance: 0, cost: null, status: 'unavailable' }) })} />);
     expect(screen.getByText(/can't be converted to USDT right now/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^Continue with/ })).toBeNull();
+    // Opened, step 2 gives the real reason, not "buy USDC first": buying more would not help.
+    fireEvent.click(step(2));
+    expect(convertAndPay()).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent(/can't be converted to USDT right now/);
+    expect(screen.getAllByRole('list', { name: 'The three steps to pay this' })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: /Crypto I already have/ }));
     expect(screen.getByText('the payment address panel')).toBeInTheDocument();
   });
 
-  it("a seller's preview is not about the seller's own wallet: no pay button, and nothing live to buy", () => {
+  it("a seller's preview shows the three steps with nothing live in them", () => {
     render(<PaymentActionPanel {...props({ conversion: conversion({ fromBalance: 5, status: 'short' }) })} preview />);
-    expect(screen.queryByRole('button', { name: /Pay 20 USDT/ })).toBeNull();
+    expect(screen.getByText(WHY)).toBeInTheDocument();
+    // A seller can open each step to see it; nothing inside one does anything.
     expect(provider(/Continue with Kraken/)).toBeDisabled();
+    fireEvent.click(step(2));
+    expect(convertAndPay()).toBeDisabled();
+    expect(screen.queryByRole('status')).toBeNull();
   });
 });
 

@@ -43,8 +43,10 @@ interface QrPaymentPanelProps {
    * 'send' (the default): for someone sending from a wallet, so the code to scan, the wallet link
    * and what to send. 'check': for someone who has just bought by card and had it sent here, who
    * scans nothing and sends nothing: only the address, to check against, and "I have paid".
+   * 'address': the code and what to send, WITHOUT "I have paid", for a screen that shows sending
+   * and confirming as two steps and has the button in the second.
    */
-  variant?: 'send' | 'check';
+  variant?: 'send' | 'check' | 'address';
 }
 
 /**
@@ -69,7 +71,8 @@ export default function QrPaymentPanel({
   preview = false,
   variant = 'send',
 }: QrPaymentPanelProps) {
-  const sending = variant === 'send';
+  const sending = variant !== 'check';
+  const confirming = variant !== 'address';
   const t = useT();
   /**
    * Hold everything back until the escrow has been read.
@@ -206,6 +209,7 @@ export default function QrPaymentPanel({
           {/* Activation controls. The check runs when the user presses the
               button — there is no live status to report before that, so the
               panel does not claim to be checking. */}
+          {confirming && (
           <div className="space-y-3">
             <Button
               onClick={qr.checkAndActivate}
@@ -234,6 +238,7 @@ export default function QrPaymentPanel({
               >{t('disputeManagementModal.cancel')}</Button>
             )}
           </div>
+          )}
         </div>
       )}
 

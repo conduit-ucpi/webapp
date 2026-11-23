@@ -249,9 +249,13 @@ describe('paying a USDT request with USDC', () => {
     render(<PayPage request={request()} />);
 
     expect(await screen.findByText('About 15.19 USDC by card or exchange, converted to USDT as you pay')).toBeInTheDocument();
-    expect(screen.getByText(/USDT can't be bought by card or bank on .*Add USDC to your wallet/)).toBeInTheDocument();
-    // Paying is not the next step, so there is no greyed-out pay button above the one that is.
-    expect(screen.queryByRole('button', { name: /Pay 20 USDT/ })).toBeNull();
+    expect(screen.getByText(/USDT can't be bought by card or bank on .*so you buy USDC and it is converted as you pay/)).toBeInTheDocument();
+    // Paying is on screen from the start, as step 2. Opened now, its button is there to see, greyed, with why.
+    fireEvent.click(screen.getByRole('button', { name: 'Step 2: Convert and pay' }));
+    expect(screen.getByRole('button', { name: /Pay 20 USDT with your USDC/ })).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent('Finish step 1 first.');
+    expect(mockSwap).not.toHaveBeenCalled();
+    expect(mockTransfer).not.toHaveBeenCalled();
   });
 
   it('does not offer a conversion the pool prices past the cap', async () => {
@@ -259,7 +263,10 @@ describe('paying a USDT request with USDC', () => {
     render(<PayPage request={request()} />);
 
     expect(await screen.findByText(/can't be converted to USDT right now/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /Pay 20 USDT from this wallet/ })).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Step 2: Convert and pay' }));
+    expect(screen.getByRole('button', { name: /Pay 20 USDT with your USDC/ })).toBeDisabled();
+    expect(mockSwap).not.toHaveBeenCalled();
+    expect(mockTransfer).not.toHaveBeenCalled();
   });
 
   it('asks for no quote and offers no conversion when the wallet already holds the USDT', async () => {

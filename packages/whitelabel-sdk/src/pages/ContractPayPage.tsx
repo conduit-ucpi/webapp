@@ -75,7 +75,7 @@ export default function ContractPay() {
   }, []);
 
   // Read once the payer is signed in: a request is only readable to a session.
-  const { contract, isLoadingContract, contractError } = usePayableContract({
+  const { contract, isLoadingContract, contractError, takeEarlyPrepare } = usePayableContract({
     contractId,
     isConnected,
     address,
@@ -157,8 +157,10 @@ export default function ContractPay() {
     (candidate: { symbol: string }) =>
       candidate.symbol.toUpperCase() === (contract?.currencySymbol || 'USDC').toUpperCase()
   );
-  const request = contract ? requestFrom(contract, token?.decimals) : null;
-  if (!request) return loading;
+  // With the prepare that was asked for while the request was read, for the page to pick up.
+  const terms = contract ? requestFrom(contract, token?.decimals) : null;
+  if (!terms) return loading;
+  const request: PayRequest = { ...terms, takeEarlyPrepare };
 
   // Keyed by the request, so a different one in the same tab starts from nothing.
   return screen(<PayPage key={request.id} request={request} />);

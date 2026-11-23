@@ -27,6 +27,7 @@ import { isValidEmail, isValidWalletAddress, isValidDescription, addressesEqual,
 import { getNetworkName } from '@/utils/networkUtils';
 import { MIN_AMOUNT, TEST_AMOUNT, formatUsd, isAllowedAmount, parseAmount } from '@/utils/escrowFees';
 import { callAp2Tool, isAp2ToolError, type Ap2ToolError } from '../lib/ap2Mcp';
+import { askRequestPrepare, type RequestPrepareAnswer } from '../lib/requestPrepare';
 import { attachAnalyticsClientId } from '../lib/analyticsClientId';
 import { verifyQuotedEscrowAddress } from '../lib/escrow/verifyQuotedEscrow';
 import { decodePayResume, encodePayResume, withPayResume } from '../lib/payResume';
@@ -127,6 +128,11 @@ export interface PayRequest {
   };
   /** How to name the seller to the payer: their email, when the request has one. */
   sellerLabel?: string;
+  /**
+   * The prepare already asked for this request while it was being read, handed over once: null
+   * when there is none (never asked, already taken, or it never arrived).
+   */
+  takeEarlyPrepare?: (id: string) => Promise<RequestPrepareAnswer | null> | null;
   /** Shown above the ways of paying: a custom arbiter's notice, say. */
   notice?: ReactNode;
 }
@@ -376,13 +382,12 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
    */
   const prepareRequest = async (id: string): Promise<Prepared | Ap2ToolError> => {
     if (!authenticatedFetch) return { error: 'not_signed_in', message: t('err.notAuthenticated') };
-    const response = await authenticatedFetch(`/api/ap2/request/${encodeURIComponent(id)}/prepare`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ payer }),
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) {
+    // Asked already, while the request itself was being read (see usePayableContract): that
+    // answer is used rather than asking again. Once only, so trying again really asks again;
+    // and one that never arrived (null) is simply asked for now.
+    const early = await request?.takeEarlyPrepare?.(id);
+    const { ok, body } = early ?? (await askRequestPrepare(authenticatedFetch, id));
+    if (!ok) {
       // ap2service says why in `detail`; the proxy's own refusals use `error`.
       return { error: 'request_refused', message: typeof body.detail === 'string' ? body.detail : body.error };
     }
@@ -433,7 +438,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
         : await callAp2Tool<Prepared>('prepare_escrow_payment', {
             ...terms(),
             ...attribution,
-            payer,
+            // No `payer`, for the reason prepareRequest gives: nothing here signs.
             ...(externalId ? { external_id: externalId } : {}),
           }, { fetcher: authenticatedFetch });
       if (isAp2ToolError(result)) {

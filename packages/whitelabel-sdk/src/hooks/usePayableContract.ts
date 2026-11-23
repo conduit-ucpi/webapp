@@ -1,5 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { PendingContract } from '@/types';
+import { askRequestPrepare, type RequestPrepareAnswer } from '../lib/requestPrepare';
 
 interface UsePayableContractParams {
   /** From router.query — may be string | string[] | undefined. */
@@ -13,6 +14,11 @@ interface UsePayableContractResult {
   contract: PendingContract | null;
   isLoadingContract: boolean;
   contractError: string | null;
+  /**
+   * The prepare asked for alongside the read, handed over once (null after that, or when none
+   * was asked for this id). Resolves to null if it never arrived, so the page asks for itself.
+   */
+  takeEarlyPrepare: (id: string) => Promise<RequestPrepareAnswer | null> | null;
 }
 
 /**
@@ -40,6 +46,13 @@ export function usePayableContract(params: UsePayableContractParams): UsePayable
   const authenticatedFetchRef = useRef(authenticatedFetch);
   authenticatedFetchRef.current = authenticatedFetch;
   const fetchedContractIdRef = useRef<string | null>(null);
+  const earlyPrepareRef = useRef<{ id: string; answer: Promise<RequestPrepareAnswer | null> } | null>(null);
+  const takeEarlyPrepare = useCallback((id: string) => {
+    const early = earlyPrepareRef.current;
+    if (!early || early.id !== id) return null;
+    earlyPrepareRef.current = null;
+    return early.answer;
+  }, []);
 
   useEffect(() => {
     const fetchContract = async () => {
@@ -68,6 +81,21 @@ export function usePayableContract(params: UsePayableContractParams): UsePayable
         return;
       }
       fetchedContractIdRef.current = contractId;
+
+      /*
+       * ⚠️ PREPARE IS ASKED NOW, NOT AFTER THE READ. The page cannot be paid until prepare has
+       *    answered, and prepare needs nothing the read returns: only the id and the session.
+       *    Asked after it, every payment waited for the read (up to half a second on
+       *    production, 2026-11-23) and a render before the slowest call had even started.
+       *    It does what the page would do a moment later anyway. A refusal (your own request,
+       *    expired, already paid) costs nothing: the page says so from the read, as before.
+       *    Never rejects: a failure here must not become an unhandled error about a call
+       *    nobody was waiting for yet.
+       */
+      earlyPrepareRef.current = {
+        id: contractId,
+        answer: askRequestPrepare(doFetch, contractId).catch(() => null),
+      };
 
       setIsLoadingContract(true);
       setContractError(null);
@@ -131,5 +159,5 @@ export function usePayableContract(params: UsePayableContractParams): UsePayable
     !!authenticatedFetch &&
     fetchedContractIdRef.current !== contractId;
 
-  return { contract, isLoadingContract: isLoadingContract || aboutToFetch, contractError };
+  return { contract, isLoadingContract: isLoadingContract || aboutToFetch, contractError, takeEarlyPrepare };
 }

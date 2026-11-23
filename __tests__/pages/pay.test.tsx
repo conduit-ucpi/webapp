@@ -203,7 +203,7 @@ describe('/pay', () => {
     expect(screen.queryByText(/you receive/i)).toBeNull();
   });
 
-  it('asks prepare for the terms, in base units, with the signed-in wallet as payer and disputer', async () => {
+  it('asks prepare for the terms, in base units, with the signed-in wallet as the disputer', async () => {
     mockCall.mockResolvedValueOnce(prepared());
     render(<PayPage />);
     fill();
@@ -215,10 +215,11 @@ describe('/pay', () => {
       seller: 'seller@example.com',
       amount: 10_000_000,
       nominal_buyer: PAYER,
-      payer: PAYER,
       token_symbol: 'USDC',
       description: 'Logo design',
     });
+    // No payer named: that asks for an authorization to sign, a chain read this page never uses.
+    expect(args).not.toHaveProperty('payer');
     expect(args.expiry_timestamp).toBeGreaterThan(Date.now() / 1000);
     // The quote is ap2service's, not the page's.
     expect(screen.getByText('9.70 USDC')).toBeInTheDocument();
@@ -769,7 +770,6 @@ describe('/pay', () => {
         description: 'Logo design',
         external_id: 'mcp-123',
         nominal_buyer: PAYER,
-        payer: PAYER,
       });
     });
 
@@ -835,7 +835,7 @@ describe('/pay from a request link', () => {
     });
   });
 
-  it('quotes the escrow the request named, with the signed-in wallet only as the payer', async () => {
+  it('quotes the escrow the request named, whoever is signed in to pay it', async () => {
     mockRouter.query = { resume: FROM_PYTHON };
     mockCall.mockResolvedValue(prepared());
     render(<PayPage />);
@@ -845,7 +845,6 @@ describe('/pay from a request link', () => {
       seller: 'merchant@example.com',
       amount: 12_500_000,
       nominal_buyer: NAMED_BUYER,
-      payer: PAYER,
       external_id: 'mcp-1f04',
     });
     expect(screen.getByText('Who can dispute')).toBeInTheDocument();
@@ -1063,6 +1062,33 @@ describe('/pay for a payment request (/contract-pay)', () => {
     });
   });
 
+  it('uses the prepare already asked for while the request was read, rather than asking again', async () => {
+    const takeEarlyPrepare = jest.fn().mockReturnValueOnce(
+      Promise.resolve({ ok: true, body: prepared({}, { external_id: '507f1f77bcf86cd799439011' }) })
+    );
+    render(<PayPage request={{ ...request(), takeEarlyPrepare }} />);
+
+    await screen.findByText('Confirm payment');
+    expect(takeEarlyPrepare).toHaveBeenCalledWith('507f1f77bcf86cd799439011');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('asks for itself when the early prepare never arrived', async () => {
+    answers(200, prepared({}, { external_id: '507f1f77bcf86cd799439011' }));
+    render(<PayPage request={{ ...request(), takeEarlyPrepare: () => Promise.resolve(null) }} />);
+
+    await screen.findByText('Confirm payment');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/ap2/request/507f1f77bcf86cd799439011/prepare');
+  });
+
+  it('says why when the early prepare was refused', async () => {
+    const refused = Promise.resolve({ ok: false, body: { detail: 'This request has already been paid.' } });
+    render(<PayPage request={{ ...request(), takeEarlyPrepare: () => refused }} />);
+
+    expect(await screen.findByText('This request has already been paid.')).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
   it('prepares the stored request as the signed-in buyer, not through the MCP tool', async () => {
     answers(200, prepared({}, { external_id: '507f1f77bcf86cd799439011' }));
     render(<PayPage request={request()} />);
@@ -1070,7 +1096,8 @@ describe('/pay for a payment request (/contract-pay)', () => {
     await screen.findByText('Confirm payment');
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toBe('/api/ap2/request/507f1f77bcf86cd799439011/prepare');
-    expect(JSON.parse(init.body)).toEqual({ payer: PAYER });
+    // Nothing but the id in the path: no payer, so no authorization is built for nobody to sign.
+    expect(JSON.parse(init.body)).toEqual({});
     expect(mockCall).not.toHaveBeenCalled();
     // The seller by name, and no way to edit what they asked for.
     expect(screen.getByText('seller@example.com')).toBeInTheDocument();

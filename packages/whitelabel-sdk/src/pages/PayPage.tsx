@@ -174,7 +174,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
   const locked = checkout?.terms ?? request?.terms;
   const [tokenSymbol, setTokenSymbol] = useState<string | undefined>(locked?.tokenSymbol);
   const { selectedToken, selectedTokenSymbol, availableTokens } = useTokenSelection(config, tokenSymbol);
-  const { tokenBalance, isLoadingBalance, refetch: refetchBalance } = useTokenBalance({
+  const { tokenBalance, isLoadingBalance, hasRead: balanceRead, refetch: refetchBalance } = useTokenBalance({
     enabled: !!config?.rpcUrl,
     address,
     tokenAddress: selectedToken?.address,
@@ -294,13 +294,19 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
    *    converting is read, priced or shown. It used to be offered both ways round, and on every
    *    USDC payment a button reading "Checking what it costs to convert your USDT…" appeared
    *    above the ways of paying for a tenth of a second and went away again (seen 2026-11-23).
+   *
+   * ⚠️ WAITS FOR THE FIRST BALANCE, NOT FOR EVERY RE-READ. Gated on "not loading", it was withdrawn
+   *    each time the buyer came back to the tab (which re-reads the balances): the USDC steps
+   *    went, the plain USDT ones came, and it was all priced and drawn again a moment later,
+   *    which looked like the page refreshing itself (seen 2026-11-23). A re-read keeps the last
+   *    balance until the new one is in, so there is nothing to wait for.
    */
   const conversionOffered =
     !canBuyToken(selectedTokenSymbol) &&
-    !!venue && !!otherToken && stage === 'review' && transferOffered && !ownRequest && !isLoadingBalance && shortfallUnits > ZERO;
+    !!venue && !!otherToken && stage === 'review' && transferOffered && !ownRequest && balanceRead && shortfallUnits > ZERO;
   const {
     tokenBalance: otherBalance,
-    isLoadingBalance: isLoadingOtherBalance,
+    hasRead: otherBalanceRead,
     refetch: refetchOtherBalance,
   } = useTokenBalance({
     enabled: conversionOffered && !!config?.rpcUrl,
@@ -320,7 +326,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     const quoted = swapQuote.amountIn;
     let status: PaymentConversion['status'] = 'quoting';
     if (swapQuote.state === 'failed') status = 'unavailable';
-    else if (quoted !== null && !isLoadingOtherBalance) {
+    else if (quoted !== null && otherBalanceRead) {
       if (!withinPremium(quoted, shortfallUnits, otherToken.decimals, selectedToken?.decimals ?? 6)) status = 'unavailable';
       else status = unitsOf(otherBalance, otherToken.decimals) >= quoted ? 'ready' : 'short';
     }

@@ -280,6 +280,35 @@ describe('paying a USDT request with USDC', () => {
     expect(mockSwap).not.toHaveBeenCalled();
   });
 
+  // Seen 2026-11-23: every now and then the page "flickered and refreshed". Coming back to the
+  // tab re-reads the balances, and for as long as that took the conversion was withdrawn: the
+  // USDC steps went, the plain USDT ones came, and then it was all priced and drawn again.
+  it('keeps the conversion on screen while the balances are re-read', async () => {
+    const standing = 'About 15.19 USDC by card or exchange, converted to USDT as you pay';
+    mockHeld.usdc = '5';
+    render(<PayPage request={request()} />);
+    await screen.findAllByText(standing, { exact: false });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    const before = document.body.textContent;
+
+    const seen: string[] = [];
+    const observer = new MutationObserver(() => seen.push(document.body.textContent ?? ''));
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    // More than five seconds since the last look, which is how often coming back re-reads.
+    const now = Date.now();
+    const clock = jest.spyOn(Date, 'now').mockReturnValue(now + 60_000);
+    fireEvent(window, new Event('focus'));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    clock.mockRestore();
+    observer.disconnect();
+
+    expect(seen.filter((text) => !text.includes(standing))).toEqual([]);
+    expect(seen.some((text) => /Checking what it costs to convert/.test(text))).toBe(false);
+    expect(document.body.textContent).toBe(before);
+    // The amount it is short of has not changed, so it is not priced again.
+    expect(mockQuote).toHaveBeenCalledTimes(1);
+  });
+
   it('offers no conversion on a network with nowhere to convert', async () => {
     (useConfig as jest.Mock).mockReturnValue({
       config: {

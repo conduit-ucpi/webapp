@@ -16,6 +16,12 @@ interface UseTokenBalanceResult {
   tokenBalance: string;
   /** True from the first read until one succeeds or the retries run out. */
   isLoadingBalance: boolean;
+  /**
+   * True once a read for these inputs has finished, and through every re-read after it: the
+   * balance is then the last one read, not the '0' it starts as. What to gate on when something
+   * should wait for the first answer but not come and go each time the balance is looked at again.
+   */
+  hasRead: boolean;
   /** Set when every retry failed: the balance shown is the last known, not a fresh read. */
   balanceError: boolean;
   /** Re-read the balance on demand. */
@@ -43,6 +49,7 @@ export function useTokenBalance(params: UseTokenBalanceParams): UseTokenBalanceR
   const { enabled, address, tokenAddress, getTokenBalance } = params;
   const [tokenBalance, setTokenBalance] = useState<string>('0');
   const [isLoadingBalance, setIsLoadingBalance] = useState(false);
+  const [hasRead, setHasRead] = useState(false);
   const [balanceError, setBalanceError] = useState(false);
 
   // Keep the latest getTokenBalance without making it an effect dependency.
@@ -71,6 +78,7 @@ export function useTokenBalance(params: UseTokenBalanceParams): UseTokenBalanceR
         if (mine !== generation.current) return;
         setTokenBalance(formattedBalance);
         setIsLoadingBalance(false);
+        setHasRead(true);
         return;
       } catch (error) {
         if (mine !== generation.current) return;
@@ -79,6 +87,7 @@ export function useTokenBalance(params: UseTokenBalanceParams): UseTokenBalanceR
           console.error('useTokenBalance: failed to fetch balance, giving up after retries:', error);
           setBalanceError(true);
           setIsLoadingBalance(false);
+          setHasRead(true);
           return;
         }
         console.warn(`useTokenBalance: balance read failed, retrying in ${delay}ms:`, error);
@@ -89,10 +98,13 @@ export function useTokenBalance(params: UseTokenBalanceParams): UseTokenBalanceR
   }, [enabled, address, tokenAddress]);
 
   useEffect(() => {
+    // New inputs: whatever was read was about another wallet or token. A re-read (refetch) of
+    // the same ones does not come through here, and leaves it standing.
+    setHasRead(false);
     fetchBalance();
     // Unmount or new inputs: abandon any retry chain still waiting.
     return () => { generation.current++; };
   }, [fetchBalance]);
 
-  return { tokenBalance, isLoadingBalance, balanceError, refetch: fetchBalance };
+  return { tokenBalance, isLoadingBalance, hasRead, balanceError, refetch: fetchBalance };
 }

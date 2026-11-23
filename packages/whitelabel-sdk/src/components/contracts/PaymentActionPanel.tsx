@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import SteadyHeight from '@/components/ui/SteadyHeight';
 import ExchangeDirectory from '@/components/funding/ExchangeDirectory';
 import WalletAddressBox from '@/components/funding/WalletAddressBox';
 import { openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
@@ -1265,7 +1266,7 @@ export default function PaymentActionPanel({
 
       {(showPayButton || (isShort && !buyable && !viaConversion) || (converting && !isSameAddress && conversion.status === 'unavailable')) && (
       <div className={`${showWays ? '' : 'mt-5 '}space-y-3`}>
-        {showPayButton && flow && flowBlock}
+        {showPayButton && flow && <SteadyHeight>{flowBlock}</SteadyHeight>}
         {showPayButton && !flow && (
           <Button
             type="button"
@@ -1335,17 +1336,23 @@ export default function PaymentActionPanel({
             </div>
           )}
 
-          {shownChoice === 'card' && (
-            <section aria-label={t('paymentActionPanel.choiceCard')} className="space-y-3">
-              {flow ? flowBlock : buyFlowBlock}
-            </section>
-          )}
+          {/* ⚠️ THE PAGE DOES NOT GET SHORTER AS A STEP OR AN ANSWER IS PRESSED. The steps differ
+              hugely in height (a list of companies, then one line), and each press that opened a
+              shorter one pulled the page up under the buyer's finger (seen 2026-11-23). The space
+              the tallest took is kept, so the row of steps stays where it was pressed. */}
+          <SteadyHeight>
+            {shownChoice === 'card' && (
+              <section aria-label={t('paymentActionPanel.choiceCard')} className="space-y-3">
+                {flow ? flowBlock : buyFlowBlock}
+              </section>
+            )}
 
-          {shownChoice === 'crypto' && (
-            <section aria-label={t('paymentActionPanel.choiceCrypto')} className="space-y-3">
-              {sendFlowBlock}
-            </section>
-          )}
+            {shownChoice === 'crypto' && (
+              <section aria-label={t('paymentActionPanel.choiceCrypto')} className="space-y-3">
+                {sendFlowBlock}
+              </section>
+            )}
+          </SteadyHeight>
 
           {/* The wallet, said once and quietly: it is where a top-up lands and what Pay spends. */}
           {!preview && (

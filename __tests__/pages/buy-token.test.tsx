@@ -141,6 +141,24 @@ describe('BuyToken page', () => {
       );
     });
 
+    // Privy's "submitted": the provider had not confirmed it. Not funded, and the buyer is told
+    // not to buy again (on 24 Nov 2026 a buyer told nothing started a second $5,000 purchase).
+    it('says an unconfirmed purchase is processing, and does not log it as completed', async () => {
+      const fundWallet = jest.fn().mockResolvedValue({ status: 'processing', detail: 'submitted' });
+      signedIn({ fundWallet });
+      render(<BuyToken />);
+      expect(screen.queryByText(/being processed/)).toBeNull();
+
+      fireEvent.change(screen.getByLabelText(/How much USDC/), { target: { value: '50' } });
+      fireEvent.click(screen.getByRole('button', { name: /Add funds with a card/ }));
+
+      await waitFor(() =>
+        expect(mockReportFundingEvent).toHaveBeenCalledWith('privy-processing', { wallet: WALLET, amount: '50.00', detail: 'submitted' })
+      );
+      expect(mockReportFundingEvent).not.toHaveBeenCalledWith('privy-completed', expect.anything());
+      expect(await screen.findByText(/Your card purchase is being processed\. Don't buy again/)).toBeInTheDocument();
+    });
+
     it('shows why it could not open', async () => {
       signedIn({ fundWallet: jest.fn().mockRejectedValue(new Error('No providers for this purchase')) });
       render(<BuyToken />);

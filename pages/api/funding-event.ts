@@ -28,6 +28,7 @@ export const config = {
 const EVENTS = new Set([
   'privy-started',
   'privy-completed',
+  'privy-processing',
   'privy-cancelled',
   'privy-failed',
   'transfer-opened',

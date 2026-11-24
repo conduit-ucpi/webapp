@@ -259,6 +259,11 @@ export default function FundingOptions({
           )}
         </button>
       )}
+      {showProviderFunding && funding.card.processing && (
+        <p role="status" className="text-sm rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-100 px-3 py-2">
+          {t('addFunds.cardProcessing', { token: tokenSymbol })}
+        </p>
+      )}
 
       {showCoinbase && (
         <button type="button" onClick={handleOnramp} disabled={lookOnly || !hasAmount || onrampLoading || !!coinbaseUnavailable || !!cannotBuy} className={choiceBox}>

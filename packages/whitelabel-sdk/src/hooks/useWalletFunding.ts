@@ -60,6 +60,8 @@ export function useWalletFunding({
   const canUseCard = typeof canFundWallet === 'function' && canFundWallet();
   const [error, setError] = useState<string | null>(null);
   const [cardBusy, setCardBusy] = useState(false);
+  /** The last card purchase came back unconfirmed: it may still deliver, so say not to buy again. */
+  const [cardProcessing, setCardProcessing] = useState(false);
   const [coinbaseBusy, setCoinbaseBusy] = useState(false);
 
   // The desktop popup posts back here when Coinbase is done. The holder re-reads the balance -
@@ -103,9 +105,17 @@ export function useWalletFunding({
         asset: tokenSymbol === 'USDC' || !tokenAddress ? 'USDC' : { erc20: tokenAddress, symbol: tokenSymbol },
         chainId: chainId ?? 0,
       });
-      const completed = result?.status === 'completed';
-      void reportFundingEvent(completed ? 'privy-completed' : 'privy-cancelled', { ...logged, detail: result?.detail });
-      if (completed) onFunded?.();
+      const status = result?.status;
+      void reportFundingEvent(
+        status === 'completed' ? 'privy-completed' : status === 'processing' ? 'privy-processing' : 'privy-cancelled',
+        { ...logged, detail: result?.detail }
+      );
+      // Processing is not funded: the balance is re-read when the buyer comes back to the page.
+      if (status === 'processing') setCardProcessing(true);
+      if (status === 'completed') {
+        setCardProcessing(false);
+        onFunded?.();
+      }
     } catch (e) {
       const message = e instanceof Error ? e.message : t('addFunds.couldNotOpenFunding');
       void reportFundingEvent('privy-failed', { ...logged, detail: message });
@@ -168,7 +178,7 @@ export function useWalletFunding({
     asked,
     error,
     copy,
-    card: { available: canUseCard, busy: cardBusy, start: startCard },
+    card: { available: canUseCard, busy: cardBusy, processing: cardProcessing, start: startCard },
     coinbase: { busy: coinbaseBusy, start: startCoinbase },
     kraken: { delivers: krakenDelivers(tokenSymbol, chainId), start: startKraken },
     link: { delivers: linkDelivers(tokenSymbol, chainId), start: startLink },

@@ -764,6 +764,8 @@ export default function PaymentActionPanel({
     </ol>
   );
   const stepHint = 'text-sm text-secondary-700 dark:text-secondary-200';
+  const cardProcessingNote =
+    'text-sm rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-100 px-3 py-2';
 
   /** The companies to buy from, and under them the quiet links to more. */
   const cardBody = (
@@ -1046,6 +1048,9 @@ export default function PaymentActionPanel({
             </>
           ) : (
             <>
+              {started.id === 'card' && walletFunding.card.processing && (
+                <p role="status" className={cardProcessingNote}>{t('addFunds.cardProcessing', { token: walletToken })}</p>
+              )}
               <p className={stepHint}>{thenPay}</p>
               {greyedPayFromWallet}
               {walletDestination}

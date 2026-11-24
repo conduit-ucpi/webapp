@@ -38,10 +38,18 @@ export function depositFundsOptions(address: string, request: FundWalletRequest,
 /** How Privy says the buyer closed its window. It rejects, where the old hook resolved. */
 const USER_EXIT = /cancel|exited/i;
 
-/** Closing the window is a choice, not a failure. Anything else is still thrown, to be shown. */
+/**
+ * Closing the window is a choice, not a failure. Anything else is still thrown, to be shown.
+ *
+ * Privy resolves with "confirmed" when the card provider says the purchase succeeded, and with
+ * "submitted" when the provider was still processing it as the window closed. "submitted" is not
+ * money: on 24 Nov 2026 a $5,000 purchase came back "submitted", nothing arrived, and the buyer,
+ * told nothing, started another 35 seconds later. So it is 'processing', never 'completed'.
+ */
 export async function fundWalletResult(deposit: Promise<unknown>): Promise<FundWalletResult> {
   try {
     const result = (await deposit) as { status?: string } | undefined;
+    if (result?.status === 'submitted') return { status: 'processing', detail: result.status };
     return { status: 'completed', detail: result?.status };
   } catch (error) {
     if (error instanceof Error && USER_EXIT.test(error.message)) {

@@ -37,7 +37,12 @@ export interface FundWalletRequest {
 }
 
 export interface FundWalletResult {
-  status: 'completed' | 'cancelled';
+  /**
+   * 'processing': the purchase went through on the buyer's side but the provider had not confirmed
+   * it when its window closed (Privy's "submitted"). The tokens may arrive later, or not at all;
+   * the buyer must be told not to buy again.
+   */
+  status: 'completed' | 'processing' | 'cancelled';
   transactionHash?: string;
   /** The provider's own word for how it ended, for the log. */
   detail?: string;

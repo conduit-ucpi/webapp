@@ -762,6 +762,8 @@ export const en = {
   'addFunds.couldNotOpenCoinbase': 'Could not open Coinbase',
   'addFunds.opening': 'Opening…',
   'addFunds.addWithCard': 'Add funds with a card',
+  'addFunds.cardProcessing':
+    "Your card purchase is being processed. Don't buy again: it can take a while, and the {token} will show in your wallet when it arrives. If your card was declined, nothing was charged and you can try again.",
   'addFunds.buyWithCard': 'Buy {token} with a card, Apple Pay or Google Pay',
   'addFunds.cardFeeNote': 'Check what you will receive before you pay. The seller takes its fee out of the amount, so raise it there until you receive at least {amount} {token}.',
   'addFunds.addFromCoinbase': 'Add from Coinbase',

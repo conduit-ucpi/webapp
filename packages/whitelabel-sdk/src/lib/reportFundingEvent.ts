@@ -4,6 +4,7 @@ import { visitorCountry } from './visitorCountry';
 export type FundingEvent =
   | 'privy-started'
   | 'privy-completed'
+  | 'privy-processing'
   | 'privy-cancelled'
   | 'privy-failed'
   | 'transfer-opened'

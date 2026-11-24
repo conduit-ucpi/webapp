@@ -860,6 +860,8 @@ export const es: Catalogue = {
   'addFunds.couldNotOpenCoinbase': 'No se pudo abrir Coinbase',
   'addFunds.opening': 'Abriendo…',
   'addFunds.addWithCard': 'Agregar fondos con tarjeta',
+  'addFunds.cardProcessing':
+    'Tu compra con tarjeta se está procesando. No vuelvas a comprar: puede tardar un poco, y los {token} aparecerán en tu billetera cuando lleguen. Si tu tarjeta fue rechazada, no se cobró nada y puedes intentarlo de nuevo.',
   'addFunds.buyWithCard': 'Compra {token} con tarjeta, Apple Pay o Google Pay',
   'addFunds.cardFeeNote': 'Comprueba cuánto vas a recibir antes de pagar. El vendedor descuenta su comisión del importe, así que súbelo allí hasta recibir al menos {amount} {token}.',
   'addFunds.addFromCoinbase': 'Agregar desde Coinbase',

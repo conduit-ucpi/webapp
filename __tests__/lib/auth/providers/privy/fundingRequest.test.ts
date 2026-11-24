@@ -32,8 +32,19 @@ describe('depositFundsOptions', () => {
 });
 
 describe('fundWalletResult', () => {
-  it.each(['submitted', 'confirmed'])('counts a %s purchase as completed', async (status) => {
-    await expect(fundWalletResult(Promise.resolve({ method: 'fiat', status }))).resolves.toEqual({ status: 'completed', detail: status });
+  it('counts a confirmed purchase as completed', async () => {
+    await expect(fundWalletResult(Promise.resolve({ method: 'fiat', status: 'confirmed' }))).resolves.toEqual({
+      status: 'completed',
+      detail: 'confirmed',
+    });
+  });
+
+  // The provider had not confirmed it when the window closed: not money yet, and maybe never.
+  it('counts a submitted purchase as processing, not completed', async () => {
+    await expect(fundWalletResult(Promise.resolve({ method: 'fiat', status: 'submitted' }))).resolves.toEqual({
+      status: 'processing',
+      detail: 'submitted',
+    });
   });
 
   it.each(['User exited flow', 'User cancelled funding', 'Payment method selection was cancelled', 'USER_EXITED'])(

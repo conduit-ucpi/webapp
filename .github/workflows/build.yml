@@ -84,7 +84,7 @@ jobs:
         if: steps.image.outputs.exists != 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '26'
 
       - name: Install and build
         if: steps.image.outputs.exists != 'true'
@@ -206,7 +206,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/cherry') && steps.static_site.outputs.exists == 'false'
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '26'
 
       - name: Build and store the static site for Cloudflare
         if: startsWith(github.ref, 'refs/tags/cherry') && steps.static_site.outputs.exists == 'false'

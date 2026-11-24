@@ -29,7 +29,7 @@ export default function Layout({ children }: LayoutProps) {
 
   // The homepage and the landing experiments carry their own top bar and footer; the site
   // header on top of that would be two navs. They keep the email prompt like any page.
-  if (router.pathname === '/' || router.pathname.startsWith('/landing-test-')) {
+  if (router.pathname === '/' || router.pathname.startsWith('/landing-test-') || router.pathname.startsWith('/landing_simple')) {
     return (
       <div className="min-h-screen">
         <EmailPromptManager children={children} />

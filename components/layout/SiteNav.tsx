@@ -14,6 +14,7 @@ import { useBarFit } from './useBarFit';
 import { accountLinks, siteNavGroups, SITE_NAV_PRICING, SiteNavLink } from './siteNavLinks';
 import { useApiOrigin } from '@/lib/useApiOrigin';
 import { usePageT } from '@/config/locales';
+import { MAKE_PAYMENT_HREF } from '@/components/landing-test/content';
 
 const SSR_DEFAULT_SITE_NAME = 'Stabledrop.me';
 
@@ -282,6 +283,9 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
                   </Link>
                 </>
               )}
+              <Link href={MAKE_PAYMENT_HREF} className={`${btnPrimary} !px-4 !py-2 !text-sm`}>
+                {t('nav.pay')}
+              </Link>
               <Link href="/create" className={`${btnPrimary} !px-4 !py-2 !text-sm`}>
                 {t('nav.requestPayment')}
               </Link>
@@ -331,6 +335,9 @@ export default function SiteNav({ className = '', forceDark = false }: Props) {
                     {t('nav.dashboard')}
                   </Link>
                 )}
+                <Link href={MAKE_PAYMENT_HREF} className={`${btnPrimary} flex-1 !px-4`} onClick={closeAll}>
+                  {t('nav.pay')}
+                </Link>
                 <Link href="/create" className={`${btnPrimary} flex-1 !px-4`} onClick={closeAll}>
                   {t('nav.requestPayment')}
                 </Link>

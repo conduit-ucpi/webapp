@@ -454,6 +454,7 @@ export const pagesEn = {
   'nav.apiKeys': 'API keys',
   'nav.dashboard': 'Dashboard',
   'nav.requestPayment': 'Request payment',
+  'nav.pay': 'Pay',
   'nav.openMenu': 'Open menu',
   'nav.closeMenu': 'Close menu',
   'nav.versionAria': 'Version',

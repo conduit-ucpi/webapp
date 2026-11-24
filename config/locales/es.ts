@@ -452,6 +452,7 @@ export const pagesEs: PageCatalogue<typeof pagesEn> = {
   'nav.apiKeys': 'Claves de API',
   'nav.dashboard': 'Panel',
   'nav.requestPayment': 'Solicitar pago',
+  'nav.pay': 'Pagar',
   'nav.openMenu': 'Abrir menú',
   'nav.closeMenu': 'Cerrar menú',
   'nav.versionAria': 'Versión',

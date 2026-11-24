@@ -35,7 +35,7 @@ import {
 } from '@/components/landing-test/content';
 
 /*
- * A copy of the homepage, reached from /landing_simple ("send-money"). Edit freely: it no longer tracks pages/index.tsx.
+ * A copy of the previous homepage (now /landing_old), reached from the homepage's "send-money" choice. Edit freely: it tracks nothing.
  *
  * Sticky-left chapters: the right column is only ever titles, the detail lives on the
  * left and follows the pointer, so nothing on the right ever grows or shifts. The nav's

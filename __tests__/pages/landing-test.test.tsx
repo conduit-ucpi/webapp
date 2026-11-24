@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import Home from '../../pages/index';
+import LandingOld from '../../pages/landing_old';
 import {
   AGENT_POINTS,
   BENEFITS,
@@ -18,7 +19,11 @@ import {
 } from '@/components/landing-test/content';
 
 /*
- * The homepage's functional inventory, drawn from the content module it renders. It was
+ * The previous homepage's functional inventory, held on both pages that carry it: /landing_old,
+ * and the homepage with its "Learn more" section open (opened the way a /#pricing link opens
+ * it, by the address's anchor). The homepage's own chooser is tested at the end.
+ *
+ * Originally: the homepage's functional inventory, drawn from the content module it renders. It was
  * chosen from the landing experiments; this holds it to every button they all had to carry.
  */
 
@@ -67,14 +72,20 @@ function hrefs(): string[] {
   return screen.getAllByRole('link').map((a) => a.getAttribute('href') || '');
 }
 
-describe('homepage', () => {
-  const Page = Home;
+describe.each([
+  ['homepage, Learn more open', Home, '#learn-more'],
+  ['landing_old', LandingOld, ''],
+])('%s', (_name, Page, hash) => {
   let openSpy: jest.SpyInstance;
 
   beforeEach(() => {
     openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+    window.location.hash = hash;
   });
-  afterEach(() => openSpy.mockRestore());
+  afterEach(() => {
+    openSpy.mockRestore();
+    window.location.hash = '';
+  });
 
   it('F1: has the Stripe-style top bar with every group, pricing, sign-in and a request CTA', () => {
     render(<Page />);
@@ -222,5 +233,49 @@ describe('homepage', () => {
     for (const h of ['/how-it-works', '/faq', '/plugins', '/plugins#mcp', '/terms-of-service', '/privacy-policy', 'mailto:info@stabledrop.me', SOURCE_URL]) {
       expect(links).toContain(h);
     }
+  });
+});
+
+describe('homepage chooser', () => {
+  afterEach(() => {
+    window.location.hash = '';
+  });
+
+  const CHOICES: [string, string][] = [
+    ['I want to put a checkout on my site', '/landing_simple/checkout'],
+    ['I am a business billing/paying another business', '/landing_simple/business'],
+    ['I want to send money to another person', '/landing_simple/send-money'],
+    ['I want to auto-generate payment requests', '/landing_simple/payment-requests'],
+    ['I want to partner with Stabledrop', '/landing_simple/partner'],
+    ["I want a veto over my AI agent's payments", '/landing_simple/ai-agent'],
+    ["I'm not any of these things, help me anyway", '/landing_simple/help'],
+  ];
+
+  it('has the one heading and links each choice to its page', () => {
+    render(<Home />);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Protected Payments for everyone, for 1%');
+    for (const [label, href] of CHOICES) {
+      expect(screen.getByRole('link', { name: new RegExp(label.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')) })).toHaveAttribute('href', href);
+    }
+  });
+
+  it('carries the previous homepage collapsed, and Learn more opens and closes it', () => {
+    const { container } = render(<Home />);
+    const more = container.querySelector('#learn-more') as HTMLElement;
+    // In the HTML, but hidden until asked for.
+    expect(more).toHaveAttribute('hidden');
+    expect(within(more).getByText('Card payments vs. Stabledrop.')).toBeInTheDocument();
+    const toggle = screen.getByRole('button', { name: 'Learn more about Stabledrop' });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(toggle);
+    expect(more).not.toHaveAttribute('hidden');
+    fireEvent.click(screen.getByRole('button', { name: 'Show less' }));
+    expect(more).toHaveAttribute('hidden');
+  });
+
+  it('opens the section when the address points inside it (the nav\'s /#pricing)', () => {
+    window.location.hash = '#pricing';
+    const { container } = render(<Home />);
+    expect(container.querySelector('#learn-more')).not.toHaveAttribute('hidden');
   });
 });

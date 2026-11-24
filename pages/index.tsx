@@ -1,63 +1,87 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { GetStaticProps } from 'next';
 import SEO from '@/components/SEO';
-import Fade from '@/components/ui/Fade';
 import { financialServiceSchema, articleSchema } from '@/utils/structuredData';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { isr } from '@/utils/isr';
 import SiteNav from '@/components/layout/SiteNav';
-import { useApiDocsUrl } from '@/lib/apiDocs';
-import EscrowEstimator from '@/components/landing-test/EscrowEstimator';
-import EscrowTimeline from '@/components/landing-test/EscrowTimeline';
-import AudienceTabs from '@/components/landing-test/AudienceTabs';
-import EmbedExamples from '@/components/landing-test/EmbedExamples';
-import DemoButtons from '@/components/landing-test/DemoButtons';
+import HomeSections, { HomeHero } from '@/components/landing-test/HomeSections';
 import LandingFooter from '@/components/landing-test/LandingFooter';
-import PricingTabs from '@/components/landing-test/PricingTabs';
 import { lt, themeCss } from '@/components/landing-test/theme';
 import { LANDING_PAGE_LOOK } from '@/config/looks';
-import { Announcement, Chapter, CheckoutMock, HoverChapter, ScrollyHero, card, section } from '@/components/landing-test/scrolly';
-import {
-  AGENT_INTRO,
-  AGENT_POINTS,
-  BENEFITS,
-  BOTH_SIDES_POINTS,
-  BUYER_POINTS,
-  HOW_IT_WORKS,
-  MERCHANT_POINTS,
-  PRICING_TABS,
-  PricingKey,
-  SEO_DESCRIPTION_GETPAID,
-  SEO_KEYWORDS,
-  SEO_TITLE_GETPAID,
-} from '@/components/landing-test/content';
+import { Announcement, card, section } from '@/components/landing-test/scrolly';
+import { SEO_DESCRIPTION_GETPAID, SEO_KEYWORDS } from '@/components/landing-test/content';
 
 /*
- * The homepage, chosen from the landing-page experiments.
+ * The homepage: the site header and footer, one heading, and a "which one are you" choice,
+ * with nothing below the fold. Each choice leads to its own copy of the previous homepage in
+ * pages/landing_simple/, so each can be rewritten for its audience. The previous homepage
+ * itself is kept at /landing_old; /landing_simple renders this page.
  *
- * Sticky-left chapters: the right column is only ever titles, the detail lives on the
- * left and follows the pointer, so nothing on the right ever grows or shifts. The nav's
- * account link is "My dashboard". Pricing is a side-by-side table with a pill switch between
- * a card processor and a traditional escrow service, each line against ours. Layout.tsx renders no site header or footer here;
- * the page carries its own.
+ * The choices are buttons, not a dropdown: all seven are visible at once, each is one
+ * click, and each is a real link (crawlable, opens in a new tab).
+ *
+ * The previous homepage's text (its hero lines and every section under it) is in this page's
+ * HTML too, collapsed behind "Learn more about Stabledrop", so search engines read it. It is
+ * behind a control the visitor can open, never invisible outright: text served to bots but not
+ * to people is "hidden text" under Google's spam rules. A link to an anchor inside it (the
+ * nav's "Pricing" is /#pricing) opens it.
  */
 
 const ID = 'home';
 
+const CHOICES = [
+  { href: '/landing_simple/checkout', label: 'I want to put a checkout on my site' },
+  { href: '/landing_simple/business', label: 'I am a business billing/paying another business' },
+  { href: '/landing_simple/send-money', label: 'I want to send money to another person' },
+  { href: '/landing_simple/payment-requests', label: 'I want to auto-generate payment requests' },
+  { href: '/landing_simple/partner', label: 'I want to partner with Stabledrop' },
+  { href: '/landing_simple/ai-agent', label: "I want a veto over my AI agent's payments" },
+  { href: '/landing_simple/help', label: "I'm not any of these things, help me anyway" },
+];
+
 export default function Home() {
-  const apiDocsUrl = useApiDocsUrl();
   const [siteName, setSiteName] = useState('Stabledrop.me');
   useEffect(() => setSiteName(getSiteNameFromDomain()), []);
-  const [pricing, setPricing] = useState<PricingKey>('card');
-  const pricingTab = PRICING_TABS.find((t) => t.key === pricing)!;
+  const [learnMore, setLearnMore] = useState(false);
+  const moreRef = useRef<HTMLDivElement>(null);
+  // Where to land once the section is open: the section itself, or the anchor a link asked for.
+  const [target, setTarget] = useState<string | null>(null);
+
+  // A link to an anchor inside the collapsed section (/#pricing, #demo) opens it first.
+  useEffect(() => {
+    const openForHash = () => {
+      const id = decodeURIComponent(window.location.hash.slice(1));
+      if (!id) return;
+      const el = document.getElementById(id);
+      if (el && moreRef.current?.contains(el)) {
+        setLearnMore(true);
+        setTarget(id);
+      }
+    };
+    openForHash();
+    window.addEventListener('hashchange', openForHash);
+    return () => window.removeEventListener('hashchange', openForHash);
+  }, []);
+
+  useEffect(() => {
+    if (!learnMore || !target) return;
+    document.getElementById(target)?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+    setTarget(null);
+  }, [learnMore, target]);
 
   return (
     <>
-      <SEO title={SEO_TITLE_GETPAID} description={SEO_DESCRIPTION_GETPAID} keywords={SEO_KEYWORDS} canonical="/" structuredData={[financialServiceSchema, articleSchema]} />
+      <SEO
+        title="Protected Payments for everyone, for 1%"
+        description={SEO_DESCRIPTION_GETPAID}
+        keywords={SEO_KEYWORDS}
+        canonical="/"
+        structuredData={[financialServiceSchema, articleSchema]}
+      />
       <Head>
-        {/* The landing page's look is chosen in config/looks/index.ts. */}
         {LANDING_PAGE_LOOK.fontsHref && (
           // eslint-disable-next-line @next/next/no-page-custom-font -- this page's own face, not a site-wide font
           <link href={LANDING_PAGE_LOOK.fontsHref} rel="stylesheet" />
@@ -65,143 +89,53 @@ export default function Home() {
         <style>{themeCss(ID, LANDING_PAGE_LOOK.landing, LANDING_PAGE_LOOK.landing)}</style>
       </Head>
 
-      <div id={ID} className={`${lt.bg} ${lt.fg}`} style={{ fontFamily: 'var(--lt-font)' }}>
+      <div id={ID} className={`${lt.bg} ${lt.fg} min-h-screen flex flex-col`} style={{ fontFamily: 'var(--lt-font)' }}>
         <Announcement />
-        {/* The site-wide bar, dark here because this page is. */}
         <SiteNav forceDark className="sticky top-0 z-40" />
 
-        <ScrollyHero
-          brand={siteName}
-          headline={<>Pay anyone, <span className={lt.accentText}>stay protected</span></>}
-          sub="Make and receive protected payments in seconds, add a checkout to your site in minutes."
-          primary={{ href: '/create', label: 'Request payment' }}
-          secondary={{ href: '#demo', label: 'See the checkout' }}
-          right={<EscrowTimeline />}
-          showDashboard={false}
-        />
+        <main className={`${section} flex-1 w-full flex flex-col justify-center py-10 lg:py-14`} aria-label="Hero">
+          <h1 className={`text-4xl sm:text-5xl lg:text-[3.9rem] font-medium tracking-tight leading-[1.02] ${lt.fg}`}>
+            Protected Payments for everyone, <span className={lt.accentText}>for 1%</span>
+          </h1>
+          <p className={`mt-5 text-lg ${lt.muted}`}>What brings you here?</p>
 
-        <HoverChapter
-          label="Protection"
-          title="Protected on both sides."
-          ariaLabel="Protection on both sides"
-          fallback="Buyers, sellers, and what happens when it goes wrong. Point at one."
-          items={BOTH_SIDES_POINTS}
-          columns={1}
-          titlesOnly
-        />
+          <ul className="mt-7 grid sm:grid-cols-2 gap-3">
+            {CHOICES.map((c, i) => (
+              <li key={c.href} className={i === CHOICES.length - 1 ? 'sm:col-span-2' : ''}>
+                <Link
+                  href={c.href}
+                  className={`${card} group flex items-center justify-between gap-4 px-5 py-4 h-full hover:border-[color:var(--lt-accent)] transition-colors`}
+                >
+                  <span className={`font-medium ${lt.fg}`}>{c.label}</span>
+                  <span aria-hidden className={`${lt.accentText} transition-transform group-hover:translate-x-1`}>&rarr;</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
 
-        <HoverChapter
-          label="How it works"
-          title="Three steps. Point at one for the detail."
-          ariaLabel="How it works"
-          fallback="Create, fund, payout. Point at a step."
-          items={HOW_IT_WORKS.map((s) => ({ label: s.title, text: s.desc }))}
-          columns={1}
-          titlesOnly
-          actions={<Link href="/how-it-works" className={lt.btnSecondary}>Watch a payment happen</Link>}
-        />
-
-        <Chapter
-          id="demo"
-          label="Live demo"
-          title="Merchants: see what your customers see when using Stabledrop's checkout"
-          ariaLabel="Try the checkout"
-          aside={
-            <>
-              <CheckoutMock />
-              <EscrowEstimator />
-            </>
-          }
-        >
-          <p className={lt.muted}>This opens the actual checkout — the same experience your customers get when they click &ldquo;Pay&rdquo; on your site. Under it, the estimator.</p>
-          <DemoButtons className="mt-6" />
-        </Chapter>
-
-        <HoverChapter
-          label="For merchants"
-          title="Everything a processor takes, you keep."
-          ariaLabel="For merchants"
-          fallback="Six things a card processor charges for. Hover any of them for what happens here instead."
-          items={MERCHANT_POINTS}
-          titlesOnly
-          actions={
-            <>
-              <Link href="/plugins" className={lt.btnPrimary}>View integrations</Link>
-              <Link href="/merchant-savings-calculator" className={lt.btnSecondary}>Calculate savings</Link>
-            </>
-          }
-        />
-
-        <HoverChapter
-          label="For buyers"
-          title="Pay, and actually be protected."
-          ariaLabel="For buyers"
-          fallback="No wallet to set up, no gas to buy, no network to choose. Sign in with Google or email and pay."
-          items={BUYER_POINTS}
-          titlesOnly
-          actions={<Link href="/p2p" className={lt.btnSecondary}>Buying from a stranger?</Link>}
-        />
-
-        <HoverChapter
-          label="For AI agents"
-          title="Let an agent pay for you. Keep the veto."
-          ariaLabel="For AI agents"
-          fallback={AGENT_INTRO}
-          items={AGENT_POINTS}
-          titlesOnly
-          actions={
-            <>
-              <Link href="/plugins#mcp" className={lt.btnPrimary}>Connect your agent</Link>
-              <a href={apiDocsUrl} target="_blank" rel="noopener noreferrer" className={lt.btnSecondary}>API reference</a>
-            </>
-          }
-        />
-
-        <Chapter label="Developers" title="Put it on your site in 10 mins." ariaLabel="Embed in your platform" aside={<EmbedExamples layout="side" />}>
-          <p className={lt.muted}>A plugin for WordPress and Shopify, one script tag for everything else, and one URL for any AI agent.</p>
-          <div className="mt-6">
-            <Link href="/integrate" className={lt.btnSecondary}>Read the SDK guide</Link>
+          <div className="mt-8">
+            <button
+              type="button"
+              aria-expanded={learnMore}
+              aria-controls="learn-more"
+              onClick={() => {
+                setTarget(learnMore ? null : 'learn-more');
+                setLearnMore((o) => !o);
+              }}
+              className={`text-sm underline underline-offset-4 ${lt.muted} hover:text-[color:var(--lt-fg)] transition-colors`}
+            >
+              {learnMore ? 'Show less' : 'Learn more about Stabledrop'}
+            </button>
           </div>
-        </Chapter>
+        </main>
 
-        <Chapter label="Who it's for" title="Personal, business, platform." ariaLabel="Who it is for" aside={<AudienceTabs columns={2} />}>
-          <p className={lt.muted}>Pick who you are and see how people like you use it.</p>
-        </Chapter>
-
-        <Chapter
-          id="pricing"
-          label="Pricing"
-          title={pricingTab.title}
-          ariaLabel="Pricing"
-          aside={<PricingTabs active={pricing} onChange={setPricing} />}
-        >
-          <p className={`text-[7rem] leading-none font-medium tracking-tighter ${lt.accentText}`}>1%</p>
-          <p className={`mt-2 ${lt.muted}`}>{pricingTab.summary}</p>
-        </Chapter>
-
-        <section className={`border-t ${lt.border}`} aria-label="Why switch">
-          <div className={`${section} py-20`}>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {BENEFITS.map((b, i) => (
-                <Fade key={b.title} delay={i * 0.06}>
-                  <div className={`${card} p-5 h-full hover:border-[color:var(--lt-accent)] transition-colors`}>
-                    <h3 className={`text-lg font-semibold leading-snug ${lt.fg}`}>{b.title}</h3>
-                    <p className={`mt-2 text-sm leading-relaxed ${lt.muted}`}>{b.text}</p>
-                  </div>
-                </Fade>
-              ))}
-            </div>
-            <Fade delay={0.2}>
-              <div className={`${card} mt-4 p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6`}>
-                <div>
-                  <h2 className={`text-3xl font-medium tracking-tight ${lt.fg}`}>Add a protected checkout to your store.</h2>
-                  <p className={`mt-2 text-sm max-w-md ${lt.muted}`}>Ready-made plugins for the platforms you already sell on.</p>
-                </div>
-                <Link href="/plugins" className={lt.btnPrimary}>Explore plugins</Link>
-              </div>
-            </Fade>
+        {/* In the HTML whether open or not; see the note at the top. */}
+        <div id="learn-more" ref={moreRef} hidden={!learnMore} className="scroll-mt-20">
+          <div className={`border-t ${lt.border}`}>
+            <HomeHero brand={siteName} headingLevel={2} />
           </div>
-        </section>
+          <HomeSections />
+        </div>
 
         <LandingFooter brand={siteName} />
       </div>

@@ -51,16 +51,19 @@ interface HeroProps {
   right: ReactNode;
   /** The "already using?" line under the buttons. Off when the nav already says "My dashboard". */
   showDashboard?: boolean;
+  /** 1 on a page whose hero this is; 2 where it sits under another page's h1. */
+  headingLevel?: 1 | 2;
 }
 
 /** 09's hero: copy and the two buttons on the left, the product on the right. */
-export function ScrollyHero({ eyebrowText, headline, sub, primary, secondary, brand, right, showDashboard = true }: HeroProps) {
+export function ScrollyHero({ eyebrowText, headline, sub, primary, secondary, brand, right, showDashboard = true, headingLevel = 1 }: HeroProps) {
+  const Heading = headingLevel === 1 ? 'h1' : 'h2';
   return (
     <section className={`${section} pt-16 pb-16 lg:pt-24`} aria-label="Hero">
       <div className="grid lg:grid-cols-12 gap-12 items-center">
         <motion.div className="lg:col-span-6 min-w-0" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
           {eyebrowText && <p className={eyebrow}>{eyebrowText}</p>}
-          <h1 className={`${eyebrowText ? 'mt-5' : ''} text-4xl sm:text-5xl lg:text-[3.9rem] font-medium tracking-tight leading-[1.02] ${lt.fg}`}>{headline}</h1>
+          <Heading className={`${eyebrowText ? 'mt-5' : ''} text-4xl sm:text-5xl lg:text-[3.9rem] font-medium tracking-tight leading-[1.02] ${lt.fg}`}>{headline}</Heading>
           <p className={`mt-6 text-lg leading-relaxed max-w-xl ${lt.muted}`}>{sub}</p>
           {/* Two ways in, equal weight: ask to be paid, or pay someone. */}
           <div className="mt-9 flex flex-wrap gap-3">

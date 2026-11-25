@@ -487,16 +487,20 @@ describe('PaymentActionPanel', () => {
     });
 
     /*
+     * Open under its own heading, not behind a quiet link a buyer never found (2026-11-25).
      * In the same box as the companies above it read as a fifth one, and it held eighty links,
      * most of them exchanges, for a buyer who had just said they hold no crypto.
      */
     describe('for someone none of them serve', () => {
-      const more = () => screen.getByText('None of these work for you? More card services').closest('details') as HTMLDetailsElement;
+      const more = () => screen.getByText('None of these work for you? More card services').closest('section') as HTMLElement;
 
-      it('is a quiet link under the companies, closed, not another company in a box', () => {
+      it('is its own section under the companies, open, not another company in a box', () => {
         render(<PaymentActionPanel {...props()} />);
-        expect(more().open).toBe(false);
+        expect(screen.getByRole('heading', { name: 'None of these work for you? More card services' })).toBeInTheDocument();
+        expect(within(more()).getByRole('link', { name: /MoonPay/ })).toBeVisible();
         expect(more().closest('li')).toBeNull();
+        // Nothing to click open: every way of buying is on screen.
+        expect(document.querySelector('details')).toBeNull();
         expect(screen.queryByText('More places to buy USDC')).toBeNull();
       });
 
@@ -566,11 +570,12 @@ describe('PaymentActionPanel', () => {
       expect(onPayFromExternalWallet).toHaveBeenCalledTimes(1);
     });
 
-    it('offers, more quietly, this wallet to top up and pay from: address, a code to scan, the network', () => {
+    it('offers, open beneath, this wallet to top up and pay from: address, a code to scan, the network', () => {
       render(<PaymentActionPanel {...props()} />);
       choose(CRYPTO);
-      const topUp = screen.getByText('Or add USDC to your wallet here, then pay from it').closest('details') as HTMLDetailsElement;
-      expect(topUp.open).toBe(false);
+      const topUp = screen.getByText('Or add USDC to your wallet here, then pay from it').closest('section') as HTMLElement;
+      expect(screen.getByRole('heading', { name: 'Or add USDC to your wallet here, then pay from it' })).toBeInTheDocument();
+      expect(document.querySelector('details')).toBeNull();
       expect(within(topUp).getByText('Your wallet, on Base')).toBeInTheDocument();
       expect((within(topUp).getByLabelText('Your wallet address') as HTMLInputElement).value).toBe(WALLET);
       expect(topUp.querySelector('svg[height="160"]')).not.toBeNull();
@@ -583,8 +588,8 @@ describe('PaymentActionPanel', () => {
       render(<PaymentActionPanel {...props({ elsewherePanel: undefined })} />);
       choose(CRYPTO);
       expect(screen.queryByText('the contract address panel')).toBeNull();
-      const topUp = screen.getByText('Or add USDC to your wallet here, then pay from it').closest('details') as HTMLDetailsElement;
-      expect(topUp.open).toBe(true);
+      const topUp = screen.getByText('Or add USDC to your wallet here, then pay from it').closest('section') as HTMLElement;
+      expect((within(topUp).getByLabelText('Your wallet address') as HTMLInputElement).value).toBe(WALLET);
       expect(onPayFromExternalWallet).not.toHaveBeenCalled();
     });
 
@@ -606,13 +611,14 @@ describe('PaymentActionPanel', () => {
    * no crypto had to pick the answer saying they had some to find where to get it.
    */
   describe('a. an exchange the buyer already uses', () => {
-    const LABEL = 'Have an exchange account? Buy USDC there instead';
-    const exchanges = () => screen.getByText(LABEL).closest('details') as HTMLDetailsElement;
+    const LABEL = 'Buy USDC on an exchange';
+    const exchanges = () => screen.getByText(LABEL).closest('section') as HTMLElement;
 
-    it('is under "Card or bank", with the other ways of buying, as a quiet link, closed', () => {
+    it('is under "Card or bank", with the other ways of buying, as its own open section', () => {
       render(<PaymentActionPanel {...props()} />);
       expect(tile(CARD)).toHaveAttribute('aria-pressed', 'true');
-      expect(exchanges().open).toBe(false);
+      expect(screen.getByRole('heading', { name: LABEL })).toBeInTheDocument();
+      expect(within(exchanges()).getByRole('link', { name: /^Kraken/ })).toBeVisible();
       expect(exchanges().closest('li')).toBeNull();
     });
 

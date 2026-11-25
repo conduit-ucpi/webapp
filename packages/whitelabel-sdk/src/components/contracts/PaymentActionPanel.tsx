@@ -771,6 +771,9 @@ export default function PaymentActionPanel({
     </ol>
   );
   const stepHint = 'text-sm text-secondary-700 dark:text-secondary-200';
+  /** A further way of buying, under its own heading below the companies. */
+  const sectionBreak = 'pt-4 border-t border-secondary-200 dark:border-secondary-700 space-y-3';
+  const sectionTitle = 'text-base font-semibold text-secondary-900 dark:text-white';
   const cardProcessingNote =
     'text-sm rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-100 px-3 py-2';
 
@@ -827,14 +830,17 @@ export default function PaymentActionPanel({
                 </div>
               )}
 
-              {/* ⚠️ A QUIET LINK, NOT ANOTHER BOX. In the same box as Kraken and Coinbase it read as a
-                  fifth company. It is the way on for someone none of them serve: only the card
-                  services (the exchanges are the next link down, for someone with an exchange
-                  account), and said first, that these deliver to the wallet here. */}
+              {/* ⚠️ ITS OWN SECTION UNDER A HEADING, NOT ANOTHER BOX IN THE LIST. In the same box as
+                  Kraken and Coinbase it read as a fifth company. It is the way on for someone none
+                  of them serve: only the card services (the exchanges are the next section, for
+                  someone with an exchange account), and said first, that these deliver to the
+                  wallet here.
+                  ⚠️ OPEN, NOT A DROPDOWN. Behind a quiet link (2026-11-25) a buyer with no crypto
+                  never found these: every way of buying is on screen, spelled out. */}
               {offerTopUp && (
-                <details>
-                  <summary className={`cursor-pointer ${quietLink}`}>{t('paymentActionPanel.moreCardServices')}</summary>
-                  <div className={`mt-3 ${rowBox} space-y-3`}>
+                <section className={sectionBreak}>
+                  <h4 className={sectionTitle}>{t('paymentActionPanel.moreCardServices')}</h4>
+                  <div className={`${rowBox} space-y-3`}>
                     <p className="text-sm font-medium text-secondary-900 dark:text-white">
                       {viaConversion || previewOther
                         ? t('paymentActionPanel.routeWalletConvert', { from: walletToken, token: tokenSymbol })
@@ -851,16 +857,16 @@ export default function PaymentActionPanel({
                     />
                     {checkBalance}
                   </div>
-                </details>
+                </section>
               )}
               {/* ⚠️ UNDER "CARD OR BANK", WITH THE OTHER WAYS OF BUYING. It was put under "Crypto I
                   already have" for a day (2026-11-23), which sent a buyer with no crypto to the
                   answer that says they have some in order to find where to buy it. An exchange is
                   a place to buy with a card or a bank transfer: it is this answer. */}
               {offerTopUp && (
-                <details>
-                  <summary className={`cursor-pointer ${quietLink}`}>{t('paymentActionPanel.exchangeYouUse', { token: walletToken })}</summary>
-                  <div className={`mt-3 ${rowBox} space-y-3`}>
+                <section className={sectionBreak}>
+                  <h4 className={sectionTitle}>{t('paymentActionPanel.exchangeYouUse', { token: walletToken })}</h4>
+                  <div className={`${rowBox} space-y-3`}>
                     <p className="text-sm font-medium text-secondary-900 dark:text-white">
                       {viaConversion || previewOther
                         ? t('paymentActionPanel.routeWalletConvert', { from: walletToken, token: tokenSymbol })
@@ -878,7 +884,7 @@ export default function PaymentActionPanel({
                     />
                     {checkBalance}
                   </div>
-                </details>
+                </section>
               )}
     </>
   );
@@ -1165,15 +1171,16 @@ export default function PaymentActionPanel({
               )}
               {/* Where either token can be sent, sending the other one is the option above, not this line. */}
               {offerTopUp && !eitherToken && (
-                <details open={!offerElsewhere} className={rowBox}>
-                  <summary className="cursor-pointer font-semibold text-secondary-900 dark:text-white">
+                // Open, not a dropdown: the other way of sending, spelled out like the first.
+                <section className={rowBox}>
+                  <h4 className="font-semibold text-secondary-900 dark:text-white">
                     {t('paymentActionPanel.orAddToWallet', { token: walletToken })}
-                  </summary>
+                  </h4>
                   <div className="mt-3 space-y-3">
                     {walletToSendTo}
                     {!preview && <p className="text-sm text-secondary-600 dark:text-secondary-300">{thenPay}</p>}
                   </div>
-                </details>
+                </section>
               )}
             </>
           )}

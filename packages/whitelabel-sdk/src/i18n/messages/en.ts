@@ -960,7 +960,7 @@ export const en = {
   'paymentActionPanel.walletLine': "Your wallet here:",
   'paymentActionPanel.moreCardServices': "None of these work for you? More card services",
   'paymentActionPanel.moreCardServicesLead': "These send {token} to your wallet here; then you press Pay.",
-  'paymentActionPanel.exchangeYouUse': "Have an exchange account? Buy {token} there instead",
+  'paymentActionPanel.exchangeYouUse': "Buy {token} on an exchange",
   'funding.exchanges.showAll': "Show all countries",
   'paymentActionPanel.flowWhy': "{token} can't be bought by card or bank on {network}, so you buy {from} and it is converted as you pay.",
   'paymentActionPanel.flowBuy': "Buy {from}",

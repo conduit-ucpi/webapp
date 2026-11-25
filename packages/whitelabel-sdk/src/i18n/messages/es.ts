@@ -1058,7 +1058,7 @@ export const es: Catalogue = {
   'paymentActionPanel.walletLine': "Tu billetera aquí:",
   'paymentActionPanel.moreCardServices': "¿Ninguno te sirve? Más servicios de tarjeta",
   'paymentActionPanel.moreCardServicesLead': "Estos envían {token} a tu billetera aquí; luego pulsas Pagar.",
-  'paymentActionPanel.exchangeYouUse': "¿Tienes cuenta en un exchange? Compra {token} allí",
+  'paymentActionPanel.exchangeYouUse': "Compra {token} en un exchange",
   'funding.exchanges.showAll': "Mostrar todos los países",
   'paymentActionPanel.flowWhy': "{token} no se puede comprar con tarjeta o banco en {network}, así que compras {from} y se convierte al pagar.",
   'paymentActionPanel.flowBuy': "Compra {from}",

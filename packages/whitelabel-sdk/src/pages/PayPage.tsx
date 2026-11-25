@@ -1077,6 +1077,8 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
                   resolveEscrowAddress={transferOffered || ownRequest ? async () => prepared?.escrow_address ?? null : undefined}
                   escrowAddress={transferOffered ? prepared?.escrow_address : undefined}
                   onRefreshBalance={refreshBalances}
+                  // A seller's request (/contract-pay): Zipchat's questions for a buyer who has to buy.
+                  buyQuestions={!!request && !checkout}
                   elsewhere={
                     transferOffered || ownRequest
                       ? {

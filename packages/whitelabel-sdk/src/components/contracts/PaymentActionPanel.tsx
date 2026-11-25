@@ -18,6 +18,7 @@ import { useCoinbaseAvailability } from '@/hooks/useCoinbaseAvailability';
 import { useLinkAvailability } from '@/hooks/useLinkAvailability';
 import { useWalletFunding } from '@/hooks/useWalletFunding';
 import { useT } from '../../i18n';
+import ZipchatBuyQuestions from './ZipchatBuyQuestions';
 
 /**
  * Paying with the other stablecoin in the wallet: the shortfall is converted, then paid as usual
@@ -103,6 +104,11 @@ interface PaymentActionPanelProps {
    * where pressing it comes next, in step 2. Falls back to `elsewherePanel`.
    */
   sendPanel?: ReactNode;
+  /**
+   * Show Zipchat's suggested questions under "Card or bank" while the wallet is short: the buyer
+   * has to buy stablecoins to pay, and is the one most likely to have questions. /contract-pay.
+   */
+  buyQuestions?: boolean;
 }
 
 /**
@@ -188,6 +194,7 @@ export default function PaymentActionPanel({
   elsewherePanel,
   paidCheckPanel,
   sendPanel,
+  buyQuestions = false,
 }: PaymentActionPanelProps) {
   const t = useT();
   const { config } = useConfig();
@@ -1349,6 +1356,7 @@ export default function PaymentActionPanel({
             {shownChoice === 'card' && (
               <section aria-label={t('paymentActionPanel.choiceCard')} className="space-y-3">
                 {flow ? flowBlock : buyFlowBlock}
+                {buyQuestions && !preview && <ZipchatBuyQuestions />}
               </section>
             )}
 

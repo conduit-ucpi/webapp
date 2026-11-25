@@ -10,7 +10,18 @@ export type FundingEvent =
   | 'transfer-opened'
   | 'kraken-opened'
   | 'link-opened'
-  | 'other-wallet-opened';
+  | 'other-wallet-opened'
+  | 'choice-opened'
+  | 'coinbase-opened'
+  | 'coinbase-closed'
+  | 'card-service-opened'
+  | 'exchange-opened'
+  | 'balance-checked'
+  | 'paid-pressed'
+  | 'wallet-funded';
+
+/** Where a purchase was to land: straight into the payment, or into the wallet to pay from. */
+export type FundingRoute = 'payment' | 'wallet';
 
 /**
  * Tells the server about a funding step only the browser can see. See pages/api/funding-event.ts.
@@ -20,7 +31,7 @@ export type FundingEvent =
  */
 export async function reportFundingEvent(
   event: FundingEvent,
-  fields: { wallet?: string; amount?: string; detail?: string } = {}
+  fields: { wallet?: string; amount?: string; detail?: string; provider?: string; route?: FundingRoute } = {}
 ): Promise<void> {
   try {
     await apiFetch('/api/funding-event', {

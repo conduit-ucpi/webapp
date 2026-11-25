@@ -29,7 +29,7 @@ describe('POST /api/funding-event', () => {
     const res = post({ event: 'privy-failed', contract: 'req-1', wallet: WALLET, amount: '15.00', locale: 'es-US', country: 'VE', detail: 'No quotes' });
     expect(res._getStatusCode()).toBe(204);
     expect(log).toHaveBeenCalledWith(
-      'FUNDING EVENT privy-failed: contract req-1 wallet 0x6e18***c9f4 amount 15.00 locale es-US country VE region unknown detail "No quotes"'
+      'FUNDING EVENT privy-failed: contract req-1 wallet 0x6e18***c9f4 amount 15.00 locale es-US country VE region unknown provider "unknown" route unknown detail "No quotes"'
     );
   });
 
@@ -39,7 +39,7 @@ describe('POST /api/funding-event', () => {
       { 'cf-ipcountry': 'US', 'cf-region-code': 'TX' }
     );
     expect(log).toHaveBeenCalledWith(
-      'FUNDING EVENT privy-started: contract req-2 wallet 0x6e18***c9f4 amount 5.00 locale en-US country US region TX detail ""'
+      'FUNDING EVENT privy-started: contract req-2 wallet 0x6e18***c9f4 amount 5.00 locale en-US country US region TX provider "unknown" route unknown detail ""'
     );
   });
 
@@ -55,7 +55,7 @@ describe('POST /api/funding-event', () => {
 
   it('logs placeholders for fields of the wrong shape', () => {
     post({ event: 'transfer-opened', contract: 'x\ny', wallet: 'nope', amount: '1; rm', locale: 'es US', country: 'x\ny' });
-    expect(log).toHaveBeenCalledWith('FUNDING EVENT transfer-opened: contract none wallet unknown amount unknown locale unknown country unknown region unknown detail ""');
+    expect(log).toHaveBeenCalledWith('FUNDING EVENT transfer-opened: contract none wallet unknown amount unknown locale unknown country unknown region unknown provider "unknown" route unknown detail ""');
   });
 
   it('keeps a provider message to one short line, without emails', () => {
@@ -63,8 +63,25 @@ describe('POST /api/funding-event', () => {
     const line = String(log.mock.calls[0][0]);
     expect(line.split('\n')).toHaveLength(1);
     expect(line).not.toContain('me@example.com');
-    expect(line.length).toBeLessThan(340);
+    expect(line.length).toBeLessThan(380);
   });
+
+  it('logs which option it was: the provider by its listed name and the route', () => {
+    post({ event: 'card-service-opened', provider: 'Crypto.com', route: 'wallet' });
+    expect(String(log.mock.calls[0][0])).toContain('provider "Crypto.com" route wallet detail');
+  });
+
+  it('logs placeholders for a provider or route of the wrong shape', () => {
+    post({ event: 'exchange-opened', provider: 'x"\nFUNDING EVENT fake', route: 'bank' });
+    expect(String(log.mock.calls[0][0])).toContain('provider "unknown" route unknown detail');
+  });
+
+  it.each(['choice-opened', 'coinbase-opened', 'coinbase-closed', 'card-service-opened', 'exchange-opened', 'balance-checked', 'paid-pressed', 'wallet-funded'])(
+    'accepts %s',
+    (event) => {
+      expect(post({ event })._getStatusCode()).toBe(204);
+    }
+  );
 
   it('refuses anything but POST', () => {
     const { req, res } = createMocks({ method: 'GET' });

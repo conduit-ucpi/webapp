@@ -137,7 +137,7 @@ describe('BuyToken page', () => {
 
       await waitFor(() => expect(fundWallet).toHaveBeenCalledWith({ amount: '120.01', asset: 'USDC', chainId: 8453 }));
       await waitFor(() =>
-        expect(mockReportFundingEvent).toHaveBeenCalledWith('privy-completed', { wallet: WALLET, amount: '120.01', detail: 'confirmed' })
+        expect(mockReportFundingEvent).toHaveBeenCalledWith('privy-completed', { wallet: WALLET, amount: '120.01', provider: 'Privy', route: 'wallet', detail: 'confirmed' })
       );
     });
 
@@ -153,7 +153,7 @@ describe('BuyToken page', () => {
       fireEvent.click(screen.getByRole('button', { name: /Add funds with a card/ }));
 
       await waitFor(() =>
-        expect(mockReportFundingEvent).toHaveBeenCalledWith('privy-processing', { wallet: WALLET, amount: '50.00', detail: 'submitted' })
+        expect(mockReportFundingEvent).toHaveBeenCalledWith('privy-processing', { wallet: WALLET, amount: '50.00', provider: 'Privy', route: 'wallet', detail: 'submitted' })
       );
       expect(mockReportFundingEvent).not.toHaveBeenCalledWith('privy-completed', expect.anything());
       expect(await screen.findByText(/Your card purchase is being processed\. Don't buy again/)).toBeInTheDocument();
@@ -184,6 +184,7 @@ describe('BuyToken page', () => {
           asset: 'USDC',
           presetCryptoAmount: 50,
           returnPath: undefined,
+          onPopupClosed: expect.any(Function),
         })
       );
     });
@@ -222,7 +223,7 @@ describe('BuyToken page', () => {
       expect(url.searchParams.get('wallet_address')).toBe(WALLET);
       expect(url.searchParams.get('amount')).toBe('11');
       expect(url.searchParams.get('network')).toBe('Base');
-      expect(mockReportFundingEvent).toHaveBeenCalledWith('kraken-opened', { wallet: WALLET, amount: '11' });
+      expect(mockReportFundingEvent).toHaveBeenCalledWith('kraken-opened', { wallet: WALLET, amount: '11', provider: 'Kraken', route: 'wallet' });
     });
 
     it('is greyed out on a network it does not deliver to', () => {

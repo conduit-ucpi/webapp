@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -13,6 +13,7 @@ import { detectUserCurrency } from '@/utils/currencyDetection';
 import { convertibleFrom, purchaseAmountFor } from '@/lib/stablecoinSwap';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { reportFundingEvent } from '@/lib/reportFundingEvent';
+import { reportOnrampStatus } from '@/lib/reportOnrampStatus';
 import { useOnrampMinimum } from '@/hooks/useOnrampMinimum';
 import { useCoinbaseAvailability } from '@/hooks/useCoinbaseAvailability';
 import { useLinkAvailability } from '@/hooks/useLinkAvailability';
@@ -115,6 +116,9 @@ interface PaymentActionPanelProps {
  * One way of paying by card or bank. Each company is listed ONCE, and where its purchase is
  * delivered is chosen for the buyer, not by them.
  */
+/** How each company's option is named in the funding log. */
+const LOGGED_NAME: Record<CardRow['id'], string> = { card: 'Privy', coinbase: 'Coinbase', kraken: 'Kraken', link: 'Link' };
+
 interface CardRow {
   id: 'card' | 'coinbase' | 'kraken' | 'link';
   name: string;
@@ -285,6 +289,26 @@ export default function PaymentActionPanel({
   const [holds, setHolds] = useState<'asked' | 'other'>('asked');
   /** A company has been opened: what to do on coming back is now the next thing on screen. */
   const [started, setStarted] = useState<{ id: CardRow['id']; route: CardRow['route'] } | null>(null);
+  /**
+   * The last way of buying the buyer opened, by the name it is logged under: what a rise in the
+   * balance is put down to (wallet-funded). Only what the page saw opened; the buyer may have
+   * bought somewhere else entirely.
+   */
+  const lastOpened = useRef<string | null>(null);
+  /** The balance last read in full, to see it rise. Null until the first read. */
+  const settledBalance = useRef<number | null>(null);
+  useEffect(() => {
+    if (preview || isLoadingBalance) return;
+    const before = settledBalance.current;
+    settledBalance.current = balanceFloat;
+    if (before === null || balanceFloat - before < 0.005) return;
+    void reportFundingEvent('wallet-funded', {
+      wallet: walletAddress,
+      amount: (balanceFloat - before).toFixed(2),
+      provider: lastOpened.current ?? undefined,
+      detail: `balance ${before.toFixed(2)} -> ${balanceFloat.toFixed(2)} ${tokenSymbol}, needs ${amountInTokens.toFixed(2)}`,
+    });
+  }, [preview, isLoadingBalance, balanceFloat, walletAddress, tokenSymbol, amountInTokens]);
   /** Which company a purchase straight to the payment was started with, for cardSent. */
   const cardSent = (id: CardRow['id'] = 'coinbase') => {
     setStarted({ id, route: 'payment' });
@@ -320,6 +344,8 @@ export default function PaymentActionPanel({
       const escrowAddress = await resolveEscrowAddress();
       if (!escrowAddress) throw new Error(t('paymentActionPanel.couldNotPrepare'));
 
+      const cbAmount = Math.ceil(amountInTokens * 100) / 100;
+      lastOpened.current = 'Coinbase';
       await openCoinbaseOnramp({
         destinationAddress: escrowAddress,
         purpose: 'pay-by-card',
@@ -327,14 +353,19 @@ export default function PaymentActionPanel({
         // The full amount owed, not a shortfall — nothing is coming from the
         // payer's wallet. Rounded up to the cent so the panel's >= balance
         // check cannot fail on dust.
-        presetCryptoAmount: Math.ceil(amountInTokens * 100) / 100,
+        presetCryptoAmount: cbAmount,
         returnPath: addFundsReturnPath,
         // Desktop: the popup closing is the signal, not Coinbase's redirect —
         // that needs the domain allowlisted and never fires if the window is
         // closed by hand. Either way the money may have landed, so show the
         // panel that can check the balance and sweep.
-        onPopupClosed: () => cardSent('coinbase'),
+        onPopupClosed: () => {
+          void reportFundingEvent('coinbase-closed', { wallet: escrowAddress, amount: String(cbAmount), provider: 'Coinbase', route: 'payment' });
+          void reportOnrampStatus('closed');
+          cardSent('coinbase');
+        },
       });
+      void reportFundingEvent('coinbase-opened', { wallet: escrowAddress, amount: String(cbAmount), provider: 'Coinbase', route: 'payment' });
     } catch (e) {
       setCbPayError(e instanceof Error ? e.message : t('addFunds.couldNotOpenCoinbase'));
     } finally {
@@ -386,7 +417,8 @@ export default function PaymentActionPanel({
         : null;
       if (!url) throw new Error(t('paymentActionPanel.couldNotPrepare'));
       if (escrowAddress && !knownEscrowAddress) copyForProvider(escrowAddress);
-      void reportFundingEvent('kraken-opened', { wallet: escrowAddress ?? undefined, amount: String(amountInTokens) });
+      lastOpened.current = 'Kraken';
+      void reportFundingEvent('kraken-opened', { wallet: escrowAddress ?? undefined, amount: String(amountInTokens), provider: 'Kraken', route: 'payment' });
       if (tab) {
         tab.opener = null;
         tab.location.href = url;
@@ -417,7 +449,8 @@ export default function PaymentActionPanel({
         ? linkOnrampUrl({ tokenSymbol, chainId, amount: Math.ceil(amountInTokens * 100) / 100 })
         : null;
       if (!escrowAddress || !url) throw new Error(t('paymentActionPanel.couldNotPrepare'));
-      void reportFundingEvent('link-opened', { wallet: escrowAddress, amount: String(amountInTokens) });
+      lastOpened.current = 'Link';
+      void reportFundingEvent('link-opened', { wallet: escrowAddress, amount: String(amountInTokens), provider: 'Link', route: 'payment' });
       if (!knownEscrowAddress) copyForProvider(escrowAddress);
       if (tab) {
         tab.opener = null;
@@ -507,6 +540,7 @@ export default function PaymentActionPanel({
 
   const startWalletRoute = (id: CardRow['id'], start: () => void) => () => {
     setStarted({ id, route: 'wallet' });
+    lastOpened.current = LOGGED_NAME[id];
     // On to step 2 in whichever flow this is: where the purchase lands and what is pressed next.
     setBuyView(null);
     setFlowView(2);
@@ -654,7 +688,9 @@ export default function PaymentActionPanel({
     if (choice === shownChoice) return;
     setChosen(choice);
     // A seller looking is not a buyer choosing: nothing is recorded or started.
-    if (preview || choice !== 'crypto' || !offerElsewhere) return;
+    if (preview) return;
+    void reportFundingEvent('choice-opened', { wallet: walletAddress, provider: choice });
+    if (choice !== 'crypto' || !offerElsewhere) return;
     void reportFundingEvent('other-wallet-opened', { wallet: walletAddress });
     onPayFromExternalWallet();
   };
@@ -714,7 +750,20 @@ export default function PaymentActionPanel({
   );
   const checkBalance =
     !preview && onRefreshBalance ? (
-      <button type="button" onClick={onRefreshBalance} disabled={isLoadingBalance} className={quietLink}>
+      <button
+        type="button"
+        onClick={() => {
+          void reportFundingEvent('balance-checked', {
+            wallet: walletAddress,
+            amount: String(balanceFloat),
+            provider: lastOpened.current ?? undefined,
+          });
+          if (lastOpened.current === 'Coinbase') void reportOnrampStatus('balance-checked');
+          onRefreshBalance();
+        }}
+        disabled={isLoadingBalance}
+        className={quietLink}
+      >
         {isLoadingBalance ? t('paymentActionPanel.loading') : t('paymentActionPanel.checkBalance')}
       </button>
     ) : null;
@@ -854,6 +903,9 @@ export default function PaymentActionPanel({
                       preview={preview}
                       chainId={chainId}
                       amount={fundingShortfall > 0 ? Number(cents(fundingShortfall)) : undefined}
+                      onOpened={(name) => {
+                        lastOpened.current = name;
+                      }}
                     />
                     {checkBalance}
                   </div>
@@ -881,6 +933,9 @@ export default function PaymentActionPanel({
                       preview={preview}
                       chainId={chainId}
                       amount={fundingShortfall > 0 ? Number(cents(fundingShortfall)) : undefined}
+                      onOpened={(name) => {
+                        lastOpened.current = name;
+                      }}
                     />
                     {checkBalance}
                   </div>

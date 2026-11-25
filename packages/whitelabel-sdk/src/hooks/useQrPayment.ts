@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { reportFundingEvent } from '@/lib/reportFundingEvent';
 
 /**
  * QR-payment subsystem shared by /pay (and /contract-create, which renders it) and the
@@ -197,9 +198,13 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     activationRef.current = activation;
   });
 
+  /** How the last activation attempt ended, for the funding log ("I have paid" pressed). */
+  const outcomeRef = useRef<'not-funded' | 'refunded' | 'activated' | 'not-activated' | 'failed'>('not-funded');
+
   /** Resolves true once the backend has activated the escrow. */
   const activate = useCallback(async (): Promise<boolean> => {
     if (!qrContractAddress || (!authenticatedFetch && !activationRef.current.run)) return false;
+    outcomeRef.current = 'failed';
 
     setQrActivationStatus('checking');
 
@@ -223,6 +228,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
       })();
 
       if (!funded) {
+        outcomeRef.current = 'not-funded';
         setQrActivationStatus('waiting');
         return false;
       }
@@ -246,17 +252,20 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
           })();
 
       if (refunded) {
+        outcomeRef.current = 'refunded';
         setQrActivationStatus('refunded');
         if (qrPollingRef.current) clearTimeout(qrPollingRef.current);
         return false;
       }
 
       if (activated) {
+        outcomeRef.current = 'activated';
         setQrActivationStatus('success');
         if (qrPollingRef.current) clearTimeout(qrPollingRef.current);
         onActivated(qrContractAddress);
         return true;
       }
+      outcomeRef.current = 'not-activated';
       setQrActivationStatus('waiting');
       return false;
     } catch (error) {
@@ -274,9 +283,17 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
 
   // A fresh object every press, so pressing again restarts the two minutes.
   const checkAndActivate = useCallback(async () => {
-    if (await activate()) return;
+    const done = await activate();
+    // The buyer saying they have paid, and what the payment's address showed when looked at.
+    void reportFundingEvent('paid-pressed', {
+      wallet: qrContractAddress ?? undefined,
+      amount: String(requiredAmount),
+      route: 'payment',
+      detail: outcomeRef.current,
+    });
+    if (done) return;
     setPollRun({ schedule: AFTER_PRESS_POLL_SCHEDULE, pollFirst: false });
-  }, [activate]);
+  }, [activate, qrContractAddress, requiredAmount]);
 
   // Returns the resolved escrow address as well as storing it, so a caller that
   // needs to act on it immediately — signing a transfer to it from the

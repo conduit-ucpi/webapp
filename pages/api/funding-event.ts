@@ -35,7 +35,24 @@ const EVENTS = new Set([
   'kraken-opened',
   'link-opened',
   'other-wallet-opened',
+  // Which way of paying the buyer opened: provider "card" or "crypto".
+  'choice-opened',
+  // Coinbase's window into the payment or the wallet (route), and the buyer closing it.
+  'coinbase-opened',
+  'coinbase-closed',
+  // A link out to a card service or an exchange in the lists (provider = its name).
+  'card-service-opened',
+  'exchange-opened',
+  // "Check my balance" pressed (detail: what the page then saw), and "I have paid" pressed.
+  'balance-checked',
+  'paid-pressed',
+  // The wallet's balance rose while the page was open: amount is the rise, provider the last option opened.
+  'wallet-funded',
 ]);
+
+/** A provider's name as the page lists it (MoonPay, Crypto.com, Onramp.money) or our own word for one. */
+const PROVIDER = /^[A-Za-z0-9][A-Za-z0-9 .()-]{0,39}$/;
+const ROUTE = /^(payment|wallet)$/;
 
 /** Past this, the page still gets its 204 and no line is written. Per address per hour. */
 export const allow = rateLimiter(120, 60 * 60 * 1000);
@@ -65,7 +82,7 @@ function cleaned(detail: unknown): string {
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!methodGuard(req, res, 'POST')) return;
-  const { event, contract, wallet, amount, locale, country, detail } = req.body ?? {};
+  const { event, contract, wallet, amount, locale, country, detail, provider, route } = req.body ?? {};
   if (typeof event !== 'string' || !EVENTS.has(event)) {
     return res.status(400).json({ error: 'Unknown funding event' });
   }
@@ -80,7 +97,9 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         `amount ${matching(amount, /^\d{1,12}(\.\d{1,18})?$/, 'unknown')} ` +
         `locale ${matching(locale, /^[A-Za-z0-9_-]{1,35}$/, 'unknown')} ` +
         `country ${matching(seenCountry, COUNTRY, 'unknown')} ` +
-        `region ${matching(header(req, 'cf-region-code'), REGION, 'unknown')} detail ${cleaned(detail)}`
+        `region ${matching(header(req, 'cf-region-code'), REGION, 'unknown')} ` +
+        `provider ${JSON.stringify(matching(provider, PROVIDER, 'unknown'))} route ${matching(route, ROUTE, 'unknown')} ` +
+        `detail ${cleaned(detail)}`
     );
   }
   res.status(204).end();

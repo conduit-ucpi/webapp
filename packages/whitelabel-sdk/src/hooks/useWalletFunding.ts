@@ -3,6 +3,7 @@ import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/SimpleAuthProvider';
 import { ONRAMP_RETURN_MESSAGE, openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
 import { reportFundingEvent } from '@/lib/reportFundingEvent';
+import { reportOnrampStatus } from '@/lib/reportOnrampStatus';
 import { krakenDelivers, krakenPurchaseAmount, krakenRampUrl } from '@/lib/krakenRamp';
 import { linkDelivers, linkOnrampUrl } from '@/lib/stripeLinkOnramp';
 import { detectUserCurrency } from '@/utils/currencyDetection';
@@ -97,7 +98,7 @@ export function useWalletFunding({
     // Same rounding as the Coinbase route: ask for tokens, rounded up to the cent, so a
     // >= balance gate cannot fail on dust.
     const amount = asked.toFixed(2);
-    const logged = { wallet: walletAddress, amount };
+    const logged = { wallet: walletAddress, amount, provider: 'Privy', route: 'wallet' as const };
     void reportFundingEvent('privy-started', logged);
     try {
       const result = await fundWallet({
@@ -129,6 +130,7 @@ export function useWalletFunding({
     setError(null);
     setCoinbaseBusy(true);
     try {
+      void reportFundingEvent('coinbase-opened', { wallet: walletAddress, amount: asked.toFixed(2), provider: 'Coinbase', route: 'wallet' });
       await openCoinbaseOnramp({
         destinationAddress: walletAddress,
         purpose,
@@ -140,6 +142,10 @@ export function useWalletFunding({
         // Rounded up to the cent so the gate cannot fail on dust.
         presetCryptoAmount: asked,
         returnPath,
+        onPopupClosed: () => {
+          void reportFundingEvent('coinbase-closed', { wallet: walletAddress, amount: asked.toFixed(2), provider: 'Coinbase', route: 'wallet' });
+          void reportOnrampStatus('closed');
+        },
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : t('addFunds.couldNotOpenCoinbase'));
@@ -153,7 +159,7 @@ export function useWalletFunding({
     const amount = krakenPurchaseAmount(shortfall);
     const url = krakenRampUrl({ walletAddress, tokenSymbol, chainId, amount, fiatCurrency: detectUserCurrency() });
     if (!url) return;
-    void reportFundingEvent('kraken-opened', { wallet: walletAddress, amount: String(amount) });
+    void reportFundingEvent('kraken-opened', { wallet: walletAddress, amount: String(amount), provider: 'Kraken', route: 'wallet' });
     // Kraken drops the address we send and asks for one after sign-in (lib/krakenRamp). Copied
     // before the tab opens: a page that is not in front cannot write to the clipboard.
     void copy(walletAddress);
@@ -167,7 +173,7 @@ export function useWalletFunding({
     const amount = Math.ceil(shortfall * 100) / 100;
     const url = linkOnrampUrl({ tokenSymbol, chainId, amount });
     if (!url) return;
-    void reportFundingEvent('link-opened', { wallet: walletAddress, amount: String(amount) });
+    void reportFundingEvent('link-opened', { wallet: walletAddress, amount: String(amount), provider: 'Link', route: 'wallet' });
     void copy(walletAddress);
     window.open(url, '_blank', 'noopener,noreferrer');
   };

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { EXCHANGE_REGIONS, exchangeLink, exchangesIn, regionOf, type Exchange, type ExchangePurchase, type ExchangeRegionId } from '@/lib/exchangeDirectory';
 import { visitorCountry } from '@/lib/visitorCountry';
+import { reportFundingEvent } from '@/lib/reportFundingEvent';
 import { useT, withNodes, type MessageKey } from '../../i18n';
 import WalletAddressBox from './WalletAddressBox';
 
@@ -31,7 +32,15 @@ function countryName(country: string): string {
   }
 }
 
-function ExchangeLinks({ exchanges, purchase }: { exchanges: Exchange[]; purchase?: ExchangePurchase }) {
+function ExchangeLinks({
+  exchanges,
+  purchase,
+  onOpen,
+}: {
+  exchanges: Exchange[];
+  purchase?: ExchangePurchase;
+  onOpen?: (exchange: Exchange) => void;
+}) {
   return (
     <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
       {exchanges.map((exchange) => (
@@ -40,6 +49,7 @@ function ExchangeLinks({ exchanges, purchase }: { exchanges: Exchange[]; purchas
             href={exchangeLink(exchange, purchase)}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={onOpen ? () => onOpen(exchange) : undefined}
             className="block rounded-lg border border-secondary-200 dark:border-secondary-600 px-4 py-3 transition-colors hover:border-primary-500"
           >
             <span className="font-semibold text-secondary-900 dark:text-white">{exchange.name}</span>
@@ -80,6 +90,8 @@ interface ExchangeDirectoryProps {
    * there to be read, by people and by the bots sent its HTML.
    */
   ownRegionFirst?: boolean;
+  /** Told the name of a company the buyer opens, so the page can put a rise in the balance down to it. */
+  onOpened?: (name: string) => void;
 }
 
 /**
@@ -99,6 +111,7 @@ export default function ExchangeDirectory({
   amount,
   show = 'all',
   ownRegionFirst = false,
+  onOpened,
 }: ExchangeDirectoryProps) {
   const t = useT();
   const [country, setCountry] = useState<string | null>(null);
@@ -122,6 +135,22 @@ export default function ExchangeDirectory({
   const cardServices = new Set(
     EXCHANGE_REGIONS.find((region) => region.id === 'card-services')?.exchanges.map((exchange) => exchange.name),
   );
+  /**
+   * A buyer opening a company to buy from: logged by name (pages/api/funding-event), card services
+   * apart from exchanges. Nothing for a seller's preview or for cashing out, where nothing is bought.
+   */
+  const opened =
+    selling || preview
+      ? undefined
+      : (exchange: Exchange) => {
+          void reportFundingEvent(cardServices.has(exchange.name) ? 'card-service-opened' : 'exchange-opened', {
+            wallet: walletAddress,
+            amount: amount === undefined ? undefined : String(amount),
+            provider: exchange.name,
+            route: 'wallet',
+          });
+          onOpened?.(exchange.name);
+        };
   const onlyCards = show === 'card-services' && !selling;
   const withCards = show !== 'exchanges' && !selling;
   const local = exchangesIn(country).filter((exchange) =>
@@ -149,7 +178,7 @@ export default function ExchangeDirectory({
       <div key={region.id} className="mt-6">
         <h3 className={groupHeading}>{t(REGION_LABEL[region.id])}</h3>
         {note && !onlyCards && <p className={`mt-1 ${small}`}>{t(note)}</p>}
-        <ExchangeLinks exchanges={rest} purchase={purchase} />
+        <ExchangeLinks exchanges={rest} purchase={purchase} onOpen={opened} />
       </div>
     );
   };
@@ -163,7 +192,7 @@ export default function ExchangeDirectory({
         <p className="mt-4 rounded-md border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 p-3 text-xs text-yellow-800 dark:text-yellow-300">
           {t('addFunds.sendOnly', { token: tokenSymbol, network: networkName })}
         </p>
-        <ExchangeLinks exchanges={[...local, ...regions.flatMap(({ rest }) => rest)]} purchase={purchase} />
+        <ExchangeLinks exchanges={[...local, ...regions.flatMap(({ rest }) => rest)]} purchase={purchase} onOpen={opened} />
         <p className={`mt-6 ${small}`}>{t('funding.exchanges.independent')}</p>
       </div>
     );
@@ -195,7 +224,7 @@ export default function ExchangeDirectory({
       {local.length > 0 && country && (
         <div className="mt-6">
           <h3 className={groupHeading}>{t('funding.exchanges.popularIn', { country: countryName(country) })}</h3>
-          <ExchangeLinks exchanges={local} purchase={purchase} />
+          <ExchangeLinks exchanges={local} purchase={purchase} onOpen={opened} />
         </div>
       )}
 

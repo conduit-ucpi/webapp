@@ -5,7 +5,7 @@ import Head from 'next/head';
 export default function ShopifyIndex() {
   const pageTitle = "USDC Payments for Shopify | Cryptocurrency Checkout Integration";
   const pageDescription = "Accept USDC cryptocurrency payments on your Shopify store with built-in smart contract payment protection. Free to install, only 1% fee, 14-day buyer protection, no monthly fees.";
-  const pageUrl = "https://stabledrop.me/shopify";
+  const pageUrl = "https://stabledrop.me/shopify/";
   const imageUrl = "https://stabledrop.me/preview.png";
 
   // Structured data for Software Application

@@ -101,7 +101,7 @@ export default function Plugins() {
   const API_DOCS_URL = useApiDocsUrl();
   const pageTitle = "Protected Payments for WordPress, Shopify & AI Agents (MCP) | Non-Custodial Developer Tools";
   const pageDescription = "Non-custodial protected-payment infrastructure for e-commerce and AI agents. Open-source developer tools for WordPress and Shopify, plus an MCP server so Claude, ChatGPT or any agent can pay with buyer protection. Smart contract-based buyer protection without custody of funds.";
-  const pageUrl = "https://stabledrop.me/plugins";
+  const pageUrl = "https://stabledrop.me/plugins/";
   const imageUrl = "https://stabledrop.me/preview.png";
 
   const structuredData = {

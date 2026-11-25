@@ -22,7 +22,10 @@ export default function SEO({
   structuredData,
 }: SEOProps) {
   const baseUrl = 'https://stabledrop.me';
-  const fullCanonical = canonical ? `${baseUrl}${canonical}` : baseUrl;
+  // With the trailing slash: the static export serves /faq/ and redirects /faq to it, and the
+  // canonical should name the address that answers (as public/sitemap.xml does).
+  const path = (canonical ?? '/').replace(/\/?$/, '/');
+  const fullCanonical = `${baseUrl}${path}`;
 
   return (
     <Head children={

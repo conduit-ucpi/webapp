@@ -54,9 +54,7 @@ export default class CustomDocument extends Document<DocumentProps> {
         <meta property="og:image" content={`${farcasterBaseUrl}/preview.png`} />
         <meta property="og:title" content="Stabledrop" />
         <meta property="og:description" content="Protected payments with a dispute window, settled on-chain" />
-        
-        {/* Farcaster domain verification */}
-        <link rel="canonical" href="/.well-known/farcaster.json" />
+
         {/* MetaMask compatibility script removed - Web3Auth Modal handles MetaMask coexistence automatically */}
       </Head>
       <body>

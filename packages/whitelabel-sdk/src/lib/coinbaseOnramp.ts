@@ -1,4 +1,5 @@
 import { apiFetch } from '@/lib/apiFetch';
+import { fundingContract } from './fundingContract';
 import { visitorCountry } from '@/lib/visitorCountry';
 import { detectUserCurrency } from '@/utils/currencyDetection';
 import {
@@ -105,7 +106,7 @@ async function fetchSessionToken(params: OpenCoinbaseOnrampParams): Promise<Sess
       blockchain: params.network ?? 'base',
       // For the log line only: none of it reaches Coinbase.
       purpose: params.purpose,
-      contractId: new URLSearchParams(window.location.search).get('contractId') ?? undefined,
+      contractId: fundingContract(),
       currency: onrampFiatCurrency(params.fiatCurrency),
       locale: navigator.language,
       country: (await visitorCountry()) ?? undefined,

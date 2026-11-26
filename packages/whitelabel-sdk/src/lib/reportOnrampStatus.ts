@@ -1,4 +1,5 @@
 import { apiFetch } from './apiFetch';
+import { fundingContract } from './fundingContract';
 
 /** What prompted the look: back on the return page, the popup closed, or "check my balance". */
 export type OnrampStatusTrigger = 'returned' | 'closed' | 'balance-checked';
@@ -13,7 +14,7 @@ export type OnrampStatusTrigger = 'returned' | 'closed' | 'balance-checked';
  */
 export async function reportOnrampStatus(trigger: OnrampStatusTrigger, path?: string): Promise<void> {
   try {
-    const contractId = new URL(path ?? window.location.href, window.location.origin).searchParams.get('contractId');
+    const contractId = fundingContract(path);
     const query = new URLSearchParams({ trigger });
     if (contractId) query.set('contract', contractId);
     await apiFetch(`/api/coinbase/onramp-status?${query.toString()}`, {

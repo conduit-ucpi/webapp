@@ -1,4 +1,5 @@
 import type { FundingRoute } from './reportFundingEvent';
+import { fundingContract } from './fundingContract';
 
 /** A way of buying the buyer opened: how it is logged, what it is called on screen, where it delivers. */
 export interface OpenedProvider {
@@ -21,7 +22,7 @@ export interface OpenedProvider {
 const LASTS_MS = 2 * 60 * 60 * 1000;
 
 const key = (wallet: string) =>
-  `sd.purchaseOpened.${wallet.toLowerCase()}.${new URLSearchParams(window.location.search).get('contractId') ?? ''}`;
+  `sd.purchaseOpened.${wallet.toLowerCase()}.${fundingContract() ?? ''}`;
 
 /** `held`: how much was already where the purchase delivers, so a later look can tell what arrived. */
 export function markPurchaseOpened(wallet: string, provider: OpenedProvider, held?: number, now = Date.now()): void {

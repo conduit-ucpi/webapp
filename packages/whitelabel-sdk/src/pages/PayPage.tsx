@@ -29,6 +29,7 @@ import { MIN_AMOUNT, TEST_AMOUNT, formatUsd, isAllowedAmount, parseAmount } from
 import { callAp2Tool, isAp2ToolError, type Ap2ToolError } from '../lib/ap2Mcp';
 import { askRequestPrepare, type RequestPrepareAnswer } from '../lib/requestPrepare';
 import { attachAnalyticsClientId } from '../lib/analyticsClientId';
+import { setFundingContract } from '../lib/fundingContract';
 import { verifyQuotedEscrowAddress } from '../lib/escrow/verifyQuotedEscrow';
 import { decodePayResume, encodePayResume, withPayResume } from '../lib/payResume';
 import { useT } from '../i18n';
@@ -206,6 +207,13 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
   const [linkCopied, setLinkCopied] = useState(false);
   const [busy, setBusy] = useState<'prepare' | 'pay' | null>(null);
   const [prepared, setPrepared] = useState<Prepared | null>(null);
+  // The payment on screen, for every funding line and note (lib/fundingContract): on /pay the
+  // address carries no contract id, so without this they all said "contract none".
+  const onFileAs = prepared?.record_id;
+  useEffect(() => {
+    setFundingContract(onFileAs);
+    return () => setFundingContract(null);
+  }, [onFileAs]);
   const [settled, setSettled] = useState<Settled | null>(null);
   /** The terms `prepared` was quoted for, to tell a real change from pressing Continue again. */
   const preparedFor = useRef<string | null>(null);

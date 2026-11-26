@@ -1,5 +1,6 @@
 import { apiFetch } from './apiFetch';
 import { visitorCountry } from './visitorCountry';
+import { fundingContract } from './fundingContract';
 
 export type FundingEvent =
   | 'privy-started'
@@ -31,8 +32,8 @@ export type FundingRoute = 'payment' | 'wallet';
 /**
  * Tells the server about a funding step only the browser can see. See pages/api/funding-event.ts.
  *
- * Fire and forget, so nothing here may hold up or fail a payment. The contract comes from the page's
- * address, when this is a payment request. The session goes with it: the server names the signed-in
+ * Fire and forget, so nothing here may hold up or fail a payment. The contract is the payment the
+ * page says it is showing (lib/fundingContract), or the one in its address. The session goes with it: the server names the signed-in
  * user in the line from the session, never from anything sent here.
  */
 export async function reportFundingEvent(
@@ -47,7 +48,7 @@ export async function reportFundingEvent(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         event,
-        contract: new URLSearchParams(window.location.search).get('contractId') ?? undefined,
+        contract: fundingContract(),
         locale: navigator.language,
         country: (await visitorCountry()) ?? undefined,
         ...fields,

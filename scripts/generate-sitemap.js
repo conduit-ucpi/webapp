@@ -22,7 +22,7 @@ const PAGES_DIR = path.join(__dirname, '..', 'pages');
  * pages below, which are only reached signed in, from a link, or by a partner's embed.
  */
 const PRIVATE = new Set([
-  '/admin', '/api-keys', '/myAPIAccessCode', '/sd-reporting', '/report-recorder',
+  '/admin', '/admin/email', '/api-keys', '/myAPIAccessCode', '/sd-reporting', '/report-recorder',
   '/dashboard', // robots.txt disallows it
   '/contract-pay', '/contract-create', // need a contract id; contract-create is the embed
   '/disputes', '/offers', '/liquidity',

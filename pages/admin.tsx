@@ -182,6 +182,17 @@ export default function AdminPage() {
           </Button>
         </div>
 
+        {/* Bulk emailer: one email per address through emailservice */}
+        <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6 mb-8 flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Email Users</h2>
+            <p className="text-sm text-secondary-600 dark:text-secondary-300">Send one email to each address in a list, one every 5 seconds.</p>
+          </div>
+          <Button size="sm" onClick={() => router.push('/admin/email')}>
+            Email Users
+          </Button>
+        </div>
+
         {/* Dispute management: the queue, and the selected case */}
         <div className="mb-8">
           <DisputeQueue onSelect={setSelectedDispute} refreshKey={disputeRefreshKey} />

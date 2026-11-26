@@ -26,6 +26,11 @@ describe('Content-Security-Policy', () => {
     expect(headersFile).toContain(`'sha256-${hash}'`);
   });
 
+  it('lets Google Analytics reach its bare host, which *.analytics.google.com does not cover', () => {
+    const connectSrc = headersFile.split('; ').find((d) => d.startsWith('connect-src'))!.split(' ');
+    expect(connectSrc).toContain('https://analytics.google.com');
+  });
+
   it('never allows arbitrary script', () => {
     const scriptSrc = headersFile.split('; ').find((d) => d.startsWith('script-src'))!;
     expect(scriptSrc).not.toMatch(/'unsafe-inline'|'unsafe-eval'|https:( |$)|\*/);

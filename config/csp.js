@@ -111,6 +111,8 @@ const DIRECTIVES = {
     'https://www.googletagmanager.com',
     'https://*.google-analytics.com',
     'https://*.analytics.google.com',
+    // The bare host as well: a wildcard does not cover it, and gtag sends there (500+ reports a week).
+    'https://analytics.google.com',
     'https://stats.g.doubleclick.net',
     // Pixel on /plugins
     'https://*.reddit.com',

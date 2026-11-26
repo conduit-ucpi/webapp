@@ -7,9 +7,9 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Button from '@/components/ui/Button';
 
 /**
- * Admin bulk emailer. The admin pastes a list of addresses, a subject and a plain-text body; this
- * page sends one email per address through /api/admin/bulk-email, one every five seconds, while
- * the tab stays open.
+ * Admin bulk emailer. The admin pastes a list of addresses and picks the standard message or writes
+ * a custom subject and plain-text body; this page sends one email per address through
+ * /api/admin/bulk-email, one every five seconds, while the tab stays open.
  *
  * ⚠️ THE CHECK THAT MATTERS IS ON THE SERVER. Hiding the form from non-admins here is only
  *    manners: /api/admin/bulk-email asks userservice, and emailservice asks again.
@@ -18,6 +18,22 @@ import Button from '@/components/ui/Button';
 const GAP_MS = 5000;
 const EMAIL = /^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>"]+$/;
 
+/**
+ * The standard message: an offer of help to anyone who signed in and may have got stuck. Worded
+ * to be true for every user, buyer or seller, and to read as the opposite of a phishing email:
+ * it asks for a reply, carries no link, and says what we will never ask for.
+ */
+export const STANDARD_SUBJECT = 'Can we help with your Stabledrop payment?';
+export const STANDARD_BODY = `Hi,
+
+You signed in to Stabledrop (stabledrop.me) recently. If you were trying to send or receive a payment and got stuck, for example buying the stablecoin, funding the payment, or confirming delivery, just reply to this email and tell us where it stopped. We'll help you finish it.
+
+We'll never ask for your password, seed phrase or private keys, and we won't send you a link to pay. Any payment is made only on stabledrop.me.
+
+Charlie
+Stabledrop`;
+
+type Mode = 'standard' | 'custom';
 type Status = 'waiting' | 'sending' | 'sent' | 'failed' | 'skipped';
 type Row = { to: string; status: Status; detail?: string };
 
@@ -68,8 +84,10 @@ const label = 'block text-sm font-medium text-secondary-700 dark:text-secondary-
 export default function AdminEmailPage() {
   const { user, isLoading } = useAuth();
   const [addresses, setAddresses] = useState('');
-  const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
+  const [mode, setMode] = useState<Mode>('standard');
+  // The custom text is kept while the standard one is chosen, so switching back loses nothing.
+  const [customSubject, setCustomSubject] = useState('');
+  const [customBody, setCustomBody] = useState('');
   const [rows, setRows] = useState<Row[]>([]);
   const [running, setRunning] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
@@ -114,6 +132,8 @@ export default function AdminEmailPage() {
   }
 
   const { valid, invalid } = parseAddresses(addresses);
+  const subject = mode === 'standard' ? STANDARD_SUBJECT : customSubject;
+  const body = mode === 'standard' ? STANDARD_BODY : customBody;
   const ready = valid.length > 0 && subject.trim() !== '' && body.trim() !== '' && !running;
   const setRow = (i: number, patch: Partial<Row>) => setRows((prev) => prev.map((r, j) => (j === i ? { ...r, ...patch } : r)));
 
@@ -182,14 +202,38 @@ export default function AdminEmailPage() {
               {valid.length} address{valid.length === 1 ? '' : 'es'} to send to{invalid.length > 0 && <span className="text-red-600">; not valid, will be left out: {invalid.join(', ')}</span>}
             </p>
           </div>
-          <div className="mb-4">
-            <label htmlFor="subject" className={label}>Subject</label>
-            <input id="subject" type="text" maxLength={200} className={field} value={subject} onChange={(e) => setSubject(e.target.value)} disabled={running} />
-          </div>
-          <div className="mb-4">
-            <label htmlFor="body" className={label}>Body (plain text; a blank line starts a new paragraph)</label>
-            <textarea id="body" rows={10} className={field} value={body} onChange={(e) => setBody(e.target.value)} disabled={running} />
-          </div>
+          <fieldset className="mb-4">
+            <legend className={label}>Message</legend>
+            <div className="flex flex-wrap gap-6 text-sm">
+              {([
+                ['standard', 'Standard: offer of help with a payment'],
+                ['custom', 'Custom: write your own'],
+              ] as const).map(([value, text]) => (
+                <label key={value} className="inline-flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="mode" value={value} checked={mode === value} onChange={() => setMode(value)} disabled={running} />
+                  {text}
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          {mode === 'standard' ? (
+            <div className="mb-4 rounded-md border border-secondary-200 dark:border-secondary-700 bg-secondary-50 dark:bg-secondary-800 p-4 text-sm">
+              <p className="font-semibold mb-2">Subject: {STANDARD_SUBJECT}</p>
+              <p className="whitespace-pre-wrap text-secondary-700 dark:text-secondary-200">{STANDARD_BODY}</p>
+            </div>
+          ) : (
+            <>
+              <div className="mb-4">
+                <label htmlFor="subject" className={label}>Subject</label>
+                <input id="subject" type="text" maxLength={200} className={field} value={customSubject} onChange={(e) => setCustomSubject(e.target.value)} disabled={running} />
+              </div>
+              <div className="mb-4">
+                <label htmlFor="body" className={label}>Body (plain text; a blank line starts a new paragraph)</label>
+                <textarea id="body" rows={10} className={field} value={customBody} onChange={(e) => setCustomBody(e.target.value)} disabled={running} />
+              </div>
+            </>
+          )}
           <div className="flex flex-wrap gap-3 items-center">
             <Button onClick={run} disabled={!ready}>
               Send to {valid.length}

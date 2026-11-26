@@ -5,6 +5,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import SteadyHeight from '@/components/ui/SteadyHeight';
 import ExchangeDirectory from '@/components/funding/ExchangeDirectory';
 import WalletAddressBox from '@/components/funding/WalletAddressBox';
+import FundingTrouble from '@/components/funding/FundingTrouble';
 import { openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
 import { linkDelivers, linkOnrampUrl } from '@/lib/stripeLinkOnramp';
 import { KRAKEN_MINIMUM_USD, krakenDelivers, krakenRampUrl } from '@/lib/krakenRamp';
@@ -12,7 +13,7 @@ import { canBuyToken } from '@/utils/buyableToken';
 import { detectUserCurrency } from '@/utils/currencyDetection';
 import { convertibleFrom, purchaseAmountFor } from '@/lib/stablecoinSwap';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { reportFundingEvent } from '@/lib/reportFundingEvent';
+import { reportFundingEvent, type FundingRoute } from '@/lib/reportFundingEvent';
 import { reportOnrampStatus } from '@/lib/reportOnrampStatus';
 import { useOnrampMinimum } from '@/hooks/useOnrampMinimum';
 import { useCoinbaseAvailability } from '@/hooks/useCoinbaseAvailability';
@@ -85,6 +86,12 @@ interface PaymentActionPanelProps {
    * Without it the Pay button cannot light up after funds are added, short of a reload.
    */
   onRefreshBalance?: () => void;
+  /**
+   * Reads, now, how much of the token is where a purchase delivers: this wallet ('wallet') or the
+   * payment's own address ('payment'). Null when it cannot be read. With it, a buyer back from
+   * buying is only asked how it went when the money is not there (hooks/useFundingTrouble).
+   */
+  readHeld?: (route: FundingRoute) => Promise<number | null>;
   /** A seller's preview: everything is off, and the preview says so, so no reasons are given. */
   preview?: boolean;
   /** Present when the wallet's other stablecoin could pay this; see PaymentConversion. */
@@ -171,6 +178,10 @@ interface CardRow {
  * Whichever route is taken, the signed-in wallet remains the contract's buyer,
  * so dispute rights and refunds are unaffected and no further sign-in is needed.
  */
+/** How often, and how many times, the wallet's balance is read once a purchase into it is under way: half an hour. */
+const PROCESSING_POLL_MS = 30_000;
+const PROCESSING_POLL_LIMIT = 60;
+
 export default function PaymentActionPanel({
   amountLabel,
   amountInTokens,
@@ -193,6 +204,7 @@ export default function PaymentActionPanel({
   resolveEscrowAddress,
   escrowAddress: knownEscrowAddress,
   onRefreshBalance,
+  readHeld,
   preview = false,
   conversion,
   elsewherePanel,
@@ -346,6 +358,7 @@ export default function PaymentActionPanel({
 
       const cbAmount = Math.ceil(amountInTokens * 100) / 100;
       lastOpened.current = 'Coinbase';
+      walletFunding.trouble.opened({ logged: 'Coinbase', name: 'Coinbase', route: 'payment', reopen: () => void handlePayWithCoinbase() });
       await openCoinbaseOnramp({
         destinationAddress: escrowAddress,
         purpose: 'pay-by-card',
@@ -367,6 +380,7 @@ export default function PaymentActionPanel({
       });
       void reportFundingEvent('coinbase-opened', { wallet: escrowAddress, amount: String(cbAmount), provider: 'Coinbase', route: 'payment' });
     } catch (e) {
+      walletFunding.trouble.notOpened();
       setCbPayError(e instanceof Error ? e.message : t('addFunds.couldNotOpenCoinbase'));
     } finally {
       setCbPayLoading(false);
@@ -419,6 +433,7 @@ export default function PaymentActionPanel({
       if (escrowAddress && !knownEscrowAddress) copyForProvider(escrowAddress);
       lastOpened.current = 'Kraken';
       void reportFundingEvent('kraken-opened', { wallet: escrowAddress ?? undefined, amount: String(amountInTokens), provider: 'Kraken', route: 'payment' });
+      walletFunding.trouble.opened({ logged: 'Kraken', name: 'Kraken', route: 'payment', reopen: () => void handlePayWithKraken() });
       if (tab) {
         tab.opener = null;
         tab.location.href = url;
@@ -451,6 +466,7 @@ export default function PaymentActionPanel({
       if (!escrowAddress || !url) throw new Error(t('paymentActionPanel.couldNotPrepare'));
       lastOpened.current = 'Link';
       void reportFundingEvent('link-opened', { wallet: escrowAddress, amount: String(amountInTokens), provider: 'Link', route: 'payment' });
+      walletFunding.trouble.opened({ logged: 'Link', name: 'Link by Stripe', route: 'payment', reopen: () => void handlePayWithLink() });
       if (!knownEscrowAddress) copyForProvider(escrowAddress);
       if (tab) {
         tab.opener = null;
@@ -533,7 +549,90 @@ export default function PaymentActionPanel({
     minimumPurchase: minimum?.inTokens,
     returnPath: addFundsReturnPath,
     onFunded: onRefreshBalance,
+    // Not on "not short" alone, which is also what a balance not yet read looks like.
+    funded: !hasInsufficientBalance && !isLoadingBalance && balanceFloat > 0,
+    troubleOff: preview,
+    // What the wallet must hold is the amount, except where what is bought is converted into
+    // the token that is paid: that needs a quote, so there anything arriving counts as arrived
+    // and the conversion step takes it from there. The page's own reader is for the token paid,
+    // so it is not used there either: the wallet is read for the token bought.
+    needed: viaConversion ? undefined : amountInTokens,
+    readHeld: viaConversion ? undefined : readHeld,
   });
+
+  /*
+   * ⚠️ A PURCHASE INTO THE WALLET IS WATCHED BY THE CLOCK, NOT ONLY BY THE BUYER COMING BACK.
+   *    Once the buyer has opened a way of buying into this wallet (Privy, Coinbase or Kraken into
+   *    the wallet, or any company in the lists; Privy once it says "processing", since its own
+   *    screen reports a cancel or a completed purchase), the page reads the balance every 30 seconds
+   *    until it covers the payment, for half an hour at most. Coming back to the tab (the refresh
+   *    effect above) misses a purchase that lands after they came back, and Privy's screen sits
+   *    over this one so it never changes focus at all. Opening another starts the half hour again.
+   *    Purchases straight into the payment are watched by useQrPayment instead.
+   *
+   *    Each read is the buyer's own browser asking the public RPC in config (rpcUrl), never our
+   *    server. Each one, and what it found, is logged (balance-polled), so a buyer stuck between
+   *    buying and paying can be seen in the logs; a rise is also logged as wallet-funded.
+   */
+  const [watching, setWatching] = useState<{ provider: string; run: number } | null>(null);
+  const watchWallet = (provider: string) => {
+    if (!preview) setWatching((current) => ({ provider, run: (current?.run ?? 0) + 1 }));
+  };
+  const cardProcessing = walletFunding.card.processing;
+  useEffect(() => {
+    if (cardProcessing && !preview) setWatching((current) => ({ provider: 'Privy', run: (current?.run ?? 0) + 1 }));
+  }, [cardProcessing, preview]);
+  const covered = !hasInsufficientBalance;
+  // Covered, however it was seen: watching ends, or paying (which lowers the balance) would restart it.
+  useEffect(() => {
+    if (covered) setWatching(null);
+  }, [covered]);
+  const pollCount = useRef(0);
+  const pollPending = useRef(false);
+  const watchRun = watching?.run;
+  useEffect(() => {
+    if (watchRun === undefined || !onRefreshBalance) return;
+    pollCount.current = 0;
+    const timer = window.setInterval(() => {
+      if (pollCount.current >= PROCESSING_POLL_LIMIT) return window.clearInterval(timer);
+      pollCount.current += 1;
+      pollPending.current = true;
+      onRefreshBalance();
+    }, PROCESSING_POLL_MS);
+    return () => window.clearInterval(timer);
+  }, [watchRun, onRefreshBalance]);
+  const watchedProvider = watching?.provider;
+  useEffect(() => {
+    if (!pollPending.current || isLoadingBalance) return;
+    pollPending.current = false;
+    const outcome = covered ? 'covered' : pollCount.current >= PROCESSING_POLL_LIMIT ? 'short, giving up' : 'short';
+    void reportFundingEvent('balance-polled', {
+      wallet: walletAddress,
+      amount: balanceFloat.toFixed(2),
+      provider: watchedProvider,
+      route: 'wallet',
+      detail: `check ${pollCount.current} of ${PROCESSING_POLL_LIMIT}: ${balanceFloat.toFixed(2)} ${walletToken}, needs ${amountInTokens.toFixed(2)}, ${outcome}`,
+    });
+  }, [isLoadingBalance, balanceFloat, covered, walletAddress, walletToken, amountInTokens, watchedProvider]);
+
+  /*
+   * ⚠️ A PURCHASE THAT DID NOT GO THROUGH IS SAID, AND ANSWERED, WHICHEVER COMPANY IT WAS WITH
+   *    (hooks/useFundingTrouble, drawn by <FundingTrouble> over the steps). Until 2026-11-26 a
+   *    buyer who closed the card window, or whose purchase failed in it, was left on step 2 with
+   *    step 1 ticked and a greyed "finish the payment" button, the error back on step 1 out of
+   *    sight. Four buyers in two days stopped there and none wrote in.
+   *
+   *    The hook knows what went wrong; this is only what the steps do about it: a cancelled or
+   *    failed card window puts the buyer back on step 1, not ticked.
+   */
+  const troubleKind = walletFunding.trouble.current?.kind;
+  useEffect(() => {
+    if (troubleKind !== 'cancelled' && troubleKind !== 'failed') return;
+    setStarted((current) => (current?.id === 'card' ? null : current));
+    setBuyView(null);
+    setFlowView(null);
+  }, [troubleKind]);
+
   // True only when the visitor is known to be outside the United States, and has not said otherwise.
   const linkCountry = useLinkAvailability();
   const outsideUs = linkCountry.unavailable;
@@ -541,6 +640,8 @@ export default function PaymentActionPanel({
   const startWalletRoute = (id: CardRow['id'], start: () => void) => () => {
     setStarted({ id, route: 'wallet' });
     lastOpened.current = LOGGED_NAME[id];
+    // Privy says for itself how it went: watching starts on its "processing" (above), not here.
+    if (id !== 'card') watchWallet(LOGGED_NAME[id]);
     // On to step 2 in whichever flow this is: where the purchase lands and what is pressed next.
     setBuyView(null);
     setFlowView(2);
@@ -826,6 +927,39 @@ export default function PaymentActionPanel({
   const cardProcessingNote =
     'text-sm rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-100 px-3 py-2';
 
+  /** A company opened from the lists below: it delivers to this wallet, in a tab of its own. */
+  const openedFromList = (name: string, url: string) => {
+    lastOpened.current = name;
+    watchWallet(name);
+    walletFunding.trouble.opened({ logged: name, name, route: 'wallet', reopen: () => window.open(url, '_blank', 'noopener,noreferrer') });
+  };
+
+  /** What to do when a purchase did not go through: over the steps, whichever is open. */
+  const troubled = walletFunding.trouble.current?.provider;
+  const troubleBox = !covered && (
+    <FundingTrouble
+      trouble={walletFunding.trouble}
+      walletAddress={walletAddress}
+      token={walletToken}
+      ways={ableRows.map((row) => ({ logged: LOGGED_NAME[row.id], name: row.name, onChoose: row.onChoose }))}
+      purchasedNote={
+        troubled?.route === 'payment'
+          ? t('fundingTrouble.purchased.payment')
+          : t('fundingTrouble.purchased.watched', { token: walletToken })
+      }
+      onPurchased={() => {
+        if (!troubled) return;
+        // On to step 2 for the company it was bought from, where that is one of the rows.
+        const id = (Object.keys(LOGGED_NAME) as CardRow['id'][]).find((key) => LOGGED_NAME[key] === troubled.logged);
+        if (id) setStarted({ id, route: troubled.route });
+        if (troubled.route !== 'wallet') return;
+        // Into the wallet: looked for by the clock from now.
+        watchWallet(troubled.logged);
+        onRefreshBalance?.();
+      }}
+    />
+  );
+
   /** The companies to buy from, and under them the quiet links to more. */
   const cardBody = (
     <>
@@ -903,9 +1037,7 @@ export default function PaymentActionPanel({
                       preview={preview}
                       chainId={chainId}
                       amount={fundingShortfall > 0 ? Number(cents(fundingShortfall)) : undefined}
-                      onOpened={(name) => {
-                        lastOpened.current = name;
-                      }}
+                      onOpened={openedFromList}
                     />
                     {checkBalance}
                   </div>
@@ -933,9 +1065,7 @@ export default function PaymentActionPanel({
                       preview={preview}
                       chainId={chainId}
                       amount={fundingShortfall > 0 ? Number(cents(fundingShortfall)) : undefined}
-                      onOpened={(name) => {
-                        lastOpened.current = name;
-                      }}
+                      onOpened={openedFromList}
                     />
                     {checkBalance}
                   </div>
@@ -984,6 +1114,7 @@ export default function PaymentActionPanel({
   ];
   const flowBlock = (
     <div className="space-y-4">
+      {troubleBox}
       <p className={small}>
         {t('paymentActionPanel.flowWhy', { token: tokenSymbol, from: flowFrom, network: networkName })}
       </p>
@@ -1085,6 +1216,7 @@ export default function PaymentActionPanel({
   );
   const buyFlowBlock = (
     <div className="space-y-4">
+      {troubleBox}
       {stepRow(
         [
           { n: 1, title: t('paymentActionPanel.flowBuy', { from: walletToken }), done: !!started },

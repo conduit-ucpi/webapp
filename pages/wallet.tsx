@@ -316,7 +316,6 @@ export default function Wallet({ ramps }: { ramps?: RampFacts }) {
               purpose="guide"
               lookOnly
               catalogue={catalogue}
-              exchangesOpen
             />
           </section>
 

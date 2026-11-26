@@ -37,6 +37,13 @@ export function depositFundsOptions(address: string, request: FundWalletRequest,
 
 /** How Privy says the buyer closed its window. It rejects, where the old hook resolved. */
 const USER_EXIT = /cancel|exited/i;
+/**
+ * Privy gave up waiting to hear how the purchase ended ("Could not confirm payment status yet.").
+ * It rejects with this, but it is not a failure: the purchase was made and nobody knows yet whether
+ * it went through. On 26 Nov 2026 a buyer waited 25 minutes in Privy's window for it, was shown it
+ * as an error, and bought again.
+ */
+const UNCONFIRMED = /could not confirm/i;
 
 /**
  * Closing the window is a choice, not a failure. Anything else is still thrown, to be shown.
@@ -54,6 +61,9 @@ export async function fundWalletResult(deposit: Promise<unknown>): Promise<FundW
   } catch (error) {
     if (error instanceof Error && USER_EXIT.test(error.message)) {
       return { status: 'cancelled', detail: error.message };
+    }
+    if (error instanceof Error && UNCONFIRMED.test(error.message)) {
+      return { status: 'processing', detail: error.message };
     }
     throw error;
   }

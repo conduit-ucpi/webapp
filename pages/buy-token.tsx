@@ -138,7 +138,6 @@ export default function BuyToken({ ramps }: { ramps?: RampFacts }) {
                   onClick: coinbase.overrule,
                 }}
                 purpose="guide"
-                exchangesOpen
               />
             </section>
           </>
@@ -166,7 +165,6 @@ export default function BuyToken({ ramps }: { ramps?: RampFacts }) {
                 purpose="guide"
                 lookOnly
                 catalogue={{ coinbase: showCoinbase || !!ramps?.coinbase, card: !!ramps?.card }}
-                exchangesOpen
               />
             </section>
           </>

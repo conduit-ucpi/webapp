@@ -275,8 +275,9 @@ describe('BuyToken page', () => {
   describe('the exchange list', () => {
     it('links to each exchange in a new tab', () => {
       render(<BuyToken />);
-      const section = screen.getByText('More places to buy USDC').closest('details') as HTMLElement;
-      expect(section).toHaveAttribute('open');
+      const section = screen.getByText('More places to buy USDC').closest('section') as HTMLElement;
+      // On the page from the start: there is no dropdown to open.
+      expect(screen.getByText('More places to buy USDC').closest('details')).toBeNull();
       for (const [name, href] of [
         ['Kraken', 'https://www.kraken.com'],
         ['Binance', 'https://www.binance.com'],

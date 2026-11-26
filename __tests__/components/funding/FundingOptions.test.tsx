@@ -86,11 +86,11 @@ describe('FundingOptions', () => {
     expect(screen.getByRole('button', { name: 'Copy payment link' })).toBeInTheDocument();
   });
 
-  it('keeps the exchange list closed until asked, unless told to open it', () => {
-    const { unmount } = render(options());
-    expect(screen.getByText('More places to buy USDC').closest('details')).not.toHaveAttribute('open');
-    unmount();
-    render(options({ exchangesOpen: true }));
-    expect(screen.getByText('More places to buy USDC').closest('details')).toHaveAttribute('open');
+  // Behind a dropdown, a visitor the ramps do not serve never found these.
+  it('shows the exchange list open, under its own heading, never behind a dropdown', () => {
+    render(options());
+    const heading = screen.getByRole('heading', { name: 'More places to buy USDC' });
+    expect(heading.closest('details')).toBeNull();
+    expect(heading.closest('section')).toBeVisible();
   });
 });

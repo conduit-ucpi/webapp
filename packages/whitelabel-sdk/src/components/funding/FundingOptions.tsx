@@ -9,6 +9,7 @@ import { ONRAMP_MIN_CRYPTO, useWalletFunding } from '@/hooks/useWalletFunding';
 import { KRAKEN_MINIMUM_USD } from '@/lib/krakenRamp';
 import { useT, withNodes } from '../../i18n';
 import ExchangeDirectory from './ExchangeDirectory';
+import FundingTrouble, { type FundingWay } from './FundingTrouble';
 import WalletAddressBox from './WalletAddressBox';
 
 /** What the amount box starts at when nothing says how much is needed. */
@@ -46,8 +47,6 @@ export interface FundingOptionsProps {
   purpose?: 'add-funds' | 'guide';
   /** A route reported the money as sent, or Coinbase's window came back. */
   onFunded?: () => void;
-  /** Whether the exchange list starts open. Closed where space is short, such as a modal. */
-  exchangesOpen?: boolean;
   /**
    * A seller's preview of what their customer gets: everything is shown and nothing can be
    * pressed, and the wallet address is left out, since the one to hand is the seller's own.
@@ -77,9 +76,10 @@ export interface FundingOptionsProps {
  * "pay from external wallet" on the payment panel: that sends straight to the payment contract and
  * never touches this wallet.
  *
- * One component for the payment screen's "top up this wallet" section (PaymentActionPanel, told
- * what is short) and for /buy-token (no amount, so it asks). Written with `dark:` classes: a
- * modal holding it must be `themed` (ui/Modal).
+ * For /wallet and /buy-token. The pay page lays the same ways out itself, as steps
+ * (PaymentActionPanel); the two share the routes (useWalletFunding), the list of companies
+ * (ExchangeDirectory) and the help when a purchase goes wrong (FundingTrouble). Written with
+ * `dark:` classes: a modal holding it must be `themed` (ui/Modal).
  */
 export default function FundingOptions({
   walletAddress,
@@ -96,7 +96,6 @@ export default function FundingOptions({
   returnPath,
   purpose = 'add-funds',
   onFunded,
-  exchangesOpen = false,
   lookOnly = false,
   showTransfer: offerTransfer = true,
   catalogue,
@@ -128,6 +127,10 @@ export default function FundingOptions({
     returnPath,
     purpose,
     onFunded,
+    // Nobody buys from a preview or a catalogue, so nothing can go wrong there.
+    troubleOff: lookOnly || !!catalogue,
+    // Told how much is needed, a purchase can arrive short of it; otherwise it just arrives.
+    needed: amount,
   });
   const { chainId, copy } = funding;
   const onrampError = funding.error;
@@ -164,6 +167,15 @@ export default function FundingOptions({
     : linkCountry.unavailable
       ? t('addFunds.linkNotInCountry', { country: linkCountry.countryName ?? '' })
       : undefined;
+
+  // The ways that can be used now, for the help shown when one of them did not work (FundingTrouble).
+  const ways: FundingWay[] = [];
+  if (hasAmount && !cannotBuy) {
+    if (funding.card.available) ways.push({ logged: 'Privy', name: t('paymentActionPanel.rowCard'), onChoose: handleProviderFunding });
+    if (showCoinbase && !coinbaseUnavailable) ways.push({ logged: 'Coinbase', name: 'Coinbase', onChoose: handleOnramp });
+  }
+  if (hasAmount && !krakenUnavailable) ways.push({ logged: 'Kraken', name: 'Kraken', onChoose: handleKraken });
+  if (hasAmount && !linkUnavailable) ways.push({ logged: 'Link', name: 'Link by Stripe', onChoose: handleLink });
 
   const choiceBox =
     'w-full text-left rounded-xl border border-secondary-200 dark:border-secondary-600 p-4 transition-colors ' +
@@ -224,6 +236,14 @@ export default function FundingOptions({
   return (
     // Each button is off by name as well: a fieldset's own `disabled` is the browser's doing.
     <fieldset disabled={lookOnly} className="min-w-0 border-0 p-0 space-y-3">
+      <FundingTrouble
+        trouble={funding.trouble}
+        walletAddress={walletAddress}
+        token={tokenSymbol}
+        ways={ways}
+        purchasedNote={t('fundingTrouble.purchased.wallet', { token: tokenSymbol })}
+        onPurchased={onFunded}
+      />
       {asksAmount && (
         <div className="pb-2">
           <label htmlFor="funding-amount" className="block text-sm font-medium text-secondary-700 dark:text-secondary-200">
@@ -329,8 +349,11 @@ export default function FundingOptions({
 
       {onrampError && <p role="alert" className="text-sm text-red-600">{onrampError}</p>}
 
-      <details open={exchangesOpen} className="rounded-xl border border-secondary-200 dark:border-secondary-600 p-4">
-        <summary className={`cursor-pointer ${choiceTitle}`}>{t('funding.exchanges.more', { token: tokenSymbol })}</summary>
+      {/* ⚠️ OPEN, NOT A DROPDOWN, as on the pay page (PaymentActionPanel). Closed behind "More places
+          to buy", a visitor the ramps above do not serve never found these (seen 2026-11-26 on
+          /wallet): every way of buying is on screen, spelled out. */}
+      <section className="rounded-xl border border-secondary-200 dark:border-secondary-600 p-4">
+        <h3 className={choiceTitle}>{t('funding.exchanges.more', { token: tokenSymbol })}</h3>
         <div className="mt-3">
           <ExchangeDirectory
             tokenSymbol={tokenSymbol}
@@ -339,9 +362,12 @@ export default function FundingOptions({
             preview={lookOnly && !catalogue}
             chainId={chainId}
             amount={hasAmount ? Math.ceil(shortfall * 100 - 1e-7) / 100 : undefined}
+            onOpened={(name, url) =>
+              funding.trouble.opened({ logged: name, name, route: 'wallet', reopen: () => window.open(url, '_blank', 'noopener,noreferrer') })
+            }
           />
         </div>
-      </details>
+      </section>
     </fieldset>
   );
 }

@@ -20,6 +20,7 @@ import {
   type CreateRecordingRequest,
 } from '@/lib/problemReport';
 import { recentConsoleProblems } from '@/lib/consoleProblems';
+import { listenForFeedbackRequests } from '@/lib/feedbackScreen';
 import { UploadError, sendRecording } from '@/lib/recordingUpload';
 import { useScreenRecorder } from './useScreenRecorder';
 import { useRecorderWindow } from './useRecorderWindow';
@@ -202,6 +203,18 @@ export default function FeedbackButton() {
   useEffect(() => {
     if (user?.email) setContactEmail((current) => current || user.email);
   }, [user?.email]);
+
+  // Asked to open from elsewhere on the page (lib/feedbackScreen): the help shown when buying
+  // stablecoins goes wrong has a "Send feedback" button. What they were doing is put in the
+  // message for them, unless they have already written one.
+  useEffect(
+    () =>
+      listenForFeedbackRequests((suggested) => {
+        if (suggested) setMessage((current) => current || suggested);
+        setStep((current) => (current.kind === 'closed' ? { kind: 'message' } : current));
+      }),
+    []
+  );
 
   const open = step.kind !== 'closed' && step.kind !== 'recording';
   const recordingFlow = step.kind === 'intro' || step.kind === 'review' || step.kind === 'sending';

@@ -126,6 +126,8 @@ interface UseQrPaymentResult {
   /** The "I have paid" button: checks now, and if nothing has arrived yet, polls every 20s
    *  for two minutes. */
   checkAndActivate: () => Promise<void>;
+  /** Looks at the payment's address now and says how much is there (null if it cannot be read). */
+  lookNow: () => Promise<number | null>;
   buildEip681Uri: () => string;
 }
 
@@ -337,6 +339,10 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
 
     let cancelled = false;
     const startedAt = Date.now();
+    // Each look at the payment's address, and what it found, goes to the log (address-polled):
+    // a buyer who bought straight into the payment and is still waiting shows up there.
+    let checks = 0;
+    const when = pollRun.schedule === AFTER_PRESS_POLL_SCHEDULE ? 'after "I have paid"' : 'since opening';
 
     const scheduleNext = () => {
       if (cancelled) return;
@@ -345,11 +351,15 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     };
 
     const pollBalance = async () => {
+      checks += 1;
+      let found = 'read failed';
       try {
         const balance = await getTokenBalance(qrContractAddress, selectedTokenAddress);
         const balanceNum = parseFloat(balance);
+        const arrived = balanceNum >= requiredAmount && requiredAmount > 0;
+        found = `${balanceNum.toFixed(2)} of ${requiredAmount.toFixed(2)}, ${arrived ? 'arrived' : 'short'}`;
 
-        if (balanceNum >= requiredAmount && requiredAmount > 0) {
+        if (arrived) {
           console.log('useQrPayment: QR payment detected! Balance:', balance);
           setQrPaymentDetected(true);
 
@@ -372,6 +382,13 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
         // Resolved either way: an unreadable balance must not hold the panel
         // back forever, it just means we cannot skip it.
         setHasCheckedBalance(true);
+        const last = nextPollDelay(pollRun.schedule, Date.now() - startedAt) === null && !found.endsWith('arrived');
+        void reportFundingEvent('address-polled', {
+          wallet: qrContractAddress,
+          amount: String(requiredAmount),
+          route: 'payment',
+          detail: `check ${checks}, ${Math.round((Date.now() - startedAt) / 1000)}s ${when}: ${found}${last ? ', last check: waiting for "I have paid"' : ''}`,
+        });
         scheduleNext();
       }
     };
@@ -390,6 +407,39 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [qrContractAddress, selectedTokenAddress, requiredAmount, isActivated, isRefunded, pollRun]);
 
+  /**
+   * Look at the payment's address now, and say what is there: for a buyer just back from buying
+   * straight into it (useFundingTrouble), whose answer decides what the page says to them.
+   * Money that has arrived is settled, as the poll would; otherwise the poll starts over, since
+   * someone just back from a purchase is exactly who it is for. Null when it cannot be read.
+   */
+  const lookNow = useCallback(async (): Promise<number | null> => {
+    if (!qrContractAddress || !selectedTokenAddress) return null;
+    try {
+      const held = parseFloat(await getTokenBalanceRef.current(qrContractAddress, selectedTokenAddress));
+      if (!Number.isFinite(held)) return null;
+      const arrived = held >= requiredAmount && requiredAmount > 0;
+      void reportFundingEvent('address-polled', {
+        wallet: qrContractAddress,
+        amount: String(requiredAmount),
+        route: 'payment',
+        detail: `on the buyer's return: ${held.toFixed(2)} of ${requiredAmount.toFixed(2)}, ${arrived ? 'arrived' : 'short'}`,
+      });
+      if (arrived) {
+        setQrPaymentDetected(true);
+        if (!autoActivatedRef.current) {
+          autoActivatedRef.current = true;
+          void activateRef.current();
+        }
+      } else {
+        setPollRun({ schedule: INITIAL_POLL_SCHEDULE, pollFirst: false });
+      }
+      return held;
+    } catch {
+      return null;
+    }
+  }, [qrContractAddress, selectedTokenAddress, requiredAmount]);
+
   const buildEip681Uri = useCallback((): string => {
     if (!qrContractAddress || !selectedTokenAddress || chainId === undefined) return '';
     return `ethereum:${selectedTokenAddress}@${chainId}/transfer?address=${qrContractAddress}&uint256=${requiredAmountMicro}`;
@@ -403,6 +453,7 @@ export function useQrPayment(params: UseQrPaymentParams): UseQrPaymentResult {
     hasCheckedBalance,
     createContract,
     checkAndActivate,
+    lookNow,
     buildEip681Uri,
   };
 }

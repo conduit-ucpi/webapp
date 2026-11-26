@@ -54,3 +54,65 @@ it.each([
     ['paid-pressed', { wallet: '0xEscrow', amount: '10', route: 'payment', detail: outcome }],
   ]);
 });
+
+describe("the page's own looks at the payment's address", () => {
+  const polled = () =>
+    (reportFundingEvent as jest.Mock).mock.calls.filter(([name]) => name === 'address-polled').map(([, fields]) => fields);
+
+  it('logs each look and what it found', async () => {
+    const { result } = setUp('4', { success: false });
+    await act(async () => {
+      await result.current.createContract();
+    });
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(10_000);
+    });
+    expect(polled()).toEqual([
+      { wallet: '0xEscrow', amount: '10', route: 'payment', detail: 'check 1, 0s since opening: 4.00 of 10.00, short' },
+      { wallet: '0xEscrow', amount: '10', route: 'payment', detail: 'check 2, 10s since opening: 4.00 of 10.00, short' },
+    ]);
+  });
+
+  it('says when the schedule has run out and the page is waiting for "I have paid"', async () => {
+    const { result } = setUp('0', { success: false });
+    await act(async () => {
+      await result.current.createContract();
+    });
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(8 * 60_000);
+    });
+    expect(polled().at(-1)?.detail).toMatch(/: 0\.00 of 10\.00, short, last check: waiting for "I have paid"$/);
+  });
+
+  it('says so when the money is there', async () => {
+    const { result } = setUp('10', { success: true });
+    await act(async () => {
+      await result.current.createContract();
+    });
+    expect(polled()[0].detail).toBe('check 1, 0s since opening: 10.00 of 10.00, arrived');
+  });
+});
+
+describe("looking at the payment's address when the buyer is back from buying", () => {
+  const polled = () =>
+    (reportFundingEvent as jest.Mock).mock.calls.filter(([name]) => name === 'address-polled').map(([, fields]) => fields.detail);
+
+  it('says how much is there, and logs the look', async () => {
+    const { result } = setUp('4', { success: false });
+    await act(async () => {
+      await result.current.createContract();
+    });
+    (reportFundingEvent as jest.Mock).mockClear();
+    let held: number | null = null;
+    await act(async () => {
+      held = await result.current.lookNow();
+    });
+    expect(held).toBe(4);
+    expect(polled()).toEqual(["on the buyer's return: 4.00 of 10.00, short"]);
+  });
+
+  it('is null before there is an address to look at', async () => {
+    const { result } = setUp('4', { success: false });
+    await expect(result.current.lookNow()).resolves.toBeNull();
+  });
+});

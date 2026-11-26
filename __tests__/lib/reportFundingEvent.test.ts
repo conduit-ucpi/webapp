@@ -19,7 +19,7 @@ describe('reportFundingEvent', () => {
 
     const [url, init] = fetchMock.mock.calls[0];
     expect(url).toMatch(/\/api\/funding-event$/);
-    expect(init.credentials).toBe('omit');
+    expect(init.credentials).toBe('include');
     expect(JSON.parse(init.body)).toMatchObject({ event: 'privy-failed', wallet: '0xabc', detail: 'No quotes', locale: navigator.language, country: 'VE' });
   });
 

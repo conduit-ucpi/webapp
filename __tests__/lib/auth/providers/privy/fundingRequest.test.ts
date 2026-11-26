@@ -54,6 +54,14 @@ describe('fundWalletResult', () => {
     }
   );
 
+  // Privy gave up waiting to hear: the purchase was made, and may yet arrive.
+  it('counts "could not confirm" as processing, not as a failure', async () => {
+    await expect(fundWalletResult(Promise.reject(new Error('Could not confirm payment status yet.')))).resolves.toEqual({
+      status: 'processing',
+      detail: 'Could not confirm payment status yet.',
+    });
+  });
+
   it('still surfaces a real failure', async () => {
     await expect(fundWalletResult(Promise.reject(new Error('@stripe/crypto could not be loaded')))).rejects.toThrow(
       '@stripe/crypto could not be loaded'

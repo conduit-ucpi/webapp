@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useAuth } from '@/components/auth/SimpleAuthProvider';
 import { ONRAMP_RETURN_MESSAGE, openCoinbaseOnramp } from '@/lib/coinbaseOnramp';
-import { reportFundingEvent } from '@/lib/reportFundingEvent';
+import { reportFundingEvent, type FundingRoute } from '@/lib/reportFundingEvent';
 import { reportOnrampStatus } from '@/lib/reportOnrampStatus';
 import { krakenDelivers, krakenPurchaseAmount, krakenRampUrl } from '@/lib/krakenRamp';
 import { linkDelivers, linkOnrampUrl } from '@/lib/stripeLinkOnramp';
 import { detectUserCurrency } from '@/utils/currencyDetection';
 import { useT } from '../i18n';
+import { useFundingTrouble, type LookForPurchase } from './useFundingTrouble';
 
 /**
  * Coinbase enforces a minimum purchase, so presetting a smaller amount bounces. Expressed in
@@ -32,6 +33,27 @@ export interface WalletFundingRequest {
   purpose?: 'add-funds' | 'guide';
   /** A route reported the money as sent, or Coinbase's window came back. */
   onFunded?: () => void;
+  /**
+   * Whether what was being bought is now in the wallet, where the screen can tell. It ends any
+   * help being shown for a purchase that did not go through (`trouble`), and without it nothing
+   * is ever reported "stuck".
+   */
+  funded?: boolean;
+  /** No help for a purchase gone wrong: a seller's preview, or a list nobody can buy from. */
+  troubleOff?: boolean;
+  /**
+   * How much of the token the payment needs, where there is a payment. A buyer back from buying
+   * is told the purchase arrived short when what is there is less than this. Without it (/wallet),
+   * anything arriving is the purchase arriving.
+   */
+  needed?: number;
+  /**
+   * Reads, now, how much is where a purchase delivers: this wallet ('wallet') or a payment's own
+   * address ('payment'). Null when it cannot be read. Leave it out and the wallet is read here,
+   * for `tokenAddress`; a purchase straight into a payment can only be looked for by a screen
+   * that passes this.
+   */
+  readHeld?: (route: FundingRoute) => Promise<number | null>;
 }
 
 /**
@@ -51,6 +73,10 @@ export function useWalletFunding({
   returnPath,
   purpose = 'add-funds',
   onFunded,
+  funded,
+  troubleOff = false,
+  needed,
+  readHeld,
 }: WalletFundingRequest) {
   const t = useT();
   const { config } = useConfig();
@@ -63,6 +89,35 @@ export function useWalletFunding({
   const [cardBusy, setCardBusy] = useState(false);
   /** The last card purchase came back unconfirmed: it may still deliver, so say not to buy again. */
   const [cardProcessing, setCardProcessing] = useState(false);
+  /*
+   * What to do when a purchase does not go through, for every route here and for whatever else the
+   * screen opens (hooks/useFundingTrouble). Each route below tells it that it was opened, with how
+   * to open it again; the screen draws `trouble.current` with <FundingTrouble>.
+   */
+  /*
+   * ⚠️ EVERY SCREEN LOOKS BEFORE IT SAYS ANYTHING ABOUT A PURCHASE. A buyer back from a company's
+   *    page is told what was found where the purchase delivers, not asked whether it went through:
+   *    it is there (nothing is said), it is there but short, or it is not there yet. So the wallet
+   *    is read here, for any screen that lists these routes; only a purchase straight into a
+   *    payment needs the screen's own reader. One read of the public RPC, from the buyer's browser.
+   */
+  const lookForPurchase: LookForPurchase = async ({ route }) => {
+    let held: number | null = null;
+    if (readHeld) held = await readHeld(route);
+    else if (route === 'wallet' && config?.rpcUrl && walletAddress && tokenAddress) {
+      const { Web3Service } = await import('@/lib/web3');
+      held = parseFloat(await Web3Service.getInstance(config).getTokenBalance(walletAddress, tokenAddress));
+    }
+    return held === null || !Number.isFinite(held) ? null : { held, needed };
+  };
+  const trouble = useFundingTrouble({ walletAddress, off: troubleOff, funded, look: lookForPurchase });
+  // The routes as they are now, for "open it again" pressed long after the render that opened it.
+  const again = useRef<{ card: () => void; coinbase: () => void; kraken: () => void; link: () => void }>({
+    card: () => undefined,
+    coinbase: () => undefined,
+    kraken: () => undefined,
+    link: () => undefined,
+  });
   const [coinbaseBusy, setCoinbaseBusy] = useState(false);
 
   // The desktop popup posts back here when Coinbase is done. The holder re-reads the balance -
@@ -72,12 +127,13 @@ export function useWalletFunding({
       if (event.origin !== window.location.origin) return;
       if (event.data?.type !== ONRAMP_RETURN_MESSAGE) return;
       setCoinbaseBusy(false);
+      trouble.reportedBack();
       onFunded?.();
     };
 
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [onFunded]);
+  }, [onFunded, trouble.reportedBack]);
 
   const copy = async (value: string) => {
     try {
@@ -95,6 +151,7 @@ export function useWalletFunding({
   const startCard = async () => {
     setError(null);
     setCardBusy(true);
+    trouble.opened({ logged: 'Privy', route: 'wallet', inPage: true, reopen: () => again.current.card() });
     // Same rounding as the Coinbase route: ask for tokens, rounded up to the cent, so a
     // >= balance gate cannot fail on dust.
     const amount = asked.toFixed(2);
@@ -111,7 +168,8 @@ export function useWalletFunding({
         status === 'completed' ? 'privy-completed' : status === 'processing' ? 'privy-processing' : 'privy-cancelled',
         { ...logged, detail: result?.detail }
       );
-      // Processing is not funded: the balance is re-read when the buyer comes back to the page.
+      trouble.cardEnded(status === 'completed' || status === 'processing' ? status : 'cancelled');
+      // Processing is not funded: the page keeps reading the balance until it arrives.
       if (status === 'processing') setCardProcessing(true);
       if (status === 'completed') {
         setCardProcessing(false);
@@ -120,6 +178,7 @@ export function useWalletFunding({
     } catch (e) {
       const message = e instanceof Error ? e.message : t('addFunds.couldNotOpenFunding');
       void reportFundingEvent('privy-failed', { ...logged, detail: message });
+      trouble.cardEnded('failed');
       setError(message);
     } finally {
       setCardBusy(false);
@@ -131,6 +190,7 @@ export function useWalletFunding({
     setCoinbaseBusy(true);
     try {
       void reportFundingEvent('coinbase-opened', { wallet: walletAddress, amount: asked.toFixed(2), provider: 'Coinbase', route: 'wallet' });
+      trouble.opened({ logged: 'Coinbase', name: 'Coinbase', route: 'wallet', reopen: () => again.current.coinbase() });
       await openCoinbaseOnramp({
         destinationAddress: walletAddress,
         purpose,
@@ -148,6 +208,7 @@ export function useWalletFunding({
         },
       });
     } catch (e) {
+      trouble.notOpened();
       setError(e instanceof Error ? e.message : t('addFunds.couldNotOpenCoinbase'));
     } finally {
       setCoinbaseBusy(false);
@@ -160,6 +221,7 @@ export function useWalletFunding({
     const url = krakenRampUrl({ walletAddress, tokenSymbol, chainId, amount, fiatCurrency: detectUserCurrency() });
     if (!url) return;
     void reportFundingEvent('kraken-opened', { wallet: walletAddress, amount: String(amount), provider: 'Kraken', route: 'wallet' });
+    trouble.opened({ logged: 'Kraken', name: 'Kraken', route: 'wallet', reopen: () => again.current.kraken() });
     // Kraken drops the address we send and asks for one after sign-in (lib/krakenRamp). Copied
     // before the tab opens: a page that is not in front cannot write to the clipboard.
     void copy(walletAddress);
@@ -174,12 +236,17 @@ export function useWalletFunding({
     const url = linkOnrampUrl({ tokenSymbol, chainId, amount });
     if (!url) return;
     void reportFundingEvent('link-opened', { wallet: walletAddress, amount: String(amount), provider: 'Link', route: 'wallet' });
+    trouble.opened({ logged: 'Link', name: 'Link by Stripe', route: 'wallet', reopen: () => again.current.link() });
     void copy(walletAddress);
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
+  again.current = { card: () => void startCard(), coinbase: () => void startCoinbase(), kraken: startKraken, link: startLink };
+
   return {
     chainId,
+    /** Help for a purchase that did not go through, by any route: see hooks/useFundingTrouble. */
+    trouble,
     /** What the card and Coinbase routes ask for, in whole tokens. */
     asked,
     error,

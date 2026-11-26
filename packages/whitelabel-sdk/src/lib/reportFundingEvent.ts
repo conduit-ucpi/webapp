@@ -18,7 +18,12 @@ export type FundingEvent =
   | 'exchange-opened'
   | 'balance-checked'
   | 'paid-pressed'
-  | 'wallet-funded';
+  | 'wallet-funded'
+  | 'balance-polled'
+  | 'address-polled'
+  | 'trouble-shown'
+  | 'trouble-reason'
+  | 'trouble-action';
 
 /** Where a purchase was to land: straight into the payment, or into the wallet to pay from. */
 export type FundingRoute = 'payment' | 'wallet';
@@ -27,7 +32,8 @@ export type FundingRoute = 'payment' | 'wallet';
  * Tells the server about a funding step only the browser can see. See pages/api/funding-event.ts.
  *
  * Fire and forget, so nothing here may hold up or fail a payment. The contract comes from the page's
- * address, when this is a payment request. No cookies: the wallet is what the line is matched by.
+ * address, when this is a payment request. The session goes with it: the server names the signed-in
+ * user in the line from the session, never from anything sent here.
  */
 export async function reportFundingEvent(
   event: FundingEvent,
@@ -36,7 +42,7 @@ export async function reportFundingEvent(
   try {
     await apiFetch('/api/funding-event', {
       method: 'POST',
-      credentials: 'omit',
+      credentials: 'include',
       keepalive: true,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

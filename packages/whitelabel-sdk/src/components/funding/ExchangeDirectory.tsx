@@ -91,7 +91,8 @@ interface ExchangeDirectoryProps {
    */
   ownRegionFirst?: boolean;
   /** Told the name of a company the buyer opens, so the page can put a rise in the balance down to it. */
-  onOpened?: (name: string) => void;
+  /** A company was opened: its name, and the link that was opened, to open again. */
+  onOpened?: (name: string, url: string) => void;
 }
 
 /**
@@ -149,7 +150,7 @@ export default function ExchangeDirectory({
             provider: exchange.name,
             route: 'wallet',
           });
-          onOpened?.(exchange.name);
+          onOpened?.(exchange.name, exchangeLink(exchange, purchase));
         };
   const onlyCards = show === 'card-services' && !selling;
   const withCards = show !== 'exchanges' && !selling;

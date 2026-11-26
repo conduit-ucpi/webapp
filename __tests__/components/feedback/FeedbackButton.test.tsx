@@ -8,6 +8,7 @@ import FeedbackButton, { BOOK_A_DEMO_URL } from '@/components/feedback/FeedbackB
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { sendRecording } from '@/lib/recordingUpload';
+import { feedbackScreenIsHere, openFeedbackScreen } from '@/lib/feedbackScreen';
 import { usePartnerBrand } from '@conduit-ucpi/whitelabel-sdk';
 
 jest.mock('@/components/auth', () => ({ useAuth: jest.fn() }));
@@ -94,6 +95,25 @@ it('sits in its own element directly under <body>, above every other layer', () 
   expect(host.parentElement).toBe(document.body);
   expect(host.style.zIndex).toBe('2147483647');
   expect(host.contains(screen.getByRole('button', { name: 'Send us feedback' }))).toBe(true);
+});
+
+describe('opened from elsewhere on the page (the help when buying stablecoins goes wrong)', () => {
+  it('says it is here while it is on the page, and opens on the message when asked, with what they were doing written in', () => {
+    const { unmount } = render(<FeedbackButton />);
+    expect(feedbackScreenIsHere()).toBe(true);
+    act(() => openFeedbackScreen("I tried to buy USDC at MoonPay and it didn't work."));
+    expect(screen.getByLabelText('Message')).toHaveValue("I tried to buy USDC at MoonPay and it didn't work.");
+    unmount();
+    expect(feedbackScreenIsHere()).toBe(false);
+  });
+
+  it('keeps a message they had already written', () => {
+    render(<FeedbackButton />);
+    openFeedback();
+    fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Mine' } });
+    act(() => openFeedbackScreen('Suggested'));
+    expect(screen.getByLabelText('Message')).toHaveValue('Mine');
+  });
 });
 
 describe('a message', () => {

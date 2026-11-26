@@ -722,6 +722,26 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
     existingContractAddress: transferOffered ? prepared!.escrow_address : null,
   });
 
+  // How much is where a purchase delivers, read now, for a buyer just back from buying
+  // (hooks/useFundingTrouble): their wallet, or the payment's own address.
+  const walletTokenAddress = selectedToken?.address;
+  const lookAtPayment = qr.lookNow;
+  const readHeld = useCallback(
+    async (route: 'wallet' | 'payment'): Promise<number | null> => {
+      if (route === 'payment') return lookAtPayment();
+      if (!address || !walletTokenAddress) return null;
+      try {
+        const held = parseFloat(await getTokenBalance(address, walletTokenAddress));
+        return Number.isFinite(held) ? held : null;
+      } catch {
+        return null;
+      }
+    },
+    // getTokenBalance is new on every render (useSimpleEthers) and reads the same either way.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [address, walletTokenAddress, lookAtPayment]
+  );
+
   /*
    * Resuming. A payment on the review screen lives in the URL as well as in memory, so coming
    * back from Coinbase on a phone, a refresh, or the Back button all land on it again. The URL
@@ -1077,6 +1097,7 @@ export default function PayPage({ checkout, request }: { checkout?: PayCheckout;
                   resolveEscrowAddress={transferOffered || ownRequest ? async () => prepared?.escrow_address ?? null : undefined}
                   escrowAddress={transferOffered ? prepared?.escrow_address : undefined}
                   onRefreshBalance={refreshBalances}
+                  readHeld={ownRequest ? undefined : readHeld}
                   // A seller's request (/contract-pay): Zipchat's questions for a buyer who has to buy.
                   buyQuestions={!!request && !checkout}
                   elsewhere={

@@ -245,7 +245,7 @@ jobs:
   # NAME= is passed empty when unset, exactly as the old `-e NAME=${{ ... }}` did.
   deploy:
     needs: build
-    uses: conduit-ucpi/deploy/.github/workflows/deploy.yml@179d180daeb6242671df3cc35428091915b53093
+    uses: conduit-ucpi/deploy/.github/workflows/deploy.yml@7ee40498cd11df9224943df43c3459bf47cd7747
     permissions:
       contents: read
       packages: read

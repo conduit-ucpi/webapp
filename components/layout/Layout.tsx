@@ -3,6 +3,7 @@ import Header from './Header';
 import Footer from './Footer';
 import EmailPromptManager from '@/components/auth/EmailPromptManager';
 import { WHITE_LABEL_ROUTES } from '@/config/brands';
+import { RECORDER_WINDOW_PATH } from '@/lib/problemReport';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,14 +12,24 @@ interface LayoutProps {
 export default function Layout({ children }: LayoutProps) {
   const router = useRouter();
   
-  // Shopify embedded app - no layout at all
-  if (router.pathname === '/shopify/embedded') {
+  // Shopify embedded app - no layout at all. Nor the small recorder window "Report a problem" opens.
+  if (router.pathname === '/shopify/embedded' || router.pathname === RECORDER_WINDOW_PATH) {
     return <>{children}</>;
   }
 
   // White-labelled routes carry a partner's branding, so none of ours can
   // appear alongside it — no header, no footer. The page supplies its own.
   if (router.pathname in WHITE_LABEL_ROUTES) {
+    return (
+      <div className="min-h-screen">
+        <EmailPromptManager children={children} />
+      </div>
+    );
+  }
+
+  // The homepage and the landing experiments carry their own top bar and footer; the site
+  // header on top of that would be two navs. They keep the email prompt like any page.
+  if (router.pathname === '/' || router.pathname.startsWith('/landing-test-') || router.pathname.startsWith('/landing_simple') || router.pathname === '/landing_old') {
     return (
       <div className="min-h-screen">
         <EmailPromptManager children={children} />

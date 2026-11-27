@@ -1,6 +1,6 @@
 import { apiFetch } from '@/lib/apiFetch';
 import { useCallback, useEffect, useState } from 'react';
-import { RpcClient, EscrowSettlementState } from '@/lib/rpc/RpcClient';
+import { EscrowSettlementState, sharedRpcClient } from '@/lib/rpc/RpcClient';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import type { ArbiterState } from '@/types/marketplace';
 
@@ -48,11 +48,11 @@ export function useArbiterState(contractAddress?: string | null): Fetched<Arbite
     try {
       const response = await apiFetch(`/api/chain/contract/${contractAddress}/arbiter`);
       const body = await response.json();
-      if (!response.ok) throw new Error(body.error || `Failed to read arbiter state (${response.status})`);
+      if (!response.ok) throw new Error(body.error || `Failed to read Third Voter state (${response.status})`);
       setData(body as ArbiterState);
       return body as ArbiterState;
     } catch (e: any) {
-      setError(e.message || 'Failed to read arbiter state');
+      setError(e.message || 'Failed to read Third Voter state');
       return null;
     } finally {
       setLoading(false);
@@ -85,7 +85,7 @@ export function useSettlementState(contractAddress?: string | null): Fetched<Esc
     setLoading(true);
     setError(null);
     try {
-      const fresh = await new RpcClient(config.rpcUrl).getSettlementState(contractAddress);
+      const fresh = await sharedRpcClient(config.rpcUrl, config.chainId).getSettlementState(contractAddress);
       setData(fresh);
       return fresh;
     } catch (e: any) {

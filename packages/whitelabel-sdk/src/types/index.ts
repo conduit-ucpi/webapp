@@ -36,22 +36,18 @@ export interface Config {
    */
   defaultArbiterAddress?: string;
   // Service URLs
-  userServiceUrl?: string;
-  chainServiceUrl?: string;
-  contractServiceUrl?: string;
   // Third-party services
   moonPayApiKey: string;
   coinbaseProjectId?: string;
   coinbaseNetwork?: string; // Coinbase's network slug (e.g. "base") - see COINBASE_NETWORK
   walletConnectProjectId?: string;
   privyAppId?: string;
-  neynarApiKey?: string;
+  showLegacyAuth?: boolean; // SHOW_LEGACY_AUTH: offer the pre-Privy sign-in alongside Privy
   // Gas configuration
   minGasWei: string;
   maxGasPriceGwei: string;
   maxGasCostGwei: string;
   usdcGrantFoundryGas: string;
-  depositFundsFoundryGas: string;
   resolutionVoteFoundryGas: string;
   raiseDisputeFoundryGas: string;
   claimFundsFoundryGas: string;
@@ -60,10 +56,12 @@ export interface Config {
   basePath: string;
   explorerBaseUrl: string;
   serviceLink: string;
+  termsVersion?: string | null; // Terms of Service version (commit SHA prefix) a SIWE sign-in names
   siteName?: string; // Site branding name (e.g., "Instant Escrow", "USDCBAY")
   // Release flags
   projectsLive?: boolean; // Projects (fan-out) feature; false/absent = hidden
   emailVerificationLive?: boolean; // Email <-> wallet verification; false/absent = hidden
+  problemRecordingsLive?: boolean; // "Report a problem" screen recordings; false/absent = hidden
   // Optional wallet services configuration
   walletServicesShowWidget?: string;
   walletServicesButtonPosition?: string;
@@ -92,10 +90,15 @@ export interface Contract {
   contractAddress: string;
   buyerAddress: string;
   sellerAddress: string;
+  /** Third Voter named on the record at creation; absent means the platform default. A seat taken later by nomination is on-chain only. */
+  arbiterAddress?: string;
   amount: number;
   expiryTimestamp: number;
+  /** The token the contract holds, when the record says: its address on chain, and its symbol. */
+  tokenAddress?: string;
+  currencySymbol?: string;
   description: string;
-  status: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED';
+  status: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED' | 'SANCTIONS_REFUSED' | 'REFUNDED';
   createdAt: number;
   funded?: boolean;
   fundedAt?: string;
@@ -134,6 +137,8 @@ export interface Contract {
   ctaType?: string;
   ctaLabel?: string;
   ctaVariant?: string;
+  /** Where to pay it when /contract-pay cannot (an unpaid ap2service request). See utils/payHref. */
+  payLink?: string | null;
 }
 
 export interface PendingContract {
@@ -142,6 +147,8 @@ export interface PendingContract {
   buyerEmail?: string;
   amount: number;
   currency: string;
+  /** The token's symbol, e.g. USDC. Absent on old records, which were all USDC. */
+  currencySymbol?: string;
   sellerAddress: string;
   expiryTimestamp: number;
   chainId?: string;
@@ -167,12 +174,16 @@ export interface PendingContract {
   // Optional custom arbiter address chosen by the seller.
   // When present, this contract uses a non-default dispute resolver.
   arbiterAddress?: string;
+  /** The email the Third Voter was given as, when it was; arbiterAddress is the wallet it resolved to. */
+  arbiterEmail?: string | null;
+  /** White-label partner the contract was created under; absent for our own brand. */
+  brandId?: string | null;
   description: string;
   createdAt: number;
   createdBy: string;
   state: 'OK' | 'IN-PROCESS';
   // Backend-provided status for pending contracts
-  status?: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED';
+  status?: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED' | 'SANCTIONS_REFUSED' | 'REFUNDED';
   // Admin notes array from contract service
   adminNotes?: Array<{
     id: string;
@@ -184,6 +195,8 @@ export interface PendingContract {
   ctaType?: string;
   ctaLabel?: string;
   ctaVariant?: string;
+  /** Where to pay it when /contract-pay cannot (an unpaid ap2service request). See utils/payHref. */
+  payLink?: string | null;
 }
 
 export interface CreateContractRequest {
@@ -233,7 +246,8 @@ export interface ResolveDisputeRequest {
 export interface SubmitDisputeEntryRequest {
   timestamp: number;
   reason: string;
-  refundPercent: number;
+  /** Null records a note without a vote, such as the Third Voter resigning. Never 0 for "none". */
+  refundPercent: number | null;
 }
 
 export interface TransferUSDCRequest {

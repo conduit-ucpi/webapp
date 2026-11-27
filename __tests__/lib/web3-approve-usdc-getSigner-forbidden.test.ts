@@ -34,7 +34,6 @@ describe('Web3Service.fundAndSendTransaction - getSigner forbidden fix', () => {
     maxGasPriceGwei: '50',
     maxGasCostGwei: '50000', // Increased to allow test transactions to pass
     usdcGrantFoundryGas: '100000',
-    depositFundsFoundryGas: '150000',
     resolutionVoteFoundryGas: '80000',
     raiseDisputeFoundryGas: '150000',
     claimFundsFoundryGas: '150000',
@@ -84,10 +83,10 @@ describe('Web3Service.fundAndSendTransaction - getSigner forbidden fix', () => {
 
     // Mock fetch for funding call
     global.fetch = jest.fn().mockImplementation(async (url: string, options?: any) => {
-      if (url === '/api/chain/fund-wallet') {
+      if (url === '/api/chain/fund-transfer') {
         return {
           ok: true,
-          json: async () => ({ success: true, message: 'Wallet funded' })
+          json: async () => ({ success: true, funded: true, message: 'Gas for this transfer has been sent.' })
         };
       }
 
@@ -149,10 +148,10 @@ describe('Web3Service.fundAndSendTransaction - getSigner forbidden fix', () => {
     web3Service = Web3Service.getInstance(testConfig);
     await web3Service.initialize(mockProvider);
 
-    // Call fundAndSendTransaction (e.g., for USDC approval)
+    // Call fundAndSendTransaction for a USDC transfer (its gas is asked for through fund-transfer)
     const txParams = {
       to: testConfig.usdcContractAddress,
-      data: '0x095ea7b3000000000000000000000000factory123000000000000000000000000000f4240', // approve(factory, 1000000)
+      data: '0xa9059cbb' + '00000000000000000000000000000000000000000000000000000000000000ab' + (1000000).toString(16).padStart(64, '0'), // transfer(0x…ab, 1000000)
       value: '0x0'
     };
 
@@ -179,7 +178,7 @@ describe('Web3Service.fundAndSendTransaction - getSigner forbidden fix', () => {
     // Call fundAndSendTransaction
     const txParams = {
       to: testConfig.usdcContractAddress,
-      data: '0x095ea7b3',
+      data: '0xa9059cbb' + '00000000000000000000000000000000000000000000000000000000000000ab' + (1000000).toString(16).padStart(64, '0'),
       value: '0x0'
     };
 
@@ -210,7 +209,7 @@ describe('Web3Service.fundAndSendTransaction - getSigner forbidden fix', () => {
 
     const txParams = {
       to: testConfig.usdcContractAddress,
-      data: '0x095ea7b3',
+      data: '0xa9059cbb' + '00000000000000000000000000000000000000000000000000000000000000ab' + (1000000).toString(16).padStart(64, '0'),
       value: '0x0'
     };
 

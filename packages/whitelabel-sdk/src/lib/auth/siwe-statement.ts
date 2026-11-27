@@ -1,56 +1,84 @@
 /**
- * Shared SIWE message statement shown in wallet signature prompts.
+ * This deployment's Terms of Service: `<site>/terms-of-service/`, where the site is the
+ * `serviceLink` /api/config serves — the same site user-service expects (its APP_BASE_URL), so
+ * test signs test's terms and production signs production's.
+ *
+ * Only the origin is used: test's serviceLink has carried a `/dashboard` path. With no usable
+ * link, the page the app is running on is the best guess at its own site.
+ */
+export function termsUrl(serviceLink?: string | null): string {
+  let origin: string | null = null;
+  try {
+    if (serviceLink) origin = new URL(serviceLink).origin;
+  } catch {
+    origin = null;
+  }
+  if (!origin) origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
+  return `${origin}/terms-of-service/`;
+}
+
+/**
+ * The site the fallback signature message names, set once config is known (AuthManager does).
+ * The SIWE path does not use this: it is handed the site explicitly, because user-service
+ * refuses a sign-in that names the wrong one.
+ */
+let configuredServiceLink: string | null = null;
+
+export function setTermsServiceLink(serviceLink: string | null | undefined): void {
+  configuredServiceLink = serviceLink || null;
+}
+
+/**
+ * The white-label partner whose page is asking for the signature, or null on our own site. Set by
+ * BrandProvider as the brand in view changes; read here because the message is built by provider
+ * classes that live outside React and cannot ask a hook.
+ */
+let partnerName: string | null = null;
+
+/**
+ * Names the partner the sign-in sentence is worded for; null (or blank) for our own brand.
+ *
+ * The name goes into text a person signs, so it is cleaned first: one line, no brackets (the
+ * terms address and version sit in brackets, and user-service reads the version from them), and
+ * not long enough to push the address out of a wallet's prompt.
+ */
+export function setTermsPartnerName(name: string | null | undefined): void {
+  const clean = (name ?? '')
+    .replace(/\s+/g, ' ')
+    .replace(/[^\p{L}\p{N} .&'-]/gu, '')
+    .trim()
+    .slice(0, 40)
+    .trim();
+  partnerName = clean || null;
+}
+
+/**
+ * The SIWE message statement shown in wallet signature prompts.
  *
  * EIP-4361 puts this between the `<domain> wants you to sign in...` header
- * and the URI/Version/Chain ID/Nonce/Issued At fields. Keep it short and
- * reassuring — many users see "signature request" and think funds will move.
+ * and the URI/Version/Chain ID/Nonce/Issued At fields.
  *
- * Name neither the app nor the chain here. The header line above it already
- * renders window.location.host, which is whatever domain served the app —
- * a merchant embed, a preview deploy, localhost — so a hardcoded product name
- * would contradict it. The chain likewise varies (mainnet, Base, Sepolia,
- * Base Sepolia) and is already stated in the Chain ID field.
+ * ⚠️ THE SIGNATURE IS THE ACCEPTANCE OF THE TERMS. user-service refuses a sign-in whose
+ *    statement does not carry its own site's termsUrl(), and records the signed message as
+ *    the proof. Change the wording freely; drop the URL and every sign-in fails.
  *
- * Kept to one line on purpose: wallets truncate long statements, and this one
- * has to survive that intact.
+ * `version` is the terms version from /api/config: the commit that last changed the terms page,
+ * which the page also shows. user-service reads it back out of the signed statement and keeps
+ * the first and latest acceptance of each version, so it must stay `version <hex>` exactly.
+ * Absent (a build without git), the statement names none and user-service records it unversioned.
  *
- * Funds first, ownership second. AppKit collapses the message box and cuts it
- * off a line or two in, having already said "prove you own this wallet" twice
- * in its own chrome above — so ownership-first spent the only visible line
- * repeating AppKit, and the part it never states got hidden behind the chevron.
+ * Kept to one line on purpose: EIP-4361 forbids a newline in the statement, and wallets
+ * truncate long ones — the URL has to survive that intact.
+ *
+ * On a partner's page (setTermsPartnerName) the terms are named as the partner's, provided by
+ * Stabledrop: the person signing knows the partner, and the terms are still ours. Only the words
+ * before the brackets change; the address and version are exactly as they are on our own site.
  */
-export const SIWE_STATEMENT = 'No funds move and no payments are approved. Signing only proves you own this wallet.';
-
-/**
- * Chain names as a person would say them, not as the network calls itself.
- * Kept here beside the copy rather than reusing getNetworkName(), which says
- * "Base Mainnet"/"Sepolia Testnet" for logs and would read as jargon in a
- * wallet prompt.
- */
-const CHAIN_DISPLAY_NAMES: Record<number, string> = {
-  1: 'Ethereum',
-  8453: 'Base',
-  11155111: 'Sepolia',
-  84532: 'Base Sepolia'
-};
-
-/**
- * The statement, naming the chain when we can.
- *
- * EIP-4361 fixes the header line above it as "...sign in with your Ethereum
- * account:", which reads oddly to someone who came here to use Base. That
- * literal cannot be reworded — user-service parses the message, and wallets
- * render their friendly sign-in view only while it parses — so the chain is
- * named here instead, on the one line that is ours.
- *
- * An unrecognised chain falls back to the chain-less statement: "on Chain
- * 12345" would be worse than saying nothing.
- */
-export function siweStatement(chainId?: number): string {
-  const chain = chainId === undefined ? undefined : CHAIN_DISPLAY_NAMES[chainId];
-  if (!chain) return SIWE_STATEMENT;
-
-  return `No funds move and no payments are approved. Signing only proves you own this wallet on ${chain}.`;
+export function siweStatement(terms: string, version?: string | null): string {
+  const whose = partnerName ? `${partnerName} Terms of Service, provided by Stabledrop` : 'Stabledrop Terms of Service';
+  return version
+    ? `Sign to accept the ${whose} (${terms}, version ${version}).`
+    : `Sign to accept the ${whose} (${terms}).`;
 }
 
 /**
@@ -77,7 +105,7 @@ export function buildAuthTokenMessage(params: {
 
   return `${domain}
 
-${SIWE_STATEMENT}
+${siweStatement(termsUrl(configuredServiceLink))}
 
 Wallet: ${params.address}
 Issued: ${params.timestamp}

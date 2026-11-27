@@ -37,6 +37,7 @@ describe('ConduitCheckout SDK', () => {
     ConduitCheckout.config = {
       sellerAddress: null,
       baseUrl: null,
+      brand: null,
       tokenSymbol: 'USDC',
       expiryDays: 7,
       mode: 'popup',
@@ -182,7 +183,7 @@ describe('ConduitCheckout SDK', () => {
       expect(result.currencyRaw).toBe('microUSDC'); // Original currency
     });
 
-    const fundedResult = (state: string) => ({
+    const fundedResult = (state: string, activatedAt: number | null = null) => ({
       ok: true,
       json: async () => ({
         count: 1,
@@ -193,6 +194,7 @@ describe('ConduitCheckout SDK', () => {
           amount: 50.0,
           currency: 'USDC',
           state,
+          activatedAt,
         }],
       }),
     });
@@ -231,6 +233,20 @@ describe('ConduitCheckout SDK', () => {
         await assertion;
       }
     );
+
+    // A live, funded escrow reads OK: funding is recorded as activatedAt beside the state.
+    it('verifies a live escrow in state OK once activatedAt says it was funded', async () => {
+      mockFetch.mockResolvedValueOnce(fundedResult('OK', 1795244000));
+
+      const result = await ConduitCheckout.verifyPayment('abc123');
+      expect(result.verified).toBe(true);
+    });
+
+    it('fails a refunded escrow even though it was once funded', async () => {
+      mockFetch.mockResolvedValueOnce(fundedResult('REFUNDED', 1795244000));
+
+      await expect(ConduitCheckout.verifyPayment('abc123')).rejects.toThrow(/verification failed/i);
+    });
 
     it('should poll when contract not found initially', async () => {
       mockFetch
@@ -780,6 +796,30 @@ describe('ConduitCheckout SDK', () => {
       });
 
       expect(ConduitCheckout.currentPayment.tokenSymbol).toBe('USDC');
+    });
+  });
+
+  describe('White-label brand', () => {
+    const init = (extra: Record<string, unknown> = {}) =>
+      ConduitCheckout.init({ sellerAddress: '0xSELLER', baseUrl: 'https://stabledrop.me', ...extra });
+    const checkoutUrl = () =>
+      new URL(ConduitCheckout.buildCheckoutUrl({ amount: '50.00', description: 'Premium Plan' }));
+
+    it("sends a partner's brand as b=, which the checkout reads for branding and attribution", () => {
+      init({ brand: 'escrow-me' });
+      const url = checkoutUrl();
+      expect(url.pathname).toBe('/contract-create');
+      expect(url.searchParams.get('b')).toBe('escrow-me');
+    });
+
+    it('sends no brand when none is configured', () => {
+      init();
+      expect(checkoutUrl().searchParams.has('b')).toBe(false);
+    });
+
+    it('drops a malformed brand rather than sending it looking valid', () => {
+      init({ brand: 'Escrow Me!' });
+      expect(checkoutUrl().searchParams.has('b')).toBe(false);
     });
   });
 

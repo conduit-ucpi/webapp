@@ -101,6 +101,23 @@ function composeFigure(percent: number) {
   fireEvent.click(screen.getByRole('button', { name: new RegExp(`Submit ${percent}% to buyer`) }));
 }
 
+describe('The token a dispute is settled in', () => {
+  it('is the contract\'s own, not the site\'s default', () => {
+    // The site's default token (mocked above) is USDC; this contract was paid in USDT.
+    const { container } = render(
+      <DisputeManagementModal isOpen onClose={jest.fn()} contract={{ ...contract, currencySymbol: 'USDT' }} onRefresh={jest.fn()} />
+    );
+    expect(document.body.textContent).toMatch(/\$10[\d.]* USDT/);
+    expect(document.body.textContent).not.toMatch(/\$10[\d.]* USDC/);
+    expect(container).toBeTruthy();
+  });
+
+  it('is USDC for a record that names no token', () => {
+    renderModal();
+    expect(document.body.textContent).toMatch(/\$10[\d.]* USDC/);
+  });
+});
+
 describe('Submitting a settlement figure', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -113,7 +130,12 @@ describe('Submitting a settlement figure', () => {
     composeFigure(25);
     fireEvent.click(screen.getByRole('button', { name: /Confirm and sign/i }));
 
-    await waitFor(() => expect(submitSettlementVote).toHaveBeenCalledWith('0xescrow', 25));
+    await waitFor(() => expect(submitSettlementVote).toHaveBeenCalledWith('0xescrow', 25, {
+        // For the wallet's own screen. Matching nobody, it pays nothing out and says so.
+        walletDescription:
+          'Record your figure for the payment for "Fit-out": 25% refunded to the buyer, 75% to you. Nothing is paid out unless another voter holds the same figure. You can change yours later.',
+        movesFunds: false
+      }));
   });
 
   it('sends a figure that matches the other party', async () => {
@@ -121,7 +143,11 @@ describe('Submitting a settlement figure', () => {
     composeFigure(40);
     fireEvent.click(screen.getByRole('button', { name: /Confirm and sign/i }));
 
-    await waitFor(() => expect(submitSettlementVote).toHaveBeenCalledWith('0xescrow', 40));
+    await waitFor(() => expect(submitSettlementVote).toHaveBeenCalledWith('0xescrow', 40, {
+        // Matching the buyer's figure, approving pays out: the screen says that, and whose figure.
+        walletDescription:
+          'Settle the dispute on the payment for "Fit-out": 40% refunded to the buyer, 60% to you. This matches the figure the buyer is holding, so the payment is paid out this way immediately.'
+      }));
   });
 
   it('warns that a matching figure settles, before asking for the signature', async () => {
@@ -166,6 +192,23 @@ describe('Submitting a settlement figure', () => {
     expect(disputeCalls).toHaveLength(0);
   });
 
+  it('says in words why the escrow refused the vote, and records nothing', async () => {
+    // Production, 2026-10-08: the vote would have come from a wallet that is not on the escrow.
+    const { ContractRefusedError } = jest.requireActual('@/hooks/useMarketplaceActions');
+    const wrong = '0xc9D0602A87E55116F633b1A1F95D083Eb115f942';
+    submitSettlementVote.mockRejectedValue(
+      new ContractRefusedError('execution reverted', { name: 'NotAuthorizedToVote', args: [] }, wrong)
+    );
+
+    renderModal();
+    composeFigure(25);
+    fireEvent.click(screen.getByRole('button', { name: /Confirm and sign/i }));
+
+    expect(await screen.findByText(new RegExp(`would have come from wallet ${wrong}`))).toBeInTheDocument();
+    expect(screen.queryByText(/^execution reverted$/)).not.toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   it('reports settlement from a fresh chain read, not from what it just sent', async () => {
     // A second matching vote pays out in the same transaction, so the only honest source for
     // "did this settle" is the escrow itself after the send.
@@ -184,5 +227,14 @@ describe('Submitting a settlement figure', () => {
     fireEvent.click(screen.getByRole('button', { name: /Confirm and sign/i }));
 
     expect(await screen.findByText(/Settled at 40% to the buyer/i)).toBeInTheDocument();
+  });
+});
+
+describe('What a party is asked not to write', () => {
+  it('asks for no names, addresses or contact details, next to the box they write in', () => {
+    renderModal();
+    const box = screen.getByPlaceholderText('Explain your position in the dispute...');
+    const hint = document.getElementById(box.getAttribute('aria-describedby') || '');
+    expect(hint?.textContent).toBe("Don't include names, addresses or contact details. They aren't needed to decide the dispute.");
   });
 });

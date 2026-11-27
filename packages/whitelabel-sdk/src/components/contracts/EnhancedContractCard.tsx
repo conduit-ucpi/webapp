@@ -1,13 +1,15 @@
 import Link from 'next/link';
+import { contractStatusDisplay, isInstantPayment } from '@/utils/contractStatusDisplay';
 import { Contract, PendingContract } from '@/types';
-import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
+import { formatWalletAddress, displayCurrency, contractTokenSymbol, formatDateTimeWithTZ } from '@/utils/validation';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/components/auth';
 import { useMemo, useState } from 'react';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
 import { emailsEqual } from '@/utils/address';
-import { useT } from '../../i18n';
-import { useBrandedHref } from '../../theme';
+import { useT, withNodes } from '../../i18n';
+import { useBrandedHref, useShareableUrl } from '../../theme';
+import { payHref } from '../../utils/payHref';
 import Modal from '@/components/ui/Modal';
 import SendRequestScreen from '@/components/contracts/SendRequestScreen';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -32,6 +34,7 @@ export default function EnhancedContractCard({
 }: EnhancedContractCardProps) {
   const t = useT();
   const brandedHref = useBrandedHref();
+  const shareable = useShareableUrl();
   const { user } = useAuth();
   
   // Calculate time remaining
@@ -40,7 +43,7 @@ export default function EnhancedContractCard({
     const expiry = contract.expiryTimestamp;
     const remaining = expiry - now;
     
-    if (remaining <= 0) return { text: 'Expired', percentage: 100, isExpired: true };
+    if (remaining <= 0) return { text: t('contractList.expired'), percentage: 100, isExpired: true };
     
     const totalTime = expiry - (isPendingContract(contract) ? now : contract.createdAt);
     const elapsed = now - (isPendingContract(contract) ? now : contract.createdAt);
@@ -52,15 +55,15 @@ export default function EnhancedContractCard({
     
     let text = '';
     if (days > 0) {
-      text = `${days}d ${hours}h remaining`;
+      text = t('contractCard.remainingDaysHours', { days, hours });
     } else if (hours > 0) {
-      text = `${hours}h ${minutes}m remaining`;
+      text = t('contractCard.remainingHoursMinutes', { hours, minutes });
     } else {
-      text = `${minutes}m remaining`;
+      text = t('contractCard.remainingMinutes', { minutes });
     }
-    
+
     return { text, percentage, isExpired: false };
-  }, [contract]);
+  }, [contract, t]);
 
   const isPending = isPendingContract(contract);
   const isBuyer = isPending
@@ -97,7 +100,7 @@ export default function EnhancedContractCard({
 
   const paymentLink =
     typeof window !== 'undefined' && contract.id
-      ? `${window.location.origin}${brandedHref(`/contract-pay?contractId=${contract.id}`)}`
+      ? shareable(payHref(contract, brandedHref) ?? '')
       : '';
 
   // Use backend-provided CTA information only
@@ -163,44 +166,11 @@ export default function EnhancedContractCard({
     !!contract.id &&
     ['PENDING', 'PENDING_ACCEPTANCE', 'CREATED', 'AWAITING_FUNDING'].includes(status ?? '');
 
-  // Use backend-provided status display only
-  const statusDisplay = useMemo(() => {
-    // For regular contracts, use the status field from the backend
-    let displayStatus = status;
-
-    // For pending contracts without a status field, show PENDING
-    if (isPending && !displayStatus) {
-      displayStatus = 'PENDING';
-    }
-
-    // Map status to appropriate colors
-    const getStatusColor = (status: string) => {
-      switch (status?.toUpperCase()) {
-        case 'ACTIVE':
-          return 'bg-success-50 text-success-600 border-success-200';
-        case 'DISPUTED':
-          return 'bg-error-50 text-error-600 border-error-200';
-        case 'EXPIRED':
-          return 'bg-warning-50 text-warning-600 border-warning-200';
-        case 'CLAIMED':
-        case 'RESOLVED':
-          return 'bg-secondary-50 text-secondary-600 border-secondary-200';
-        case 'PENDING':
-          return 'bg-primary-50 text-primary-600 border-primary-200';
-        default:
-          return 'bg-secondary-50 text-secondary-600 border-secondary-200';
-      }
-    };
-
-    // Pending contracts are awaiting buyer funding — make that explicit in the UI.
-    const label =
-      displayStatus?.toUpperCase() === 'PENDING' ? 'PENDING FUNDING' : (displayStatus || 'Unknown');
-
-    return {
-      label,
-      color: getStatusColor(displayStatus || 'UNKNOWN'),
-    };
-  }, [status, isPending]);
+  const instant = isInstantPayment(contract.expiryTimestamp);
+  // Who a party with no email is: their wallet. "Unknown" only when there is no wallet yet either,
+  // as on a request nobody has paid.
+  const walletLabel = (address?: string | null) => (address ? formatWalletAddress(address) : t('contractCard.unknown'));
+  const statusDisplay = useMemo(() => contractStatusDisplay(status, isPending, instant), [status, isPending, instant]);
   
   return (
     <div 
@@ -220,23 +190,26 @@ export default function EnhancedContractCard({
           </div>
           <div>
             <h3 className="text-lg font-semibold text-secondary-900 line-clamp-1">
-              {contract.description || 'Untitled Contract'}
+              {contract.description || t('contractCard.untitledContract')}
             </h3>
             <p className="text-sm text-secondary-600 mt-1">
               {isSeller ? (
-                <>To: <FarcasterNameDisplay identifier={contract.buyerEmail} fallbackToAddress={true} walletAddress="Unknown" /></>
+                withNodes(t('contractCard.to'), { name: <FarcasterNameDisplay identifier={contract.buyerEmail} fallbackToAddress={true} walletAddress={walletLabel(contract.buyerAddress)} /> })
               ) : (
-                <>From: <FarcasterNameDisplay identifier={contract.sellerEmail} fallbackToAddress={true} walletAddress="Unknown" /></>
+                withNodes(t('contractCard.from'), { name: <FarcasterNameDisplay identifier={contract.sellerEmail} fallbackToAddress={true} walletAddress={walletLabel(contract.sellerAddress)} /> })
               )}
             </p>
           </div>
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-secondary-900">
-            {displayCurrency(contract.amount, 'microUSDC')}
+            {displayCurrency(contract.amount, 'microUSDC')}{' '}
+            <span className="text-sm font-medium text-secondary-500" data-testid="contract-token">
+              {contractTokenSymbol(contract)}
+            </span>
           </p>
           <p className="text-xs text-secondary-500 mt-1">
-            {isPending ? 'Pending' : `#${formatWalletAddress(contract.contractAddress)}`}
+            {isPending ? t('contractList.pending') : `#${formatWalletAddress(contract.contractAddress)}`}
           </p>
         </div>
       </div>
@@ -249,7 +222,7 @@ export default function EnhancedContractCard({
               {timeRemaining.text}
             </span>
             <span className="text-xs text-secondary-500">
-              Expires {formatDateTimeWithTZ(contract.expiryTimestamp)}
+              {t('contractCard.expiresOn', { date: formatDateTimeWithTZ(contract.expiryTimestamp) })}
             </span>
           </div>
           <div className="w-full bg-secondary-200 rounded-full h-2">
@@ -270,7 +243,7 @@ export default function EnhancedContractCard({
         <div>
           <p className="text-secondary-500">{t('enhancedContractCard.yourRole')}</p>
           <p className="font-medium text-secondary-900">
-            {isSeller ? 'Seller' : isBuyer ? 'Buyer' : 'Observer'}
+            {isSeller ? t('contractCard.roleSeller') : isBuyer ? t('contractCard.roleBuyer') : t('contractCard.roleObserver')}
           </p>
         </div>
         <div>
@@ -283,7 +256,7 @@ export default function EnhancedContractCard({
           <div>
             <p className="text-secondary-500">{t('enhancedContractCard.funded')}</p>
             <p className="font-medium text-secondary-900">
-              {contract.funded || status === 'CLAIMED' ? 'Yes ✓' : 'No ✗'}
+              {contract.funded || status === 'CLAIMED' ? t('contractCard.fundedYes') : t('contractCard.fundedNo')}
             </p>
           </div>
         )}
@@ -385,12 +358,13 @@ function SendPaymentLinkModal({
           paymentLink={paymentLink}
           // The screen wants token units; the record stores microUSDC.
           amount={(contract.amount / 1_000_000).toString()}
-          tokenSymbol={config?.tokenSymbol || 'USDC'}
+          tokenSymbol={contractTokenSymbol(contract)}
           networkLabel={config ? getNetworkName(config.chainId) : undefined}
           description={contract.description || ''}
           payoutLabel={
             contract.expiryTimestamp ? formatDateTimeWithTZ(contract.expiryTimestamp) : undefined
           }
+          instant={isInstantPayment(contract.expiryTimestamp)}
           copied={copied}
           onCopy={(text) => onCopy(text)}
           onDone={onClose}

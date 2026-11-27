@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { RpcClient } from '@/lib/rpc/RpcClient';
+import { RpcClient, sharedRpcClient } from '@/lib/rpc/RpcClient';
 
 /**
  * Reading one value per escrow, straight from the chain.
@@ -34,7 +34,8 @@ export function useChainReads<T>(
     let cancelled = false;
 
     (async () => {
-      const client = new RpcClient(rpcUrl);
+      // The shared client for this endpoint, so the reads below go out as one request.
+      const client = sharedRpcClient(rpcUrl);
       const results = await Promise.all(
         addressesRef.current.map(async (address) => {
           try {

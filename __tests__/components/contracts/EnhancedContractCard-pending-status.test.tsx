@@ -37,6 +37,25 @@ const PENDING: PendingContract = {
   adminNotes: [],
 };
 
+describe('EnhancedContractCard — the token each contract is in', () => {
+  const token = () => screen.getByTestId('contract-token').textContent;
+
+  it('shows the contract\'s own token beside its amount', () => {
+    render(<EnhancedContractCard contract={{ ...PENDING, currency: 'microUSDT', currencySymbol: 'USDT' }} />);
+    expect(token()).toBe('USDT');
+  });
+
+  it('reads it from the currency when the record has no symbol', () => {
+    render(<EnhancedContractCard contract={{ ...PENDING, currency: 'microUSDT' }} />);
+    expect(token()).toBe('USDT');
+  });
+
+  it('is USDC for a record from before there was a second token', () => {
+    render(<EnhancedContractCard contract={PENDING} />);
+    expect(token()).toBe('USDC');
+  });
+});
+
 describe('EnhancedContractCard — pending status label', () => {
   it('renders "PENDING FUNDING" (not just "PENDING") for a pending contract', () => {
     render(<EnhancedContractCard contract={PENDING} />);

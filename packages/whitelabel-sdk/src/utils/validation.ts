@@ -30,7 +30,8 @@ export {
   toMicroUSDC,
   fromMicroUSDC,
   toUSDCForWeb3,
-  displayCurrency
+  displayCurrency,
+  contractTokenSymbol
 } from './currency';
 
 // Re-export datetime utilities

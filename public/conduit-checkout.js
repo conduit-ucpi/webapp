@@ -7,6 +7,7 @@
  *   ConduitCheckout.init({
  *     sellerAddress: '0x4f118f99a4e8bb384061bcfe081e3bbdec28482d',
  *     baseUrl: 'https://yoursite.com', // Your webapp deployment URL
+ *     brand: 'your-brand-id', // Optional: a white-label partner's brand id
  *     verifyPayment: true, // Enable backend verification (default: true)
  *     onSuccess: function(data) { console.log('Payment completed!', data); },
  *     onError: function(error) { console.log('Payment failed:', error); },
@@ -25,7 +26,8 @@
 
   // Contract state constants
   // Error states that indicate payment failed
-  const FAILED_STATES = ['NEVER_FUNDED', 'ERROR', 'FAILED'];
+  // REFUNDED: paid after the payout date and returned to the buyer, so the merchant was not paid.
+  const FAILED_STATES = ['NEVER_FUNDED', 'REFUNDED', 'ERROR', 'FAILED'];
 
   /**
    * The states in which the money is genuinely in the escrow.
@@ -38,19 +40,33 @@
    *
    * EXPIRED is deliberately absent: it covers both an escrow that matured with funds in it
    * and a quote that simply lapsed, and those must not be confused.
+   *
+   * ⚠️ A LIVE, FUNDED ESCROW READS `OK`, NOT ONE OF THESE. Since counterfactual escrows,
+   *    funding is recorded as `activatedAt` beside the state, and the state stays OK until the
+   *    money moves. So `activatedAt` is the main signal (see isFunded); these states only cover
+   *    escrows that have moved on (disputed, settled) and older ones funded before
+   *    `activatedAt` was recorded.
    */
   const FUNDED_STATES = ['ACTIVE', 'DISPUTED', 'RESOLVED', 'CLAIMED', 'COMPLETED'];
+
+  /** Whether /api/results says the money reached this escrow. Callers rule out FAILED_STATES first. */
+  function isFunded(result) {
+    return (result.activatedAt !== null && result.activatedAt !== undefined) ||
+      FUNDED_STATES.includes(result.state);
+  }
 
   const ConduitCheckout = {
     config: {
       sellerAddress: null,
       baseUrl: null,
+      brand: null, // Optional white-label partner brand id: their branding, and payments attributed to them
       tokenSymbol: 'USDC', // 'USDC' or 'USDT'
       expiryDays: 7, // Default expiry in days
       mode: 'popup', // 'popup' or 'redirect'
       verifyPayment: true, // Enable backend verification
       verificationTimeout: 30000, // 30 seconds max polling
       verificationInterval: 2000, // Poll every 2 seconds
+      apiUrl: null, // Optional: where the payment API is. Normally the checkout page says.
       webhookUrl: null, // Optional: Auto-send verified data to your backend
       webhookSecret: null, // Optional: HMAC secret for webhook signature
       onSuccess: function(data) { console.log('Payment success:', data); },
@@ -60,6 +76,7 @@
     },
 
     popup: null,
+    apiOrigin: null, // The API's address as the checkout page reported it with the payment
     messageListener: null,
     currentPayment: null, // Store expected payment data
 
@@ -68,6 +85,8 @@
      * @param {Object} options - Configuration options
      * @param {string} options.sellerAddress - Merchant wallet address (required)
      * @param {string} options.baseUrl - Base URL of the checkout page (required)
+     * @param {string} [options.brand] - White-label partner brand id (e.g. 'escrow-me'): the checkout
+     *   shows that partner's branding and the payment is recorded as made under them
      * @param {string} [options.tokenSymbol='USDC'] - Token to use ('USDC' or 'USDT')
      * @param {number} [options.expiryDays=7] - Days until auto-release to seller
      * @param {string} [options.mode='popup'] - Display mode: 'popup' or 'redirect'
@@ -151,6 +170,13 @@
       url.searchParams.set('description', params.description);
       url.searchParams.set('tokenSymbol', params.tokenSymbol || this.config.tokenSymbol);
 
+      // A white-label partner's brand, as the site reads it everywhere else (`?b=`): their branding
+      // on the checkout, and the payment attributed to them. Only a well-formed brand id is sent,
+      // because the checkout drops anything else and a typo should not reach the URL looking valid.
+      if (this.config.brand && /^[a-z0-9-]{2,32}$/.test(this.config.brand)) {
+        url.searchParams.set('b', this.config.brand);
+      }
+
       // Optional parameters
       if (params.orderId) {
         url.searchParams.set('order_id', params.orderId);
@@ -221,6 +247,18 @@
      * @returns {Promise<Object>} Verified payment data
      * @private
      */
+    /**
+     * Where /api/results is. The site and its API can be on different hosts (stabledrop.me and
+     * api.stabledrop.me), and `baseUrl` is the site: asking it for the API gets a 405 on every
+     * poll until verification times out. The checkout page knows its own API and says so with
+     * the payment; `apiUrl` overrides that, and `baseUrl` is the fallback for a deployment that
+     * serves both from one host.
+     * @private
+     */
+    apiBase: function() {
+      return (this.config.apiUrl || this.apiOrigin || this.config.baseUrl).replace(/\/$/, '');
+    },
+
     verifyPayment: async function(contractId) {
       const startTime = Date.now();
       const timeout = this.config.verificationTimeout || 30000;
@@ -240,7 +278,7 @@
       while (Date.now() - startTime < timeout) {
         try {
           const response = await fetch(
-            `${this.config.baseUrl}/api/results`,
+            `${this.apiBase()}/api/results`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -281,11 +319,12 @@
           //    page, before they send anything — so waiting for it to appear would clear an
           //    order the moment someone looked at it.
           //
-          // `state` is the signal, and it is tested as an allowlist rather than by ruling out
-          // the failures. A state nobody here has heard of must not be read as payment: the
-          // cost of waiting for one that is fine is a slower poll, the cost of clearing one
-          // that is not is goods shipped for money that never arrived.
-          if (!FUNDED_STATES.includes(result.state)) {
+          // `activatedAt` is the signal (our services set it when the escrow is funded), with
+          // the moved-on states as an allowlist for escrows past that point. A state nobody here
+          // has heard of must not be read as payment: the cost of waiting for one that is fine
+          // is a slower poll, the cost of clearing one that is not is goods shipped for money
+          // that never arrived.
+          if (!isFunded(result)) {
             console.log('⏳ Not funded yet (state: ' + result.state + '), polling again in', interval, 'ms');
             await this.sleep(interval);
             continue;
@@ -587,6 +626,13 @@
             if (this.config.verifyPayment !== false) {
               try {
                 console.log('🔍 Payment completed postMessage received, starting verification...');
+
+                // Only from the checkout page itself (the origin was checked above), and only a
+                // plain https address: this is where the payment is about to be looked up.
+                const reported = message.data && message.data.apiOrigin;
+                if (typeof reported === 'string' && /^https:\/\/[a-z0-9.-]+(:\d+)?$/i.test(reported)) {
+                  this.apiOrigin = reported;
+                }
 
                 const verifiedData = await this.verifyPayment(message.data.contractId);
 

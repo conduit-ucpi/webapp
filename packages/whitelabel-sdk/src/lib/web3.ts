@@ -4,11 +4,16 @@ import { Config } from '@/types';
 // WalletProvider removed - using ethers.BrowserProvider directly
 import { toHex, toHexString, ensureHexPrefix } from '@/utils/hexUtils';
 import { mLog } from '@/utils/mobileLogger';
-import { RpcClient } from '@/lib/rpc/RpcClient';
+import { RpcClient, readProviderFor, rememberChain } from '@/lib/rpc/RpcClient';
+import { isRateLimited } from '@/lib/rpc/rateLimit';
 import { withWalletPrompt } from '@/lib/auth/walletPromptChannel';
+import { asTokenTransfer, sendsNativeValue } from './tokenTransfer';
+import { asSwapApproval, asSwapConversion } from '@/lib/swapSteps';
 import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement';
 
 // ERC20 ABI for USDC interactions
+import { decodeQuote, decodeSale, decodeSaleQuote, decodeSwap, encodeQuote, encodeSaleQuote, isSwapRouter, type SwapVenue } from './stablecoinSwap';
+
 export const ERC20_ABI = [
   'function balanceOf(address owner) view returns (uint256)',
   'function allowance(address owner, address spender) view returns (uint256)',
@@ -20,6 +25,8 @@ export const ERC20_ABI = [
 
 // Escrow Contract ABI
 export const ESCROW_CONTRACT_ABI = [
+  // The factory that initialized this escrow (whoever called initialize first).
+  'function FACTORY() view returns (address)',
   'function getContractInfo() view returns (address _buyer, address _seller, uint256 _amount, uint256 _expiryTimestamp, bytes32 _descriptionHash, uint8 _currentState, uint256 _currentTimestamp)',
   'function isExpired() view returns (bool)',
   'function canClaim() view returns (bool)',
@@ -28,7 +35,6 @@ export const ESCROW_CONTRACT_ABI = [
   'function canDeposit() view returns (bool)',
   'function isDisputed() view returns (bool)',
   'function isClaimed() view returns (bool)',
-  'function depositFunds()',
   'function raiseDispute()',
   'function claimFunds()',
   'function submitResolutionVote(uint256 _buyerPercentage)',
@@ -52,6 +58,7 @@ export const ESCROW_CONTRACT_ABI = [
   'function resolvedBuyerPercentage() view returns (uint8)',
   'function nominateArbiter(address candidate)',
   'function evictArbiter()',
+  'function resignArbiter()',
   'function seatDefaultArbiter()',
   'function approveRecipientTransfer(address operator, address newRecipient)',
 
@@ -65,10 +72,10 @@ export const ESCROW_CONTRACT_ABI = [
  * One LP's offer vault (MARKETPLACE_OPENSPEC §5.0).
  *
  * Each offer is its own contract, so LP capital is never commingled and every party action is
- * addressed to the vault that holds their own money. ⚠️ NONE of these five actions is relayed:
- * `fund`, `accept`, `reject`, `withdraw` and `releaseHoldback` are sent by the party's own
- * wallet after `fund-wallet` supplies the gas (§15.6a). chainservice only deploys the vault,
- * pays for gas, and indexes the events.
+ * addressed to the vault that holds their own money. None of its actions costs a party gas:
+ * `fund`, `withdraw` and `releaseHoldback` are permissionless and relayed by chainservice, and
+ * the seller's `accept` and `reject` are signed messages chainservice delivers. Only the LP's
+ * deposit is sent from their own wallet, as a token transfer whose gas `fund-transfer` gives.
  */
 export const OFFER_VAULT_ABI = [
   'function escrowContract() view returns (address)',
@@ -121,13 +128,46 @@ import { formatWeiAsEthForLogging, formatGweiAsEthForLogging } from '@/utils/log
  * instead of an error message.
  */
 export class EstimationRevertedError extends Error {
-  constructor(message: string) {
+  /**
+   * The revert data the RPC returned (a custom error's selector and arguments), when it gave
+   * any. "execution reverted" says nothing; this is what says why, once decoded against the
+   * contract's errors.
+   */
+  readonly data?: string;
+  /** The address the estimate was made from: the wallet the transaction would have come from. */
+  readonly from?: string;
+
+  constructor(message: string, data?: string, from?: string) {
     super(message);
     this.name = 'EstimationRevertedError';
+    this.data = data;
+    this.from = from;
+  }
+}
+
+/**
+ * The transaction would cost more gas than MAX_GAS_COST_GWEI allows, so it was not sent.
+ *
+ * Thrown BEFORE the wallet is topped up: a transaction we are going to refuse must not first
+ * cost us a sponsorship. Nothing was sent and nothing was spent when this is thrown.
+ */
+export class GasCostCapError extends Error {
+  constructor(
+    message: string,
+    /** The worst case this transaction could cost: its buffered gas limit at the fee it would offer. */
+    readonly costWei: bigint,
+    readonly capWei: bigint
+  ) {
+    super(message);
+    this.name = 'GasCostCapError';
   }
 }
 
 export class Web3Service {
+  /** The longest a sent transaction is waited on, and how often it is looked for. */
+  static readonly CONFIRMATION_WAIT_MS = 60_000;
+  static readonly CONFIRMATION_POLL_MS = 4000;
+
   private static instance: Web3Service | null = null;
   private provider: ethers.BrowserProvider | null = null;
   private readProvider: ethers.JsonRpcProvider | null = null; // Read-only RPC provider (no wallet needed)
@@ -144,9 +184,10 @@ export class Web3Service {
   private constructor(config: Config) {
     this.config = config;
     // Initialize read-only provider immediately (no wallet needed)
-    this.readProvider = new ethers.JsonRpcProvider(config.rpcUrl);
+    this.readProvider = readProviderFor(config.rpcUrl, config.chainId);
     // Single owner of read-only RPC — balance/token/contract reads delegate here.
-    this.rpcClient = new RpcClient(config.rpcUrl);
+    rememberChain(config.rpcUrl, config.chainId);
+    this.rpcClient = new RpcClient(config.rpcUrl, config.chainId);
     console.log('[Web3Service] Read-only RPC provider created (no wallet access)');
   }
 
@@ -677,9 +718,39 @@ export class Web3Service {
     return await this.rpcClient.getTokenAllowance(userAddress, spenderAddress, tokenAddress);
   }
 
-  // Deprecated - use signUSDCApproval instead
-  async approveUSDC(amount: string, spenderAddress: string): Promise<string> {
-    throw new Error('approveUSDC is deprecated. Use signUSDCApproval method instead.');
+  /** What the escrow at this address pays its recipient: the amount less the fee. Read without the wallet. */
+  async getPayoutAmount(contractAddress: string): Promise<bigint> {
+    return await this.rpcClient.getPayoutAmount(contractAddress);
+  }
+
+  /** Allowance of any token, read without the wallet. Formatted in the token's own decimals. */
+  async getTokenAllowance(userAddress: string, spenderAddress: string, tokenAddress: string): Promise<string> {
+    return await this.rpcClient.getTokenAllowance(userAddress, spenderAddress, tokenAddress);
+  }
+
+  /**
+   * What converting to exactly `amountOut` of `tokenOut` would cost in `tokenIn`, in base units.
+   * A read-only call to Uniswap's quoter: no wallet, no gas, nothing moves. Throws when the pool
+   * cannot supply the amount.
+   */
+  async quoteStablecoinSwap(venue: SwapVenue, tokenIn: string, tokenOut: string, amountOut: bigint): Promise<bigint> {
+    const result = await this.rpcClient.getProvider().call({
+      to: venue.quoter,
+      data: encodeQuote(venue, tokenIn, tokenOut, amountOut),
+    });
+    return decodeQuote(result);
+  }
+
+  /**
+   * What selling exactly `amountIn` of `tokenIn` would bring in `tokenOut`, in base units. The
+   * same read-only call to the quoter, asked the other way round.
+   */
+  async quoteStablecoinSale(venue: SwapVenue, tokenIn: string, tokenOut: string, amountIn: bigint): Promise<bigint> {
+    const result = await this.rpcClient.getProvider().call({
+      to: venue.quoter,
+      data: encodeSaleQuote(venue, tokenIn, tokenOut, amountIn),
+    });
+    return decodeSaleQuote(result);
   }
 
   // Hash description for smart contract compatibility
@@ -696,6 +767,10 @@ export class Web3Service {
 
   // Check various contract states.
   // Reads via the read-only RPC owner; no connected wallet required.
+  async isEscrowFunded(contractAddress: string) {
+    return await this.rpcClient.isEscrowFunded(contractAddress);
+  }
+
   async getContractState(contractAddress: string) {
     return await this.rpcClient.getContractState(contractAddress);
   }
@@ -707,6 +782,12 @@ export class Web3Service {
   // See lib/escrow/verifyEscrowClone.ts.
   async getCode(address: string) {
     return await this.rpcClient.getCode(address);
+  }
+
+  // The factory that created an escrow, for verifying it came from ours.
+  // See lib/escrow/verifyEscrowFactory.ts.
+  async getEscrowFactory(contractAddress: string) {
+    return await this.rpcClient.getEscrowFactory(contractAddress);
   }
 
   // Raw, unformatted deal terms, for verifying a deployed escrow holds the deal
@@ -1085,7 +1166,11 @@ export class Web3Service {
    *    So the prewarm may fund, and may never authorise skipping. The send path always takes
    *    its own reading.
    */
-  private async topUpGasIfShort(userAddress: string, totalGasNeeded: bigint): Promise<boolean> {
+  private async topUpGasIfShort(
+    userAddress: string,
+    totalGasNeeded: bigint,
+    tx: { to: string; data: string; value?: string }
+  ): Promise<boolean> {
     const existingBalance = await this.readNativeBalance(userAddress);
     if (existingBalance !== null && existingBalance >= totalGasNeeded) {
       console.log(
@@ -1095,27 +1180,65 @@ export class Web3Service {
       return false;
     }
 
-    console.log('Requesting wallet funding from chainservice...');
-    const fundResponse = await apiFetch('/api/chain/fund-wallet', {
+    // A transaction that SENDS native token is never funded: a wallet sending ETH has ETH, and
+    // pays its own gas out of it. (Asking would be refused anyway, a moment later: sending
+    // native tokens out is exactly what stops a wallet being given gas.)
+    if (sendsNativeValue(tx.value)) {
+      console.log('⛽ This transaction sends native token; its gas is the wallet\'s own to pay. No top-up requested.');
+      return false;
+    }
+
+    // ⚠️ A TOKEN TRANSFER ASKS BY NAMING THE TRANSFER, NOT AN AMOUNT OF GAS. chainservice checks
+    //    the wallet holds the tokens, simulates the transfer to size the gas itself, and refuses
+    //    a wallet that has been sending native tokens out. What we reckon we need goes along
+    //    only as a figure it may lower its own to; it can never raise what is sent.
+    const transfer = asTokenTransfer(tx);
+    if (transfer) {
+      return this.askForGasByName('/api/chain/fund-transfer', 'transfer', { walletAddress: userAddress, ...transfer }, totalGasNeeded);
+    }
+
+    // The two steps of a stablecoin conversion ask the same way, each by naming itself
+    // (lib/swapSteps.ts). chainservice builds the call from these terms and simulates it.
+    const approval = asSwapApproval(tx);
+    if (approval) {
+      return this.askForGasByName('/api/chain/fund-swap-approval', 'approval', { walletAddress: userAddress, ...approval }, totalGasNeeded);
+    }
+    const conversion = asSwapConversion(tx, userAddress);
+    if (conversion) {
+      return this.askForGasByName('/api/chain/fund-swap', 'conversion', { walletAddress: userAddress, ...conversion }, totalGasNeeded);
+    }
+
+    // ⚠️ NOTHING ELSE IS GIVEN GAS. There is no ask-by-amount any more (`fund-wallet` was removed
+    //    on 2026-11-19): party actions on our contracts are signed messages chainservice delivers,
+    //    permissionless calls are relayed, and what is left (a contract from before the signed
+    //    route) is the wallet's own to pay for. Say so before the wallet is asked to sign a
+    //    transaction it cannot pay for.
+    console.warn('⛽ No gas route for this transaction, and the wallet is short.', { to: tx.to, selector: tx.data?.slice(0, 10) });
+    throw new Error(
+      'This wallet does not hold enough ETH to pay the network fee for this, and it is not one we pay for. ' +
+        'Add a little ETH on Base to the wallet and try again.'
+    );
+  }
+
+  /**
+   * Ask for gas by saying what it is for. True when gas was sent, false when the wallet already
+   * could; a refusal throws chainservice's own sentence, which says why in words the person can
+   * act on, and is not retried the older way.
+   */
+  private async askForGasByName(path: string, what: string, named: Record<string, string>, totalGasNeeded: bigint): Promise<boolean> {
+    console.log(`Requesting gas for a ${what} from chainservice...`, named);
+    const response = await apiFetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({
-        walletAddress: userAddress,
-        totalAmountNeededWei: totalGasNeeded.toString()
-      })
+      body: JSON.stringify({ ...named, neededWei: totalGasNeeded.toString() })
     });
-
-    if (!fundResponse.ok) {
-      const errorData = await fundResponse.json().catch(() => ({}));
-      throw new Error(`Failed to fund wallet: ${errorData.error || fundResponse.statusText}`);
+    const answer = await response.json().catch(() => ({}));
+    console.log(`[${path.split('/').pop()}] answered ${response.status}`, answer);
+    if (!response.ok || !answer.success) {
+      throw new Error(answer.message || answer.error || `Gas for this ${what} could not be arranged (${response.status}). Try again.`);
     }
-
-    const fundResult = await fundResponse.json();
-    if (!fundResult.success) {
-      throw new Error(`Wallet funding failed: ${fundResult.error || 'Unknown error'}`);
-    }
-    return true;
+    return answer.funded === true;
   }
 
   async prewarmTransaction(txParams: { to: string; data: string; value?: string }): Promise<void> {
@@ -1164,8 +1287,13 @@ export class Web3Service {
       const gasPrice = await this.gasPriceForFunding();
       if (gasPrice === null) return;
 
-      const { totalGasNeeded } = this.bufferedGasCost(BigInt(body.result), gasPrice, txParams.data);
-      const funded = await this.topUpGasIfShort(userAddress, totalGasNeeded);
+      const { totalGasNeeded, gasPriceBuffer } = this.bufferedGasCost(BigInt(body.result), gasPrice, txParams.data);
+      // Never fund ahead what the send path would refuse over the cost cap: the throw lands in
+      // the catch below, and the send path raises it properly when the button is pressed.
+      if (!this.isInjectedWalletProvider()) {
+        this.assertWithinGasCostCap(BigInt(Math.round(Number(body.result) * gasPriceBuffer)), gasPrice);
+      }
+      const funded = await this.topUpGasIfShort(userAddress, totalGasNeeded, txParams);
       if (funded) {
         console.log('[Web3Service.prewarmTransaction] Topped the wallet up before it was needed');
       }
@@ -1174,12 +1302,99 @@ export class Web3Service {
     }
   }
 
+  /**
+   * Run a call from the user's own address WITHOUT sending it, and throw if the contract would
+   * refuse it. For a signed action (lib/signedActions.ts): the person is asked to sign only what
+   * the contract will accept, and a refusal carries the contract's own reason, as it does when
+   * fund-then-send estimates.
+   *
+   * ⚠️ ONLY A REVERT THROWS. If the RPC cannot be reached this returns quietly: chainservice
+   *    simulates again before it sends anything, so an outage here must not block the action.
+   */
+  async simulateCall(tx: { to: string; data: string }): Promise<void> {
+    const userAddress = await this.getUserAddress();
+    let answer: any;
+    try {
+      const response = await fetch(this.config.rpcUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          method: 'eth_estimateGas',
+          params: [{ from: userAddress, to: tx.to, data: tx.data, value: '0x0' }],
+          id: 1
+        })
+      });
+      if (!response.ok) return;
+      answer = await response.json();
+    } catch {
+      return;
+    }
+    if (answer?.error) {
+      throw new EstimationRevertedError(
+        answer.error.message || 'The transaction would fail on-chain.',
+        typeof answer.error.data === 'string' ? answer.error.data : undefined,
+        userAddress
+      );
+    }
+  }
+
+  /**
+   * Have the wallet sign EIP-712 typed data, and resolve with the signature. Nothing is sent to
+   * the chain and no gas is needed: every wallet we support can do this, including the ones
+   * that will not sign a transaction without sending it.
+   *
+   * The same notice is shown as for a transaction, because what is being approved is the same
+   * thing: [prompt] says what, and whether anything moves once it is delivered.
+   *
+   * ⚠️ NO getSigner(), as everywhere else here: the request goes to the provider directly.
+   */
+  async signTypedData(
+    typedData: { domain: { chainId: number }; primaryType: string; types: unknown; message: unknown },
+    prompt?: { summary?: string; walletDescription?: string; movesFunds?: boolean }
+  ): Promise<string> {
+    if (!this.provider) {
+      throw new Error('Provider not initialized');
+    }
+    // A wallet refuses typed data whose chain is not the one it is on.
+    await this.verifyAndSwitchNetwork();
+
+    const address = await this.getUserAddress();
+    const provider = this.provider as any;
+    const params = [address, JSON.stringify(typedData)];
+    const signature: string = await withWalletPrompt(
+      {
+        kind: 'transaction',
+        summary: prompt?.summary ?? typedData.primaryType,
+        walletDescription: prompt?.walletDescription,
+        movesFunds: prompt?.movesFunds
+      },
+      async () => {
+        if (provider.request && typeof provider.request === 'function') {
+          return await provider.request({ method: 'eth_signTypedData_v4', params });
+        }
+        if (provider.send && typeof provider.send === 'function') {
+          return await provider.send('eth_signTypedData_v4', params);
+        }
+        throw new Error('Provider does not support request() or send() methods');
+      }
+    );
+    if (typeof signature !== 'string' || !signature.startsWith('0x')) {
+      throw new Error('The wallet did not return a signature');
+    }
+    return signature;
+  }
+
   async fundAndSendTransaction(txParams: {
     to: string;
     data: string;
     value?: string;
     gasLimit?: bigint;
     gasPrice?: bigint;
+    /** What the wallet's own prompt should say, where the wallet lets us (walletPromptChannel). */
+    walletDescription?: string;
+    /** False when nothing moves, so the notice does not claim it does (walletPromptChannel). */
+    movesFunds?: boolean;
   }): Promise<string> {
     if (!this.provider) {
       throw new Error('Provider not initialized');
@@ -1239,7 +1454,9 @@ export class Web3Service {
             //    cannot decode either) presents it as an opaque native-value transfer.
             //    Surface it instead: the revert reason is the actual diagnosis.
             throw new EstimationRevertedError(
-              estimateData.error.message || 'The transaction would fail on-chain.'
+              estimateData.error.message || 'The transaction would fail on-chain.',
+              typeof estimateData.error.data === 'string' ? estimateData.error.data : undefined,
+              userAddress
             );
           }
           if (estimateData.result) {
@@ -1273,10 +1490,7 @@ export class Web3Service {
         const transactionType = this.detectTransactionType(txParams.data);
         let foundryGasEstimate: number;
 
-        if (transactionType === 'depositFunds') {
-          foundryGasEstimate = parseInt(this.config.depositFundsFoundryGas || '200000');
-          console.log(`Using Foundry fallback for depositFunds (DEPOSIT_FUNDS_FOUNDRY_GAS): ${foundryGasEstimate} gas`);
-        } else if (transactionType === 'submitResolutionVote') {
+        if (transactionType === 'submitResolutionVote') {
           // Resolution votes need MORE gas because they:
           // 1. Write vote to storage
           // 2. Check for consensus (reads 3 votes)
@@ -1397,7 +1611,19 @@ export class Web3Service {
     //    between a page loading and a button being pressed, and being wrong in the optimistic
     //    direction means asking the user to sign a transaction that cannot pay for itself. The
     //    prewarm may bring this work forward; it may never let us skip the check.
-    await this.topUpGasIfShort(userAddress, totalGasNeeded);
+    //
+    // ⚠️ THE COST CAP IS CHECKED BEFORE THE TOP-UP, NOT AFTER. It used to run just before the
+    //    send, after chainservice had already moved ETH into the wallet, so a transaction we
+    //    were going to refuse cost us a sponsorship first, and again on every retry.
+    //    The figure is the one the send would offer: the buffered gas limit at the fee chosen
+    //    above (custom providers send exactly these fees). Injected wallets price their own gas
+    //    and are not capped.
+    const bufferedGasLimit = BigInt(Math.round(Number(gasEstimate) * gasPriceBuffer));
+    if (!isInjectedWallet) {
+      this.assertWithinGasCostCap(bufferedGasLimit, gasPrice);
+    }
+
+    await this.topUpGasIfShort(userAddress, totalGasNeeded, txParams);
 
     // Step 5: Send transaction using the same unified ethers provider approach
     console.log('[Web3Service.fundAndSendTransaction] Sending transaction via unified ethers provider...');
@@ -1410,10 +1636,7 @@ export class Web3Service {
       console.log('[Web3Service.fundAndSendTransaction] Getting user address from auth context (no getSigner call)');
       // Note: We removed "const signer = await this.provider.getSigner();" from here
 
-      // Apply gas buffer for transaction execution
-      // Use the SAME gasPriceBuffer calculated earlier (includes 5x multiplier for disputes)
-      const bufferedGasLimit = BigInt(Math.round(Number(gasEstimate) * gasPriceBuffer));
-
+      // The gas limit is the buffered one worked out (and checked against the cost cap) above.
       const originalCostEth = Number(gasEstimate * gasPrice) / 1e18;
       const bufferedCostEth = Number(bufferedGasLimit * gasPrice) / 1e18;
 
@@ -1472,68 +1695,6 @@ export class Web3Service {
           console.log('✅ Using gas price from funding calculation (fallback)');
           console.log(`   gasPrice: ${formatWeiAsEthForLogging(tx.gasPrice)} (${(Number(tx.gasPrice) / 1e9).toFixed(6)} gwei)`);
         }
-      }
-
-      // Validate transaction cost against MAX_GAS_COST_GWEI limit using buffered gas limit
-      // Skip validation for injected wallets since they handle their own gas pricing
-      if (isInjectedWallet) {
-        console.log('');
-        console.log('✅ TRANSACTION VALIDATION (INJECTED WALLET):');
-        console.log('─'.repeat(60));
-        console.log(`   Buffered Gas Limit: ${bufferedGasLimit.toString()} gas`);
-        console.log(`   Gas Price: Managed by wallet (not validated)`);
-        console.log(`   Status: ✅ SKIPPED - Wallet handles gas pricing`);
-        console.log('='.repeat(80));
-        console.log('');
-      } else {
-        // Validate for non-injected wallets
-        let transactionCostWei: bigint;
-        if (tx.maxFeePerGas) {
-          // EIP-1559 transaction
-          transactionCostWei = tx.maxFeePerGas * bufferedGasLimit;
-        } else if (tx.gasPrice) {
-          // Legacy transaction
-          transactionCostWei = tx.gasPrice * bufferedGasLimit;
-        } else {
-          throw new Error('No gas price set for transaction');
-        }
-
-        const maxAllowedCostWei = this.getMaxGasCostInWei();
-        const gasPriceUsed = tx.maxFeePerGas || tx.gasPrice || BigInt(0);
-
-        // Convert to ETH for display
-        const transactionCostEth = Number(transactionCostWei) / 1e18;
-        const maxAllowedCostEth = Number(maxAllowedCostWei) / 1e18;
-        const gasPriceUsedEth = Number(gasPriceUsed) / 1e18;
-
-        console.log('');
-        console.log('✅ FINAL TRANSACTION COST VALIDATION:');
-        console.log('─'.repeat(60));
-        console.log(`   Buffered Gas Limit: ${bufferedGasLimit.toString()} gas`);
-        console.log(`   Gas Price Used: ${gasPriceUsedEth.toExponential(4)} ETH`);
-        console.log(`   Transaction Cost: ${transactionCostEth.toExponential(4)} ETH`);
-        console.log(`   MAX_GAS_COST_GWEI Limit: ${maxAllowedCostEth.toExponential(4)} ETH`);
-        console.log(`   Headroom: ${((maxAllowedCostEth / transactionCostEth) * 100).toFixed(1)}% available`);
-        console.log('─'.repeat(60));
-
-        if (transactionCostWei > maxAllowedCostWei) {
-          console.log('');
-          console.log('❌ VALIDATION FAILED:');
-          console.log(`   Transaction cost ${transactionCostEth.toExponential(4)} ETH exceeds limit ${maxAllowedCostEth.toExponential(4)} ETH`);
-          console.log('='.repeat(80));
-          console.log('');
-
-          throw new Error(
-            `Transaction cost exceeds configured maximum. ` +
-            `Estimated cost: ${transactionCostEth.toExponential(4)} ETH (${bufferedGasLimit.toString()} gas × ${gasPriceUsedEth.toExponential(4)} ETH/gas), ` +
-            `Maximum allowed: ${maxAllowedCostEth.toExponential(4)} ETH. ` +
-            `Please contact support to adjust gas cost limits.`
-          );
-        }
-
-        console.log(`   Status: ✅ PASSED - Transaction within limits`);
-        console.log('='.repeat(80));
-        console.log('');
       }
 
       // MOBILE FIX: Call eth_sendTransaction directly to avoid hanging
@@ -1620,7 +1781,7 @@ export class Web3Service {
       // transfer of real money. Announce what is actually being approved while
       // the prompt is open; see lib/auth/walletPromptChannel.ts.
       const returnedHash: string = await withWalletPrompt(
-        { kind: 'transaction', summary: this.describeTransactionForPrompt(rpcTxParams) },
+        { kind: 'transaction', summary: this.describeTransactionForPrompt(rpcTxParams), walletDescription: txParams.walletDescription, movesFunds: txParams.movesFunds },
         async () => {
           if (provider.request && typeof provider.request === 'function') {
             // EIP-1193 interface
@@ -1949,6 +2110,27 @@ export class Web3Service {
     return BigInt(Math.round(maxGasPriceGwei * 1000000000)); // Convert gwei to wei
   }
 
+  /** Refuse, before anything is funded or sent, a transaction that could cost more than the cap. */
+  private assertWithinGasCostCap(gasLimit: bigint, feePerGas: bigint): void {
+    const costWei = gasLimit * feePerGas;
+    const capWei = this.getMaxGasCostInWei();
+    const costEth = Number(costWei) / 1e18;
+    const capEth = Number(capWei) / 1e18;
+    console.log(
+      `💸 Gas cost check: ${gasLimit.toString()} gas × ${(Number(feePerGas) / 1e9).toFixed(6)} gwei = ` +
+        `${costEth.toExponential(4)} ETH, limit ${capEth.toExponential(4)} ETH`
+    );
+    if (costWei > capWei) {
+      throw new GasCostCapError(
+        `Transaction cost exceeds configured maximum. ` +
+          `Estimated cost: ${costEth.toExponential(4)} ETH (${gasLimit.toString()} gas × ${(Number(feePerGas) / 1e18).toExponential(4)} ETH/gas), ` +
+          `Maximum allowed: ${capEth.toExponential(4)} ETH. Nothing was sent.`,
+        costWei,
+        capWei
+      );
+    }
+  }
+
   /**
    * Convert gwei to wei using the configured max gas cost
    */
@@ -1970,47 +2152,88 @@ export class Web3Service {
    * not.
    */
   private describeTransactionForPrompt(tx: { to?: string; data?: string }): string {
-    const decimals = this.config.usdcDetails?.decimals ?? 6;
     const type = this.detectTransactionType(tx.data || '0x');
 
     const shorten = (address?: string) =>
       address && address.length > 10 ? `${address.slice(0, 6)}…${address.slice(-4)}` : address || 'the contract';
 
-    const amountFrom = (data: string) => {
-      try {
-        // transfer(address,uint256) and approve(address,uint256) share a layout:
-        // 4-byte selector, 32-byte address, 32-byte amount.
-        const [, amount] = ethers.AbiCoder.defaultAbiCoder().decode(
-          ['address', 'uint256'],
-          '0x' + data.slice(10)
-        );
-        return ethers.formatUnits(amount, decimals);
-      } catch {
-        return null;
-      }
-    };
-
     if (type === 'transfer' || type === 'approve') {
-      const amount = amountFrom(tx.data || '0x');
-      if (amount) {
-        return type === 'transfer'
-          ? `sending ${amount} USDC to ${shorten(tx.to)}`
-          : `approving ${amount} USDC to be spent by ${shorten(tx.to)}`;
+      // ⚠️ THE TOKEN IS THE CONTRACT BEING CALLED, NOT ALWAYS USDC. This used to say "USDC" and
+      //    use USDC's decimals whatever was moving, so a USDT payment was announced as USDC.
+      //    A token this deployment does not list has no symbol or decimals we can state, so it
+      //    gets the warning without figures below.
+      const token = this.tokenForPrompt(tx.to);
+      if (token) {
+        try {
+          // transfer(address,uint256) and approve(address,uint256) share a layout:
+          // 4-byte selector, 32-byte address, 32-byte amount. The address is who receives
+          // (or may spend) the tokens; `tx.to` is the token contract itself.
+          const [counterparty, value] = ethers.AbiCoder.defaultAbiCoder().decode(
+            ['address', 'uint256'],
+            '0x' + (tx.data || '').slice(10)
+          );
+          const amount = ethers.formatUnits(value, token.decimals);
+          // An approval to a swap router is the first half of a conversion, and is said as one.
+          if (type === 'approve' && isSwapRouter(counterparty)) {
+            return `allowing up to ${amount} ${token.symbol} to be converted in your own wallet`;
+          }
+          return type === 'transfer'
+            ? `sending ${amount} ${token.symbol} to ${shorten(counterparty)}`
+            : `approving ${amount} ${token.symbol} to be spent by ${shorten(counterparty)}`;
+        } catch {
+          // Undecodable: fall through to the warning without figures.
+        }
       }
-    }
-
-    if (type === 'depositFunds') {
-      return `depositing funds into the contract at ${shorten(tx.to)}`;
     }
 
     if (type === 'claimFunds') {
       return `claiming funds from the contract at ${shorten(tx.to)}`;
     }
 
+    // A conversion between two listed tokens, sent only to a router we list. Anything else that
+    // happens to share the selector gets the warning without figures.
+    if (isSwapRouter(tx.to)) {
+      const swap = decodeSwap(tx.data || '');
+      const tokenIn = swap && this.tokenForPrompt(swap.tokenIn);
+      const tokenOut = swap && this.tokenForPrompt(swap.tokenOut);
+      if (swap && tokenIn && tokenOut) {
+        return (
+          `converting up to ${ethers.formatUnits(swap.amountInMaximum, tokenIn.decimals)} ${tokenIn.symbol} ` +
+          `into ${ethers.formatUnits(swap.amountOut, tokenOut.decimals)} ${tokenOut.symbol} in your own wallet`
+        );
+      }
+      const sale = decodeSale(tx.data || '');
+      const sold = sale && this.tokenForPrompt(sale.tokenIn);
+      const bought = sale && this.tokenForPrompt(sale.tokenOut);
+      if (sale && sold && bought) {
+        return (
+          `converting ${ethers.formatUnits(sale.amountIn, sold.decimals)} ${sold.symbol} ` +
+          `into at least ${ethers.formatUnits(sale.amountOutMinimum, bought.decimals)} ${bought.symbol} in your own wallet`
+        );
+      }
+    }
+
     return `submitting a transaction to ${shorten(tx.to)}`;
   }
 
-  private detectTransactionType(data: string): 'depositFunds' | 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds' | 'unknown' {
+  /** The listed token at this address: what a transfer or approval sent to it moves. */
+  private tokenForPrompt(address?: string): { symbol: string; decimals: number } | null {
+    if (!address) return null;
+    const is = (candidate?: string | null) => !!candidate && candidate.toLowerCase() === address.toLowerCase();
+    const listed = [...(this.config.supportedTokens ?? []), this.config.defaultToken].find(
+      (token) => token && is(token.address)
+    );
+    if (listed) return { symbol: listed.symbol, decimals: listed.decimals };
+    if (is(this.config.usdcContractAddress)) {
+      return { symbol: this.config.usdcDetails?.symbol ?? 'USDC', decimals: this.config.usdcDetails?.decimals ?? 6 };
+    }
+    if (is(this.config.usdtContractAddress) && this.config.usdtDetails) {
+      return { symbol: this.config.usdtDetails.symbol, decimals: this.config.usdtDetails.decimals };
+    }
+    return null;
+  }
+
+  private detectTransactionType(data: string): 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds' | 'unknown' {
     if (!data || data === '0x') {
       return 'unknown';
     }
@@ -2022,7 +2245,6 @@ export class Web3Service {
     try {
       // Define function signatures we want to detect
       const functionSignatures = {
-        'depositFunds': 'function depositFunds()',
         'approve': 'function approve(address,uint256)',
         'transfer': 'function transfer(address,uint256)',
         'submitResolutionVote': 'function submitResolutionVote(uint256)',
@@ -2038,7 +2260,7 @@ export class Web3Service {
           const calculatedSelector = func.selector;
 
           if (functionSelector === calculatedSelector) {
-            return functionName as 'depositFunds' | 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds';
+            return functionName as 'approve' | 'transfer' | 'submitResolutionVote' | 'raiseDispute' | 'claimFunds';
           }
         }
       }
@@ -2216,13 +2438,16 @@ export class Web3Service {
   /**
    * Wait for transaction confirmation using the unified ethers provider
    * @param transactionHash The transaction hash to wait for
-   * @param maxWaitTime Maximum wait time in milliseconds (default: 30 seconds)
+   * @param maxWaitTime Maximum wait in milliseconds. One minute by default, and never more:
+   *                    a longer ask is cut to a minute. Each look is a request against a
+   *                    rate-limited public endpoint, so the wait is bounded and unhurried.
    * @returns Transaction receipt if confirmed, null if timeout/failed
    */
-  async waitForTransaction(transactionHash: string, maxWaitTime: number = 30000, contractId?: string): Promise<any | null> {
+  async waitForTransaction(transactionHash: string, maxWaitTime: number = Web3Service.CONFIRMATION_WAIT_MS, contractId?: string): Promise<any | null> {
     if (!this.readProvider) {
       throw new Error('Read provider not initialized');
     }
+    maxWaitTime = Math.min(maxWaitTime, Web3Service.CONFIRMATION_WAIT_MS);
 
     console.log(`[Web3Service.waitForTransaction] Waiting for transaction confirmation: ${transactionHash}`);
     mLog.info('TransactionWait', '⏳ Starting manual polling for transaction confirmation', {
@@ -2238,8 +2463,10 @@ export class Web3Service {
     // which routes to the read provider (reliable RPC, not wallet provider).
 
     const startTime = Date.now();
-    const pollInterval = 2000; // Poll every 2 seconds
+    const pollInterval = Web3Service.CONFIRMATION_POLL_MS;
     let pollCount = 0;
+    // Whether the last look was refused for asking too often: a timeout then has a known cause.
+    let rateLimited = false;
 
     try {
       while (true) {
@@ -2248,7 +2475,13 @@ export class Web3Service {
 
         // Check if we've exceeded the timeout
         if (elapsedTime >= maxWaitTime) {
-          const errorMessage = contractId
+          const errorMessage = rateLimited
+            ? `We could not check whether your transaction confirmed (timed out after ${Math.floor(maxWaitTime / 1000)} seconds), ` +
+              `because the network is limiting how often this page can read from it. ` +
+              `It may still have gone through: check before sending it again.\n` +
+              `• Transaction: ${transactionHash}` +
+              (contractId ? `\n• Contract ID: ${contractId}` : '')
+            : contractId
             ? `Transaction confirmation timed out after ${Math.floor(maxWaitTime / 1000)} seconds. ` +
               `Your transaction may still be processing. Please contact support with:\n` +
               `• Contract ID: ${contractId}\n` +
@@ -2260,6 +2493,7 @@ export class Web3Service {
             contractId: contractId || 'unknown',
             elapsedSeconds: Math.floor(elapsedTime / 1000),
             pollAttempts: pollCount,
+            rateLimited,
             message: 'Transaction did not confirm within timeout period. User should contact support.'
           });
 
@@ -2273,6 +2507,7 @@ export class Web3Service {
           // Manual RPC call for eth_getTransactionReceipt
           // Use read-only RPC provider (no wallet access needed for reading receipts)
           const receipt = await this.readProvider.getTransactionReceipt(transactionHash);
+          rateLimited = false;
 
           if (receipt) {
             // Transaction has been mined
@@ -2310,10 +2545,15 @@ export class Web3Service {
         } catch (rpcError) {
           // RPC call failed - log but continue polling (might be temporary network issue)
           const errorMsg = rpcError instanceof Error ? rpcError.message : 'Unknown RPC error';
+          // A reverted or unreadable receipt is thrown from inside this try as well; those are
+          // answers, not failed reads, and must reach the caller.
+          if (errorMsg === 'Transaction failed' || errorMsg === 'Transaction status unknown') throw rpcError;
+          rateLimited = isRateLimited(rpcError);
           console.warn(`[Web3Service.waitForTransaction] RPC error during poll #${pollCount}:`, errorMsg);
           mLog.warn('TransactionWait', 'RPC error during polling (will retry)', {
             txHash: transactionHash,
             pollNumber: pollCount,
+            rateLimited,
             error: errorMsg
           });
 

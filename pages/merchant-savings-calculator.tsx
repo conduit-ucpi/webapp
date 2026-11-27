@@ -125,7 +125,7 @@ export default function MerchantSavingsCalculator() {
           traditional: chargebackFees,
           stablecoin: 0,
           traditionalNote: `$20 × ${yearlyChargebacks} disputes`,
-          stablecoinNote: 'Escrow, not chargebacks',
+          stablecoinNote: 'Protected payments, not chargebacks',
           highlight: true
         },
         {
@@ -420,7 +420,7 @@ export default function MerchantSavingsCalculator() {
           "@context": "https://schema.org",
           "@type": "WebApplication",
           "name": "Merchant Savings Calculator",
-          "description": "Interactive calculator comparing traditional card payment costs vs stablecoin escrow payment costs for online merchants",
+          "description": "Interactive calculator comparing traditional card payment costs vs protected stablecoin payment costs for online merchants",
           "applicationCategory": "FinanceApplication",
           "offers": {
             "@type": "Offer",

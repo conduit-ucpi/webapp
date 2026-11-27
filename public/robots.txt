@@ -8,7 +8,7 @@ Disallow: /_next/
 Disallow: /dashboard
 
 # Sitemap location
-Sitemap: https://conduit-ucpi.com/sitemap.xml
+Sitemap: https://stabledrop.me/sitemap.xml
 
 # Crawl delay (optional, prevents overloading)
 Crawl-delay: 1

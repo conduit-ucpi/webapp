@@ -185,11 +185,11 @@ describe('escrowTitle', () => {
   it('falls back when there is no description, rather than to productName', () => {
     const noDescription = { description: null, productName: 'Order #4471' } as SellableEscrow;
 
-    expect(escrowTitle(noDescription)).toBe('Escrow payment');
+    expect(escrowTitle(noDescription)).toBe('Protected payment');
   });
 
   it('treats whitespace as no description', () => {
-    expect(escrowTitle(escrow('   '))).toBe('Escrow payment');
+    expect(escrowTitle(escrow('   '))).toBe('Protected payment');
   });
 
   it('titles a contract from any shape that carries a description', () => {
@@ -198,10 +198,10 @@ describe('escrowTitle', () => {
     // rule has to cover both or the two screens title the same thing differently — which is
     // exactly what happened: /liquidity was fixed and /offers was not.
     expect(escrowTitle({ description: 'Oak dining table' })).toBe('Oak dining table');
-    expect(escrowTitle({ description: undefined })).toBe('Escrow payment');
-    expect(escrowTitle({})).toBe('Escrow payment');
+    expect(escrowTitle({ description: undefined })).toBe('Protected payment');
+    expect(escrowTitle({})).toBe('Protected payment');
     // useCombinedContracts maps a missing description to '' rather than leaving it unset.
-    expect(escrowTitle({ description: '' })).toBe('Escrow payment');
+    expect(escrowTitle({ description: '' })).toBe('Protected payment');
   });
 
   it('takes a fallback that reads naturally in a sentence', () => {

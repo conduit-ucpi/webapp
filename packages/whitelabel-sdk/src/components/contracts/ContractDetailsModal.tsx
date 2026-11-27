@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react';
+import { contractStatusDisplay, isInstantPayment } from '@/utils/contractStatusDisplay';
 import { Contract, PendingContract } from '@/types';
 import Modal from '@/components/ui/Modal';
 import Button from '@/components/ui/Button';
 import StatusBadge from '@/components/ui/StatusBadge';
 import ExpandableHash from '@/components/ui/ExpandableHash';
-import { formatWalletAddress, displayCurrency, formatDateTimeWithTZ } from '@/utils/validation';
+import { formatWalletAddress, displayCurrency, contractTokenSymbol, formatDateTimeWithTZ } from '@/utils/validation';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import ContractActions from './ContractActions';
 import FarcasterNameDisplay from '@/components/ui/FarcasterNameDisplay';
-import { useT } from '../../i18n';
-import { useBrandedHref } from '../../theme';
+import { useT, withNodes } from '../../i18n';
+import { useBrandedHref, useShareableUrl } from '../../theme';
+import { payHref } from '../../utils/payHref';
 
 interface ContractDetailsModalProps {
   isOpen: boolean;
@@ -26,6 +28,7 @@ function isPendingContract(contract: Contract | PendingContract): contract is Pe
 export default function ContractDetailsModal({ isOpen, onClose, contract, onRefresh }: ContractDetailsModalProps) {
   const t = useT();
   const brandedHref = useBrandedHref();
+  const shareable = useShareableUrl();
   const { user } = useAuth();
   const { config } = useConfig();
   const [paymentLinkCopied, setPaymentLinkCopied] = useState(false);
@@ -37,12 +40,14 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
     contract.sellerAddress?.toLowerCase();
 
   const status = isPending ? 'PENDING' : (contract as Contract).status;
+  const instant = isInstantPayment(contract.expiryTimestamp);
+  const instantPaid = instant && status === 'CLAIMED';
 
   // Generate payment link for pending contracts
   const generatePaymentLink = (): string => {
     if (!contract.id) return '';
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    return `${baseUrl}${brandedHref(`/contract-pay?contractId=${contract.id}`)}`;
+    const href = payHref(contract, brandedHref);
+    return href ? shareable(href) : '';
   };
 
   // Copy payment link to clipboard
@@ -59,34 +64,35 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
     }
   };
   
-  // Use centralized status display with role information
-  // Use backend-provided status display
-  const statusDisplay = {
-    label: contract.ctaLabel || status || 'Unknown',
-    color: contract.ctaVariant?.toLowerCase() === 'action' ? 'bg-primary-50 text-primary-600 border-primary-200' : 'bg-secondary-50 text-secondary-600 border-secondary-200'
-  };
-  
-  // Calculate time remaining for active contracts
+  // The same status label and colours as the dashboard card — the status, never the CTA.
+  const statusDisplay = contractStatusDisplay(status, isPending, instant);
+
+  // Calculate time remaining for active contracts. An instant payment has no time to run out.
   const timeRemaining = () => {
-    if (isPending) return null;
-    
+    if (isPending || instant) return null;
+
     const now = Date.now() / 1000;
     const expiry = contract.expiryTimestamp;
     const remaining = expiry - now;
     
-    if (remaining <= 0) return { text: 'Expired', isExpired: true };
-    
+    if (remaining <= 0) return { text: t('contractList.expired'), isExpired: true };
+
     const days = Math.floor(remaining / 86400);
     const hours = Math.floor((remaining % 86400) / 3600);
     const minutes = Math.floor((remaining % 3600) / 60);
-    
+
+    // Same plural rule as before: only a count above one takes the plural form.
+    const dayText = t(days > 1 ? 'contractDetailsModal.days' : 'contractDetailsModal.day', { count: days });
+    const hourText = t(hours > 1 ? 'contractDetailsModal.hours' : 'contractDetailsModal.hour', { count: hours });
+    const minuteText = t(minutes > 1 ? 'contractDetailsModal.minutes' : 'contractDetailsModal.minute', { count: minutes });
+
     let text = '';
     if (days > 0) {
-      text = `${days} day${days > 1 ? 's' : ''}, ${hours} hour${hours > 1 ? 's' : ''}`;
+      text = t('contractDetailsModal.timePair', { first: dayText, second: hourText });
     } else if (hours > 0) {
-      text = `${hours} hour${hours > 1 ? 's' : ''}, ${minutes} minute${minutes > 1 ? 's' : ''}`;
+      text = t('contractDetailsModal.timePair', { first: hourText, second: minuteText });
     } else {
-      text = `${minutes} minute${minutes > 1 ? 's' : ''}`;
+      text = minuteText;
     }
     
     return { text, isExpired: false };
@@ -107,21 +113,24 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
           <div className="flex items-start space-x-3 mb-3 sm:mb-0">
             <StatusBadge 
               status={status} 
-              label={contract.ctaLabel || statusDisplay.label}
+              label={statusDisplay.label}
               color={statusDisplay.color}
             />
             <div>
               <h3 className="text-xl font-semibold text-secondary-900">
-                {contract.description || 'Untitled Contract'}
+                {contract.description || t('contractCard.untitledContract')}
               </h3>
               <p className="text-sm text-secondary-600 mt-1">
-                Contract ID: {contract.id}
+                {t('contractDetailsModal.contractId', { id: contract.id ?? '' })}
               </p>
             </div>
           </div>
           <div className="text-right">
             <p className="text-3xl font-bold text-secondary-900">
-              {displayCurrency(contract.amount, isPending ? ((contract as PendingContract).currency || 'microUSDC') : 'microUSDC')}
+              {displayCurrency(contract.amount, isPending ? ((contract as PendingContract).currency || 'microUSDC') : 'microUSDC')}{' '}
+              <span className="text-base font-medium text-secondary-500" data-testid="contract-token">
+                {contractTokenSymbol(contract)}
+              </span>
             </p>
             <p className="text-sm text-secondary-500 mt-1">
               {statusDisplay.label}
@@ -135,7 +144,7 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="font-semibold text-blue-900">{t('contractDetailsModal.timeRemaining')}</h4>
-                <p className="text-blue-800">{timeInfo.text} remaining until expiry</p>
+                <p className="text-blue-800">{t('contractDetailsModal.remainingUntilExpiry', { time: timeInfo.text })}</p>
               </div>
               <div className="text-right">
                 <p className="text-sm text-blue-600">{t('contractDetailsModal.expires')}</p>
@@ -155,15 +164,13 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
             
             <div className="space-y-3">
               <div>
-                <p className="text-sm font-medium text-secondary-700">Seller {isSeller && '(You)'}</p>
-                <p className="text-secondary-900">
-                  <FarcasterNameDisplay 
-                    identifier={contract.sellerEmail} 
-                    showYouLabel={false}
-                    fallbackToAddress={true}
-                    walletAddress="Unknown"
-                  />
-                </p>
+                <p className="text-sm font-medium text-secondary-700">{isSeller ? t('contractDetailsModal.sellerYou') : t('contractCard.roleSeller')}</p>
+                {/* No email, no name line: the wallet below is who they are. */}
+                {contract.sellerEmail && (
+                  <p className="text-secondary-900">
+                    <FarcasterNameDisplay identifier={contract.sellerEmail} showYouLabel={false} />
+                  </p>
+                )}
                 <div className="mt-1">
                   <ExpandableHash hash={contract.sellerAddress} />
                 </div>
@@ -171,15 +178,12 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
               
               {!isPending && contract.buyerAddress && (
                 <div>
-                  <p className="text-sm font-medium text-secondary-700">Buyer {isBuyer && '(You)'}</p>
-                  <p className="text-secondary-900">
-                    <FarcasterNameDisplay 
-                      identifier={contract.buyerEmail} 
-                      showYouLabel={false}
-                      fallbackToAddress={true}
-                      walletAddress="Unknown"
-                    />
-                  </p>
+                  <p className="text-sm font-medium text-secondary-700">{isBuyer ? t('contractDetailsModal.buyerYou') : t('contractCard.roleBuyer')}</p>
+                  {contract.buyerEmail && (
+                    <p className="text-secondary-900">
+                      <FarcasterNameDisplay identifier={contract.buyerEmail} showYouLabel={false} />
+                    </p>
+                  )}
                   <div className="mt-1">
                     <ExpandableHash hash={contract.buyerAddress} />
                   </div>
@@ -188,10 +192,10 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
               
               {isPending && contract.buyerEmail && (
                 <div>
-                  <p className="text-sm font-medium text-secondary-700">Buyer {isBuyer && '(You)'}</p>
+                  <p className="text-sm font-medium text-secondary-700">{isBuyer ? t('contractDetailsModal.buyerYou') : t('contractCard.roleBuyer')}</p>
                   <p className="text-secondary-900">
-                    <FarcasterNameDisplay 
-                      identifier={contract.buyerEmail} 
+                    <FarcasterNameDisplay
+                      identifier={contract.buyerEmail}
                       showYouLabel={false}
                     />
                   </p>
@@ -212,20 +216,30 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                   {formatDateTimeWithTZ(contract.createdAt)}
                 </p>
                 {isPending && (contract as PendingContract).createdBy && (
-                  <p className="text-sm text-secondary-500">by <FarcasterNameDisplay identifier={(contract as PendingContract).createdBy} showYouLabel={false} /></p>
+                  <p className="text-sm text-secondary-500">{withNodes(t('contractDetailsModal.by'), { name: <FarcasterNameDisplay identifier={(contract as PendingContract).createdBy} showYouLabel={false} /> })}</p>
                 )}
               </div>
               
-              <div>
-                <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.expiryDate')}</p>
-                <p className="text-secondary-900">
-                  {formatDateTimeWithTZ(contract.expiryTimestamp)}
-                </p>
-                {timeInfo?.isExpired && (
-                  <p className="text-sm text-error-600 font-medium">{t('contractDetailsModal.expired')}</p>
-                )}
-              </div>
-              
+              {instant ? (
+                <div>
+                  <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.paymentType')}</p>
+                  <p className="text-secondary-900">{t('contractDetailsModal.instantPayment')}</p>
+                  <p className="text-sm text-secondary-500">
+                    {t(instantPaid ? 'contractDetailsModal.instantPaidNote' : 'contractDetailsModal.instantUnpaidNote')}
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.expiryDate')}</p>
+                  <p className="text-secondary-900">
+                    {formatDateTimeWithTZ(contract.expiryTimestamp)}
+                  </p>
+                  {timeInfo?.isExpired && (
+                    <p className="text-sm text-error-600 font-medium">{t('contractDetailsModal.expired')}</p>
+                  )}
+                </div>
+              )}
+
               {!isPending && (
                 <>
                   <div>
@@ -242,18 +256,20 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                     )}
                   </div>
 
-                  <div>
-                    <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.fundingStatus')}</p>
-                    <p className="text-secondary-900">
-                      {contract.funded || status === 'CLAIMED' ? (
-                        <span className="text-success-600 font-medium">{t('contractDetailsModal.funded')}</span>
-                      ) : contract.funded === false ? (
-                        <span className="text-warning-600 font-medium">{t('contractDetailsModal.notFunded')}</span>
-                      ) : (
-                        <span className="text-secondary-500 font-medium">{t('contractDetailsModal.statusUnknown')}</span>
-                      )}
-                    </p>
-                  </div>
+                  {!instantPaid && (
+                    <div>
+                      <p className="text-sm font-medium text-secondary-700">{t('contractDetailsModal.fundingStatus')}</p>
+                      <p className="text-secondary-900">
+                        {contract.funded || status === 'CLAIMED' ? (
+                          <span className="text-success-600 font-medium">{t('contractDetailsModal.funded')}</span>
+                        ) : contract.funded === false ? (
+                          <span className="text-warning-600 font-medium">{t('contractDetailsModal.notFunded')}</span>
+                        ) : (
+                          <span className="text-secondary-500 font-medium">{t('contractDetailsModal.statusUnknown')}</span>
+                        )}
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -290,10 +306,10 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
               {(contract as Contract).disputes!.map((dispute, index) => (
                 <div key={index} className="bg-white rounded p-3 border border-error-200">
                   <p className="text-error-800 mb-2">
-                    <span className="font-medium">Dispute #{index + 1}:</span> {dispute.reason || 'No reason provided'}
+                    <span className="font-medium">{t('contractDetailsModal.disputeNumber', { n: index + 1 })}</span> {dispute.reason || t('contractDetailsModal.noReasonProvided')}
                   </p>
                   <p className="text-error-600 text-sm mb-2">
-                    Raised on {formatDateTimeWithTZ(dispute.timestamp)}
+                    {t('contractDetailsModal.raisedOn', { date: formatDateTimeWithTZ(dispute.timestamp) })}
                   </p>
                   
                   {/* Show refund information if available */}
@@ -301,13 +317,15 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                     <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-sm">
                       <p className="font-medium text-blue-900 mb-1">{t('contractDetailsModal.refundDetails')}</p>
                       <div className="text-xs text-blue-800">
-                        <div>Refund Percentage: {dispute.refundPercent}%</div>
+                        <div>{t('contractDetailsModal.refundPercentage', { percent: dispute.refundPercent })}</div>
                         {/* Calculate refund amount from contract total */}
                         <div>
-                          Refund Amount: {displayCurrency(
-                            Math.round((contract.amount * dispute.refundPercent) / 100), 
-                            isPending ? ((contract as PendingContract).currency || 'microUSDC') : 'microUSDC'
-                          )}
+                          {t('contractDetailsModal.refundAmount', {
+                            amount: displayCurrency(
+                              Math.round((contract.amount * dispute.refundPercent) / 100),
+                              isPending ? ((contract as PendingContract).currency || 'microUSDC') : 'microUSDC'
+                            ),
+                          })}
                         </div>
                       </div>
                     </div>
@@ -335,8 +353,8 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                 const noteData = note as any; // Type assertion for flexibility
                 console.log('Admin note data structure:', noteData); // Debug all properties
                 
-                const noteText = noteData.note || noteData.content || 'No content';
-                const createdBy = noteData.createdBy || noteData.addedBy || 'Unknown';
+                const noteText = noteData.note || noteData.content || t('contractDetailsModal.noContent');
+                const createdBy = noteData.createdBy || noteData.addedBy || t('contractCard.unknown');
                 const timestamp = noteData.timestamp || noteData.addedAt || noteData.createdAt;
                 
                 // Extract refund/payout information - check multiple possible property names
@@ -362,10 +380,10 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                           {(buyerPercentage !== undefined || sellerPercentage !== undefined) && (
                             <div className="grid grid-cols-2 gap-2">
                               {buyerPercentage !== undefined && (
-                                <div>Buyer: {buyerPercentage}% ({buyerActualAmount ? displayCurrency(parseInt(buyerActualAmount), 'microUSDC') : 'N/A'})</div>
+                                <div>{t('contractDetailsModal.buyerShare', { percent: buyerPercentage, amount: buyerActualAmount ? displayCurrency(parseInt(buyerActualAmount), 'microUSDC') : t('contractDetailsModal.notAvailable') })}</div>
                               )}
                               {sellerPercentage !== undefined && (
-                                <div>Seller: {sellerPercentage}% ({sellerActualAmount ? displayCurrency(parseInt(sellerActualAmount), 'microUSDC') : 'N/A'})</div>
+                                <div>{t('contractDetailsModal.sellerShare', { percent: sellerPercentage, amount: sellerActualAmount ? displayCurrency(parseInt(sellerActualAmount), 'microUSDC') : t('contractDetailsModal.notAvailable') })}</div>
                               )}
                             </div>
                           )}
@@ -374,10 +392,10 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                           {(refundAmount || refundPercent !== undefined) && (
                             <div className="pt-1 border-t border-blue-200">
                               {refundPercent !== undefined && (
-                                <div>Refund Percentage: {refundPercent}%</div>
+                                <div>{t('contractDetailsModal.refundPercentage', { percent: refundPercent })}</div>
                               )}
                               {refundAmount && (
-                                <div>Refund Amount: {displayCurrency(parseInt(refundAmount), 'microUSDC')}</div>
+                                <div>{t('contractDetailsModal.refundAmount', { amount: displayCurrency(parseInt(refundAmount), 'microUSDC') })}</div>
                               )}
                             </div>
                           )}
@@ -386,9 +404,9 @@ export default function ContractDetailsModal({ isOpen, onClose, contract, onRefr
                     )}
                     
                     <div className="flex justify-between items-center text-xs text-secondary-500">
-                      <span>by {createdBy}</span>
+                      <span>{t('contractDetailsModal.by', { name: createdBy })}</span>
                       <span>
-                        {timestamp ? formatDateTimeWithTZ(timestamp) : 'Invalid date'}
+                        {timestamp ? formatDateTimeWithTZ(timestamp) : t('contractDetailsModal.invalidDate')}
                       </span>
                     </div>
                   </div>

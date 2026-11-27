@@ -39,13 +39,6 @@ jest.mock('@/components/auth', () => ({
   useAuth: jest.fn(),
 }));
 
-// Mock ContractAcceptance
-jest.mock('@/components/contracts/ContractAcceptance', () => {
-  return function MockContractAcceptance() {
-    return <div data-testid="contract-acceptance">Contract Acceptance</div>;
-  };
-});
-
 // Mock ContractDetailsModal
 jest.mock('@/components/contracts/ContractDetailsModal', () => {
   return function MockContractDetailsModal() {

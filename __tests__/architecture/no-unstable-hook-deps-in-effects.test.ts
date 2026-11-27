@@ -74,7 +74,6 @@ const UNSTABLE_METHODS = [
   'fundAndSendTransaction',
   'transferToContract',
   'approveUSDC',
-  'depositToContract',
   // useAuth
   'authenticatedFetch',
   'refreshUserData',

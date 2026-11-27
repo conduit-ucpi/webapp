@@ -44,7 +44,6 @@ describe('Universal Hybrid Provider - All Wallets Use Base RPC', () => {
       maxGasPriceGwei: '0.001', // 0.001 gwei = 1000000 wei
       maxGasCostGwei: '50000', // 50000 gwei = 50000000000000 wei
       gasPriceBuffer: '1.2',
-      depositFundsFoundryGas: '100000',
     resolutionVoteFoundryGas: '80000',
     raiseDisputeFoundryGas: '150000',
     claimFundsFoundryGas: '150000',

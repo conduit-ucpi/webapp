@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { useT } from '../../i18n';
-import { useOptionalBrand, useBrandSource } from '../../theme/BrandProvider';
+import { useOptionalBrand } from '../../theme/BrandProvider';
 
 interface SendRequestScreenProps {
   paymentLink: string;
@@ -18,6 +18,8 @@ interface SendRequestScreenProps {
   description: string;
   /** Preformatted payout date, shown on the attachable PDF. */
   payoutLabel?: string;
+  /** Paid straight to the seller: no holding period, no dispute, and nothing should say there is. */
+  instant?: boolean;
   copied: boolean;
   /**
    * `kind` distinguishes the bare URL from the full message so the parent can
@@ -34,6 +36,7 @@ export default function SendRequestScreen({
   networkLabel,
   description,
   payoutLabel,
+  instant = false,
   copied,
   onCopy,
   onDone,
@@ -57,7 +60,7 @@ export default function SendRequestScreen({
       t('msg.intro', { amount: formattedAmount, brand: siteName }),
       description ? t('msg.whatFor', { description }) : null,
       `${withQr ? t('msg.payWithQr') : t('msg.payLink')}\n${paymentLink}`,
-      t('msg.escrowNote'),
+      t(instant ? 'msg.instantNote' : 'msg.escrowNote'),
     ]
       .filter(Boolean)
       .join('\n\n');
@@ -81,9 +84,8 @@ export default function SendRequestScreen({
   }, []);
 
   const brand = useOptionalBrand();
-  const brandSource = useBrandSource();
   const siteName =
-    brand && brandSource && brandSource !== 'default' ? brand.name : getSiteNameFromDomain();
+    brand?.name ?? getSiteNameFromDomain();
 
   const downloadPdf = async () => {
     setPdfBusy(true);
@@ -91,6 +93,8 @@ export default function SendRequestScreen({
       const { downloadPaymentRequestPdf } = await import('@/utils/paymentRequestPdf');
       await downloadPaymentRequestPdf({
         formattedAmount,
+        tokenSymbol,
+        instant,
         description,
         paymentLink,
         qrDataUrl: qrCanvasRef.current?.toDataURL('image/png'),

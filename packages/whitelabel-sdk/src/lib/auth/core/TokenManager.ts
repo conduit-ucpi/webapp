@@ -148,7 +148,19 @@ export class TokenManager {
     return { type: 'unknown' };
   }
 
+  /**
+   * Browser storage exists only in a browser. The auth providers render on the
+   * server too (ISR regenerates pages there), and Node 25 defines a
+   * `localStorage` global that is undefined without --localstorage-file, so
+   * touching it there throws. Check `window`, not `localStorage`: reading the
+   * Node global is itself what prints the ExperimentalWarning.
+   */
+  private static hasBrowserStorage(): boolean {
+    return typeof window !== 'undefined';
+  }
+
   private saveToStorage(token: string): void {
+    if (!TokenManager.hasBrowserStorage()) return;
     try {
       // Use sessionStorage for temporary tokens, localStorage for persistent ones
       const metadata = this.getTokenMetadata(token);
@@ -173,6 +185,7 @@ export class TokenManager {
   }
 
   private loadFromStorage(): void {
+    if (!TokenManager.hasBrowserStorage()) return;
     try {
       // Try localStorage first, then sessionStorage
       let token = localStorage.getItem('auth_token');
@@ -204,6 +217,7 @@ export class TokenManager {
   }
 
   private clearStorage(): void {
+    if (!TokenManager.hasBrowserStorage()) return;
     try {
       mLog.debug('TokenManager', 'Clearing token from all storage');
       localStorage.removeItem('auth_token');

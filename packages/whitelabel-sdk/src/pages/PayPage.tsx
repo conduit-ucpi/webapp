@@ -1,0 +1,1180 @@
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { isRateLimited } from '@/lib/rpc/rateLimit';
+import { useRouter } from 'next/router';
+import { ethers } from 'ethers';
+import { useAuth } from '@/components/auth';
+import { useConfig } from '@/components/auth/ConfigProvider';
+import WalletChoiceCards from '@/components/auth/WalletChoiceCards';
+import Skeleton from '@/components/ui/Skeleton';
+import Input from '@/components/ui/Input';
+import Button from '@/components/ui/Button';
+import PaymentOptions from '@/components/contracts/PaymentOptions';
+import { canBuyToken } from '@/utils/buyableToken';
+import type { PaymentConversion } from '@/components/contracts/PaymentActionPanel';
+import { useToast } from '@/components/ui/Toast';
+import PaymentTermsForm from '@/components/contracts/PaymentTermsForm';
+import ReviewRequest from '@/components/contracts/ReviewRequest';
+import CreateProgressSteps, { JourneyStep } from '@/components/contracts/CreateProgressSteps';
+import { useSimpleEthers } from '@/hooks/useSimpleEthers';
+import { useTokenBalance } from '@/hooks/useTokenBalance';
+import { useTokenSelection } from '@/hooks/useTokenSelection';
+import { useFeeQuote } from '@/hooks/useFeeQuote';
+import { useQrPayment } from '@/hooks/useQrPayment';
+import { usePaymentSteps } from '@/hooks/usePaymentSteps';
+import { useSwapQuote } from '@/hooks/useSwapQuote';
+import { convertibleFrom, maxAmountIn, swapVenue, withinPremium, type SwapVenue } from '../lib/stablecoinSwap';
+import { isValidEmail, isValidWalletAddress, isValidDescription, addressesEqual, getDefaultTimestamp, formatDateTimeWithTZ } from '@/utils/validation';
+import { getNetworkName } from '@/utils/networkUtils';
+import { MIN_AMOUNT, TEST_AMOUNT, formatUsd, isAllowedAmount, parseAmount } from '@/utils/escrowFees';
+import { callAp2Tool, isAp2ToolError, type Ap2ToolError } from '../lib/ap2Mcp';
+import { askRequestPrepare, type RequestPrepareAnswer } from '../lib/requestPrepare';
+import { attachAnalyticsClientId } from '../lib/analyticsClientId';
+import { setFundingContract } from '../lib/fundingContract';
+import { verifyQuotedEscrowAddress } from '../lib/escrow/verifyQuotedEscrow';
+import { decodePayResume, encodePayResume, withPayResume } from '../lib/payResume';
+import { useT } from '../i18n';
+import { useBrandedHref, usePartnerBrand } from '../theme';
+
+/**
+ * /pay — a buyer pushes a payment to a seller, into an escrow they can dispute.
+ *
+ * ⚠️ A THIN SKIN OVER ap2service'S MCP TOOLS, ON PURPOSE. prepare_escrow_payment decides the
+ *    escrow address, the fee and the dispute window; settle_escrow_payment creates the escrow
+ *    around the money once it is at that address. This page collects the terms, shows what
+ *    prepare said, moves the money, and shows what settle said. It is the same path an AI agent
+ *    takes, so the site dogfoods the agent surface rather than bypassing it.
+ *
+ * ⚠️ EVERY ROUTE IS AN ORDINARY TRANSFER TO THE ESCROW ADDRESS, the signed-in wallet's included:
+ *    we sponsor its gas (fund-transfer) and the wallet sends a plain ERC20 transfer. Nothing here
+ *    signs an EIP-3009 authorization. That route only works for tokens that implement it (USDC
+ *    does, USDT on Base does not), so a page built on it cannot take every token we list.
+ *
+ * The ways of paying are /contract-pay's, through the same PaymentOptions: the signed-in wallet
+ * (adding funds first if it is short, or by card straight into the escrow), or any other wallet
+ * by address or QR. All of them need prepare to have put the escrow on file, and all of them
+ * settle through the same MCP tool, with the same terms.
+ */
+
+const PUSH_JOURNEY_STEPS: JourneyStep[] = [
+  { titleKey: 'push.step.details.title', detailKey: 'push.step.details.detail' },
+  { titleKey: 'push.step.confirm.title', detailKey: 'push.step.confirm.detail' },
+  { titleKey: 'push.step.done.title', detailKey: 'push.step.done.detail' },
+];
+
+interface Prepared {
+  escrow_address: string;
+  /** contractservice's record of the escrow, when it went on file: what funding is reported against. */
+  record_id?: string;
+  external_id: string;
+  /** The externalId (bytes32) the factory was asked with: what lets this page ask it too. */
+  external_id_bytes32?: string;
+  seller_receives_estimate: string;
+  platform_fee_estimate: string;
+  parties?: { seller?: { address: string } };
+  /** An object when the escrow is on file and may be funded directly; a reason when not. */
+  fund_by_transfer: string | { payment_uri: string };
+  dispute: { until?: string };
+}
+
+interface Settled {
+  dispute?: { where?: string };
+  /** The receipt's claims, beside the signed JWT. The JWT is authoritative; this is for acting on. */
+  receipt_claims?: {
+    'stabledrop.escrow'?: { contract_id?: string; escrow_account?: string; funding_tx_hash?: string };
+  };
+}
+
+/** What a checkout needs to tell its merchant about a payment that has landed. */
+export interface PaidEscrow {
+  /** contractservice's id: what conduit-checkout.js verifies by, and what the Shopify order records. */
+  contractId?: string;
+  escrowAddress: string;
+  /** The funding transfer. Absent when the money arrived by transfer before settle was called. */
+  txHash?: string;
+}
+
+/**
+ * /pay inside a merchant's checkout (/contract-create). The terms come from the merchant and are
+ * not the buyer's to change, and what happens afterwards (postMessage, webhook, redirects) is the
+ * checkout's business, so it is handed back through these.
+ */
+export interface PayCheckout {
+  terms: { seller: string; amount: string; description: string; expiryTimestamp: number; tokenSymbol?: string };
+  onPaid: (paid: PaidEscrow) => void;
+  /** `prepare`: the payment could not be set up, and the buyer can try again here. `pay`: paying failed. */
+  onFailed: (message: string, phase: 'prepare' | 'pay') => void;
+  onCancel: () => void;
+}
+
+/**
+ * /pay for a payment request (/contract-pay): a seller's stored request, paid by whoever opened
+ * its link. ap2service takes every term from the stored request and makes the signed-in wallet
+ * its buyer; these are here to show, and because settle is sent the terms again.
+ */
+export interface PayRequest {
+  /** contractservice's id: the request, and the external id its escrow address derives from. */
+  id: string;
+  terms: {
+    /** The seller's wallet, as stored. */
+    seller: string;
+    /** In whole tokens, for showing ("12.5"). */
+    amount: string;
+    /** Exactly as stored: the figure the address derives from, never re-parsed from `amount`. */
+    amountBaseUnits: number;
+    description: string;
+    expiryTimestamp: number;
+    tokenSymbol?: string;
+    /** Only when the seller chose one; absent means the default arbiter. */
+    arbiter?: string;
+  };
+  /** How to name the seller to the payer: their email, when the request has one. */
+  sellerLabel?: string;
+  /**
+   * The prepare already asked for this request while it was being read, handed over once: null
+   * when there is none (never asked, already taken, or it never arrived).
+   */
+  takeEarlyPrepare?: (id: string) => Promise<RequestPrepareAnswer | null> | null;
+  /** Shown above the ways of paying: a custom arbiter's notice, say. */
+  notice?: ReactNode;
+}
+
+/** The receipt's escrow block as a checkout wants it. Accounts are CAIP-10; the address is the last part. */
+export function paidEscrowFrom(settled: Settled | null, fallbackAddress: string): PaidEscrow {
+  const escrow = settled?.receipt_claims?.['stabledrop.escrow'];
+  return {
+    contractId: escrow?.contract_id,
+    escrowAddress: escrow?.escrow_account?.split(':').pop() || fallbackAddress,
+    txHash: escrow?.funding_tx_hash,
+  };
+}
+
+/** How long a wallet payment waits to see its own transfer at the escrow address before settling. */
+const ZERO = BigInt(0);
+const ESCROW_FUNDS_POLLS = 8;
+const ESCROW_FUNDS_POLL_MS = 4000;
+
+// 'refused' is final: a sanctions refusal. Nothing on it can pay, and nothing leads back.
+type Stage = 'details' | 'review' | 'done' | 'refused';
+
+/** A prepare refusal that is about how much, and so belongs under the amount field. */
+function isAmountRefusal(result: { error: string; message?: string }): boolean {
+  return result.error === 'amount_too_small' || /^The minimum payment is/.test(result.message ?? '');
+}
+
+function firstSentence(message?: string): string | undefined {
+  return message?.split(/(?<=\.)\s/)[0];
+}
+
+export default function PayPage({ checkout, request }: { checkout?: PayCheckout; request?: PayRequest } = {}) {
+  const t = useT();
+  const router = useRouter();
+  const { config } = useConfig();
+  const { isLoading, isConnected, address, user, authenticatedFetch } = useAuth();
+  const brandedHref = useBrandedHref();
+  // The partner this payment is made under, recorded on the contract. Not a term: it moves no address.
+  const brandId = usePartnerBrand()?.id;
+  const attribution = brandId ? { brand: brandId } : {};
+  const { getTokenBalance, transferToContract, prewarmTransferToContract, quoteSwap, swapForExactOutput } = useSimpleEthers();
+  const { showToast } = useToast();
+
+  // A checkout's terms are the merchant's, a request's the seller's: either way not the payer's to edit.
+  const locked = checkout?.terms ?? request?.terms;
+  const [tokenSymbol, setTokenSymbol] = useState<string | undefined>(locked?.tokenSymbol);
+  const { selectedToken, selectedTokenSymbol, availableTokens } = useTokenSelection(config, tokenSymbol);
+  const { tokenBalance, isLoadingBalance, hasRead: balanceRead, refetch: refetchBalance } = useTokenBalance({
+    enabled: !!config?.rpcUrl,
+    address,
+    tokenAddress: selectedToken?.address,
+    getTokenBalance,
+  });
+
+  const [seller, setSeller] = useState(locked?.seller ?? '');
+  const [amount, setAmount] = useState(locked?.amount ?? '');
+  const [payoutTimestamp, setPayoutTimestamp] = useState(locked?.expiryTimestamp || getDefaultTimestamp());
+  /** Paid straight to the seller, no dispute window. Kept apart from the date so unticking it restores the date. */
+  const [instant, setInstant] = useState(locked?.expiryTimestamp === 0);
+  /** Zero is EscrowContract's instant-transfer sentinel. */
+  const expiryTimestamp = instant ? 0 : payoutTimestamp;
+  const [description, setDescription] = useState(locked?.description ?? '');
+  /** Who decides a dispute, when not the default arbiter. A term: it moves the address. */
+  const [arbiter, setArbiter] = useState<string | undefined>(request?.terms.arbiter);
+  /** A request's named buyer, from its link. Unset, the signed-in payer is the nominal buyer. */
+  const [nominalBuyer, setNominalBuyer] = useState<string | undefined>();
+  const [sellerError, setSellerError] = useState<string>();
+  const [amountError, setAmountError] = useState<string>();
+
+  const [stage, setStage] = useState<Stage>('details');
+  const [linkCopied, setLinkCopied] = useState(false);
+  const [busy, setBusy] = useState<'prepare' | 'pay' | null>(null);
+  const [prepared, setPrepared] = useState<Prepared | null>(null);
+  // The payment on screen, for every funding line and note (lib/fundingContract): on /pay the
+  // address carries no contract id, so without this they all said "contract none".
+  const onFileAs = prepared?.record_id;
+  useEffect(() => {
+    setFundingContract(onFileAs);
+    return () => setFundingContract(null);
+  }, [onFileAs]);
+  const [settled, setSettled] = useState<Settled | null>(null);
+  /** The terms `prepared` was quoted for, to tell a real change from pressing Continue again. */
+  const preparedFor = useRef<string | null>(null);
+
+  const networkLabel = config ? getNetworkName(config.chainId) : undefined;
+  const payer = user?.walletAddress || address;
+
+  /**
+   * The seller opening their own request: shown what their customer will see, with nothing live.
+   *
+   * ⚠️ PREPARE IS NEVER CALLED FOR IT. Prepare claims the request for its buyer, and the factory
+   *    refuses a buyer who is also the seller, so ap2service would refuse it anyway. That leaves
+   *    no escrow address, so the real QR panel is shown with a picture and a label in place of
+   *    the code and the address: the address depends on the buyer, and money sent to one nothing
+   *    is watching can be stranded. The fee comes from the factory through useFeeQuote instead.
+   */
+  const ownRequest = !!request && !!payer && addressesEqual(request.terms.seller, payer);
+  const previewFee = useFeeQuote(ownRequest ? parseFloat(amount) || 0 : null, selectedTokenSymbol);
+  const previewFigure = (figure: (fee: number) => number) => {
+    if (previewFee.state === 'quoted') {
+      return `${figure(previewFee.fee).toFixed(selectedToken?.decimals ?? 6)} ${selectedTokenSymbol}`;
+    }
+    return previewFee.state === 'loading' || previewFee.state === 'idle' ? '…' : '—';
+  };
+
+  const { steps: paymentSteps, updateStep, setSteps } = usePaymentSteps([]);
+  const transferOffered = !!prepared && typeof prepared.fund_by_transfer === 'object';
+  const amountInTokens = parseFloat(amount) || 0;
+  const balanceFloat = parseFloat(tokenBalance) || 0;
+  const baseUnits = (() => {
+    if (request) return request.terms.amountBaseUnits;
+    try {
+      return Number(ethers.parseUnits(amount.trim() || '0', selectedToken?.decimals ?? 6));
+    } catch {
+      return 0;
+    }
+  })();
+
+  /** The terms, exactly as both tools take them: they ARE the escrow's address. */
+  const terms = () => ({
+    seller: seller.trim(),
+    amount: baseUnits,
+    expiry_timestamp: expiryTimestamp,
+    nominal_buyer: nominalBuyer ?? payer,
+    token_symbol: selectedTokenSymbol,
+    description: description.trim(),
+    ...(arbiter ? { arbiter } : {}),
+  });
+
+  /**
+   * The terms this page is paying on, for checking the quoted address against the factory.
+   * The seller's wallet is the one typed, or — for an email — the one prepare resolved it to;
+   * the arbiter the one chosen, or the deployment's default.
+   */
+  const quotedTerms = (result: Prepared) => ({
+    token: selectedToken?.address,
+    buyer: nominalBuyer ?? payer,
+    seller: isValidWalletAddress(seller.trim()) ? seller.trim() : result.parties?.seller?.address,
+    amount: BigInt(baseUnits),
+    expiryTimestamp: expiryTimestamp,
+    arbiter: arbiter ?? config?.defaultArbiterAddress,
+    externalId: result.external_id_bytes32,
+  });
+
+  /** Why a checkout's payment could not be set up: its terms have no form to show an error on. */
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
+  /*
+   * Paying with the wallet's other stablecoin (lib/stablecoinSwap): short of the token asked for,
+   * the wallet converts exactly the shortfall and then pays the ordinary way. Looked at only on
+   * the review screen of a payment that can be made, so nothing is read or quoted before then.
+   */
+  const otherSymbol = convertibleFrom(config?.chainId, selectedTokenSymbol);
+  const otherToken = otherSymbol
+    ? availableTokens.find((token) => token.symbol.toUpperCase() === otherSymbol)
+    : undefined;
+  const venue = otherToken ? swapVenue(config?.chainId, otherToken.symbol, selectedTokenSymbol) : null;
+  const unitsOf = (value: string, decimals: number): bigint => {
+    try {
+      return ethers.parseUnits(value || '0', decimals);
+    } catch {
+      return ZERO;
+    }
+  };
+  const owedUnits = BigInt(Math.max(Math.round(baseUnits), 0));
+  const heldUnits = unitsOf(tokenBalance, selectedToken?.decimals ?? 6);
+  const shortfallUnits = owedUnits > heldUnits ? owedUnits - heldUnits : ZERO;
+  /*
+   * ⚠️ ONLY FOR A REQUEST IN A TOKEN THAT CANNOT BE BOUGHT (USDT), IN A WALLET SHORT OF IT. That is
+   *    the one case converting is needed for: its buyer has no card route to the token itself.
+   *    A request in USDC is paid with USDC, bought by card if need be, and nothing about
+   *    converting is read, priced or shown. It used to be offered both ways round, and on every
+   *    USDC payment a button reading "Checking what it costs to convert your USDT…" appeared
+   *    above the ways of paying for a tenth of a second and went away again (seen 2026-11-23).
+   *
+   * ⚠️ WAITS FOR THE FIRST BALANCE, NOT FOR EVERY RE-READ. Gated on "not loading", it was withdrawn
+   *    each time the buyer came back to the tab (which re-reads the balances): the USDC steps
+   *    went, the plain USDT ones came, and it was all priced and drawn again a moment later,
+   *    which looked like the page refreshing itself (seen 2026-11-23). A re-read keeps the last
+   *    balance until the new one is in, so there is nothing to wait for.
+   */
+  const conversionOffered =
+    !canBuyToken(selectedTokenSymbol) &&
+    !!venue && !!otherToken && stage === 'review' && transferOffered && !ownRequest && balanceRead && shortfallUnits > ZERO;
+  const {
+    tokenBalance: otherBalance,
+    hasRead: otherBalanceRead,
+    refetch: refetchOtherBalance,
+  } = useTokenBalance({
+    enabled: conversionOffered && !!config?.rpcUrl,
+    address,
+    tokenAddress: otherToken?.address,
+    getTokenBalance,
+  });
+  const swapQuote = useSwapQuote({
+    venue: conversionOffered ? venue : null,
+    tokenIn: otherToken?.address,
+    tokenOut: selectedToken?.address,
+    amountOut: shortfallUnits,
+    quoteSwap,
+  });
+  const conversion: PaymentConversion | undefined = (() => {
+    if (!conversionOffered || !otherToken) return undefined;
+    const quoted = swapQuote.amountIn;
+    let status: PaymentConversion['status'] = 'quoting';
+    if (swapQuote.state === 'failed') status = 'unavailable';
+    else if (quoted !== null && otherBalanceRead) {
+      if (!withinPremium(quoted, shortfallUnits, otherToken.decimals, selectedToken?.decimals ?? 6)) status = 'unavailable';
+      else status = unitsOf(otherBalance, otherToken.decimals) >= quoted ? 'ready' : 'short';
+    }
+    return {
+      fromSymbol: otherToken.symbol,
+      fromTokenAddress: otherToken.address,
+      fromTokenDecimals: otherToken.decimals,
+      fromBalance: parseFloat(otherBalance) || 0,
+      cost: quoted !== null && status !== 'unavailable' ? Number(ethers.formatUnits(quoted, otherToken.decimals)) : null,
+      status,
+    };
+  })();
+
+  /** Why the payment was refused on sanctions grounds, once it has been. */
+  const [refusal, setRefusal] = useState<string | null>(null);
+  /** Read by the transfer poll, which runs outside React's render: once refused, it stops settling. */
+  const refused = useRef(false);
+
+  /**
+   * A sanctions refusal (`sanctioned_party`) at pay or settle ends the payment: unlike any other
+   * failure, nothing is re-enabled — no pay button, no QR, no address — because anything more
+   * sent to the address would be frozen there too. ap2service enforces it regardless; this only
+   * stops offering.
+   */
+  const refuse = (message?: string) => {
+    refused.current = true;
+    setRefusal(message || null);
+    setStage('refused');
+    checkout?.onFailed(message || t('push.refusedTitle'), 'pay');
+  };
+
+  const fail = (message?: string) => {
+    const said = message || t('wizard.genericError');
+    showToast({ type: 'error', title: t('push.failed'), message: said });
+    if (checkout || request) setCheckoutError(said);
+    checkout?.onFailed(said, stage === 'review' ? 'pay' : 'prepare');
+  };
+
+  /** A problem with one field: said under it on /pay, and as a failure in a checkout, where the merchant set it. */
+  const fieldError = (set: (message: string | undefined) => void, message?: string) =>
+    locked ? fail(message) : set(message);
+
+  /**
+   * A request's prepare: ap2service makes the signed-in wallet its buyer and answers as
+   * prepare_escrow_payment does. HTTP rather than the MCP tool, because claiming the request is
+   * done AS the buyer and the tools carry nobody's session.
+   */
+  const prepareRequest = async (id: string): Promise<Prepared | Ap2ToolError> => {
+    if (!authenticatedFetch) return { error: 'not_signed_in', message: t('err.notAuthenticated') };
+    // Asked already, while the request itself was being read (see usePayableContract): that
+    // answer is used rather than asking again. Once only, so trying again really asks again;
+    // and one that never arrived (null) is simply asked for now.
+    const early = await request?.takeEarlyPrepare?.(id);
+    const { ok, body } = early ?? (await askRequestPrepare(authenticatedFetch, id));
+    if (!ok) {
+      // ap2service says why in `detail`; the proxy's own refusals use `error`.
+      return { error: 'request_refused', message: typeof body.detail === 'string' ? body.detail : body.error };
+    }
+    return body as Prepared;
+  };
+
+  /**
+   * `externalId` when resuming: the same id gives the same escrow, and the same reservation.
+   *
+   * ⚠️ UNCHANGED TERMS KEEP THEIR ESCROW. Going back to the form and pressing Continue again
+   *    used to mint a new id — a second escrow, a second reservation, another test-payment
+   *    allowance used — and any address already shown for the first was now the wrong one. The
+   *    id is new only when the terms actually changed.
+   */
+  const handlePrepare = async (resumeId?: string) => {
+    const unchanged = prepared && preparedFor.current === JSON.stringify(terms());
+    const externalId = resumeId ?? (unchanged ? prepared.external_id : undefined);
+    const s = seller.trim();
+    if (!isValidEmail(s) && !isValidWalletAddress(s)) {
+      fieldError(setSellerError, t('push.errSeller'));
+      return;
+    }
+    if (isValidWalletAddress(s) && payer && addressesEqual(s, payer)) {
+      fieldError(setSellerError, t('validation.payToOwnWallet', { seller: s, buyer: payer }));
+      return;
+    }
+    // The form limits what the buyer types; a merchant's link is checked here.
+    if (checkout && !isValidDescription(description)) {
+      fail(t('wizard.errDescription'));
+      return;
+    }
+    setSellerError(undefined);
+    // The site's own rule, the one the request form uses: $1 or more, or exactly the free test
+    // amount. ap2service applies the same rule; checking here saves the round trip.
+    // A request's amount is the seller's, already accepted when it was made; ap2service checks
+    // it again against the stored figure.
+    const parsed = parseAmount(amount);
+    if (!request && (parsed === null || !isAllowedAmount(parsed))) {
+      fieldError(setAmountError, t('validation.amountRange', { min: formatUsd(MIN_AMOUNT), test: TEST_AMOUNT }));
+      return;
+    }
+    setAmountError(undefined);
+    setCheckoutError(null);
+    setBusy('prepare');
+    try {
+      const result = request
+        ? await prepareRequest(request.id)
+        : await callAp2Tool<Prepared>('prepare_escrow_payment', {
+            ...terms(),
+            ...attribution,
+            // No `payer`, for the reason prepareRequest gives: nothing here signs.
+            ...(externalId ? { external_id: externalId } : {}),
+          }, { fetcher: authenticatedFetch });
+      if (isAp2ToolError(result)) {
+        // An amount ap2service will not escrow (below its minimum, or its fee floor) is said
+        // against the amount, and the buyer stays on the form: they never get an address to
+        // pay into. Its first sentence is written for a person; the rest is for developers.
+        if (isAmountRefusal(result)) return fieldError(setAmountError, firstSentence(result.message));
+        // A sanctions refusal here (sanctioned_party) stays on the form, like any refusal at
+        // prepare: no address has been shown, so there is nothing to pay with to take away, and
+        // the terms can be corrected. Once an address HAS been shown, it is final (refuse()).
+        return fail(result.message);
+      }
+      // ⚠️ NOT TAKEN ON TRUST. The address came from the API; before it is shown or paid, the
+      //    factory this build pins is asked, through the RPC this build pins, where an escrow
+      //    with these terms lives. A compromised backend cannot swap in its own address without
+      //    also compromising this build. See lib/escrow/verifyQuotedEscrow.ts.
+      const quoted = await verifyQuotedEscrowAddress(result.escrow_address, quotedTerms(result));
+      if (!quoted.ok) return fail(`${t('push.addressUnverified')} ${quoted.detail}`);
+      preparedFor.current = JSON.stringify(terms());
+      setPrepared(result);
+      setStage('review');
+      // Attribution goes to whoever started the payment on our site. A request was started by its
+      // seller, whose id went on at creation; a checkout's buyer is the merchant's customer, not
+      // ours. Only a payment the buyer began here on /pay is theirs.
+      if (!request && !checkout && result.record_id && authenticatedFetch) {
+        void attachAnalyticsClientId(result.record_id, authenticatedFetch);
+      }
+    } catch (error: any) {
+      fail(error.message);
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /**
+   * The wallet payment in flight, resolving true once it has settled.
+   *
+   * ⚠️ THE BALANCE POLL MUST NOT SETTLE UNDER IT. The wallet's transfer lands at the escrow
+   *    address before this payment's own settle creates the escrow, and the poll sees that money.
+   *    Settling too, it raced this one to the same deploy (test, 1 Oct: two identical
+   *    transactions, one refused as "already known" and flashed as an error). The poll waits for
+   *    this instead.
+   */
+  const walletPayment = useRef<Promise<boolean> | null>(null);
+
+  /**
+   * Both balances, read again: the buyer may have added either token. Kept stable, because the
+   * panel listens for the buyer coming back to the tab for as long as this function is the same.
+   */
+  const refetchBalances = useRef({ refetchBalance, refetchOtherBalance });
+  refetchBalances.current = { refetchBalance, refetchOtherBalance };
+  const refreshBalances = useCallback(() => {
+    void refetchBalances.current.refetchBalance();
+    void refetchBalances.current.refetchOtherBalance();
+  }, []);
+
+  /** Paying from the signed-in wallet: a gas-sponsored ordinary transfer, then settle. */
+  const handleWalletPay = async () => {
+    // ⚠️ ONLY TO AN ADDRESS ON FILE. If settle fails after the money has moved, the sweep is what
+    //    finishes the payment, and it only knows about escrows on file.
+    if (!prepared || !transferOffered || !selectedToken?.address) return fail(t('push.cannotPay'));
+    const payment =
+      conversion?.status === 'ready' && venue && otherToken
+        ? convertThenPay(prepared, { address: selectedToken.address, symbol: selectedTokenSymbol, decimals: selectedToken.decimals }, otherToken, venue)
+        : payFromWallet(prepared, selectedToken.address);
+    walletPayment.current = payment;
+    try {
+      await payment;
+    } finally {
+      walletPayment.current = null;
+      // What the wallet holds has changed, whichever way that went.
+      void refetchBalance();
+      void refetchOtherBalance();
+    }
+  };
+
+  /**
+   * Convert what the wallet is short of from its other stablecoin, then pay the ordinary way.
+   * The swap is from the wallet to itself: until payFromWallet runs, nothing has gone anywhere.
+   */
+  const convertThenPay = async (
+    prepared: Prepared,
+    token: { address: string; symbol: string; decimals: number },
+    other: { address: string; symbol: string; decimals: number },
+    venue: SwapVenue
+  ): Promise<boolean> => {
+    setBusy('pay');
+    setSteps([
+      { id: 'convert', label: t('push.converting', { from: other.symbol, token: token.symbol }), status: 'active' },
+      { id: 'transfer', label: t('push.signing'), status: 'pending' },
+      { id: 'settle', label: t('push.settling'), status: 'pending' },
+    ]);
+    const stop = (message: string) => {
+      updateStep('convert', 'error');
+      fail(message);
+      setBusy(null);
+      return false;
+    };
+    try {
+      // ⚠️ NEVER CONVERTED TWICE. A payment that failed after its conversion leaves the wallet
+      //    holding the token and this button live again; pressing it must pay with that, not
+      //    convert more. So the shortfall is read now, not taken from what the screen last showed,
+      //    and an address that already holds the payment is only settled.
+      const held = unitsOf(await getTokenBalance(address!, token.address), token.decimals);
+      const short = owedUnits > held ? owedUnits - held : ZERO;
+      if (short > ZERO && !(await escrowHoldsFunds(prepared.escrow_address, token.address))) {
+        // A fresh quote: the one on the button was for showing, and may be minutes old.
+        const quoted = await quoteSwap(venue, other.address, token.address, short);
+        if (!withinPremium(quoted, short, other.decimals, token.decimals)) {
+          return stop(t('push.convertTooDear', { token: token.symbol }));
+        }
+        const otherHeld = unitsOf(await getTokenBalance(address!, other.address), other.decimals);
+        if (otherHeld < quoted) return stop(t('push.convertShort', { from: other.symbol }));
+        // Room for the price to move, but never more than the wallet holds.
+        const ceiling = maxAmountIn(quoted);
+        const amountInMaximum = ceiling < otherHeld ? ceiling : otherHeld;
+        // Said inside the wallet's own prompt, which otherwise only names the router's address.
+        const figures = {
+          max: ethers.formatUnits(amountInMaximum, other.decimals),
+          from: other.symbol,
+          amount: ethers.formatUnits(short, token.decimals),
+          token: token.symbol,
+        };
+        await swapForExactOutput(
+          venue,
+          { tokenIn: other.address, tokenInDecimals: other.decimals, tokenOut: token.address, amountOut: short, amountInMaximum },
+          { approve: t('push.promptApproveConvert', figures), convert: t('push.promptConvert', figures) }
+        );
+        // Sent is not mined: the transfer that follows needs the token to be in the wallet.
+        let arrived = false;
+        let rateLimited = false;
+        for (let attempt = 0; attempt < ESCROW_FUNDS_POLLS && !arrived; attempt++) {
+          const balance = await getTokenBalance(address!, token.address).then(
+            (read) => ((rateLimited = false), read),
+            (e) => ((rateLimited = isRateLimited(e)), '0')
+          );
+          arrived = unitsOf(balance, token.decimals) >= owedUnits;
+          if (!arrived) await new Promise((resolve) => setTimeout(resolve, ESCROW_FUNDS_POLL_MS));
+        }
+        // Unreadable is not "has not arrived": say which, so nobody converts twice.
+        if (!arrived && rateLimited) return stop(t('push.convertUnreadable', { token: token.symbol }));
+        if (!arrived) return stop(t('push.convertNotArrived', { token: token.symbol }));
+      }
+      updateStep('convert', 'completed');
+    } catch (error: any) {
+      return stop(error.message);
+    }
+    return payFromWallet(prepared, token.address, true);
+  };
+
+  /**
+   * Wait for the transfer to show at the escrow address before settle is asked to build on it.
+   * The send returns once the transaction is submitted, which can be before it is mined, and
+   * settle refuses an address that does not hold the money yet. Bounded: settle is asked either
+   * way, and says what the address holds if it is still short.
+   */
+  const waitForEscrowFunds = async (escrow: string, tokenAddress: string) => {
+    for (let attempt = 0; attempt < ESCROW_FUNDS_POLLS; attempt++) {
+      if (await escrowHoldsFunds(escrow, tokenAddress)) return;
+      await new Promise((resolve) => setTimeout(resolve, ESCROW_FUNDS_POLL_MS));
+    }
+  };
+
+  /** Whether the escrow address already holds this payment. Unreadable counts as no. */
+  const escrowHoldsFunds = async (escrow: string, tokenAddress: string): Promise<boolean> => {
+    try {
+      return amountInTokens > 0 && parseFloat(await getTokenBalance(escrow, tokenAddress)) >= amountInTokens;
+    } catch {
+      return false;
+    }
+  };
+
+  const payFromWallet = async (prepared: Prepared, tokenAddress: string, afterConversion = false): Promise<boolean> => {
+    setBusy('pay');
+    // After a conversion its step stays on screen, completed, above these two.
+    if (afterConversion) updateStep('transfer', 'active');
+    else
+      setSteps([
+        { id: 'transfer', label: t('push.signing'), status: 'active' },
+        { id: 'settle', label: t('push.settling'), status: 'pending' },
+      ]);
+    try {
+      // ⚠️ NEVER SENT TWICE. A settle that failed after the transfer leaves the money at the
+      //    address and this button live again; pressing it must finish that payment, not send
+      //    another. An address that already holds the amount is only settled.
+      if (!(await escrowHoldsFunds(prepared.escrow_address, tokenAddress))) {
+        // The address was checked against the pinned factory when prepare answered.
+        // transferToContract asks for the gas first (fund-transfer), then the wallet sends.
+        // Said in the wallet's own prompt: how much, of what, for whom and what happens to it. An
+        // address means nothing to the person approving, so the seller is named as the page names them.
+        const paying = request?.sellerLabel || seller.trim();
+        const says = t(instant ? 'push.promptTransferInstant' : 'push.promptTransferHeld', {
+          amount: amount.trim(),
+          token: selectedTokenSymbol,
+          seller: isValidWalletAddress(paying) ? `${paying.slice(0, 6)}…${paying.slice(-4)}` : paying,
+        });
+        await transferToContract(tokenAddress, prepared.escrow_address, String(baseUnits), says);
+        updateStep('settle', 'active');
+        await waitForEscrowFunds(prepared.escrow_address, tokenAddress);
+      }
+
+      updateStep('settle', 'active');
+      const result = await callAp2Tool<Settled>('settle_escrow_payment', {
+        ...terms(),
+        ...attribution,
+        external_id: prepared.external_id,
+      }, { fetcher: authenticatedFetch });
+      if (isAp2ToolError(result)) {
+        updateStep('settle', 'error');
+        if (result.error === 'sanctioned_party') refuse(result.message);
+        else fail(result.message);
+        return false;
+      }
+      updateStep('settle', 'completed');
+      setSettled(result);
+      setStage('done');
+      return true;
+    } catch (error: any) {
+      fail(error.message);
+      return false;
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  /*
+   * Get the gas and the estimate out of the way while the payer reads the review screen, so
+   * pressing the button goes straight to their wallet. Once per escrow and amount: an estimate
+   * costs RPC calls, and the public RPC refuses a page that makes them on every render.
+   */
+  const prewarmedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!prepared || !transferOffered || ownRequest || !selectedToken?.address) return;
+    if (isLoadingBalance || balanceFloat < amountInTokens) return;
+    const key = `${selectedToken.address}:${prepared.escrow_address}:${baseUnits}`;
+    if (prewarmedFor.current === key) return;
+    prewarmedFor.current = key;
+    void prewarmTransferToContract(selectedToken.address, prepared.escrow_address, String(baseUnits));
+  }, [prepared, transferOffered, ownRequest, selectedToken?.address, isLoadingBalance, balanceFloat, amountInTokens, baseUnits, prewarmTransferToContract]);
+
+  /**
+   * The transfer routes' sweep: settle with no signature, around what the address holds. Run by
+   * useQrPayment behind its balance check, from "I have paid" or when the poll sees the money.
+   */
+  const settleTransfer = useCallback(async (): Promise<boolean> => {
+    if (!prepared) return false;
+    // The money the poll saw may be the wallet payment's own transfer: let that payment finish.
+    // Only if it failed after the money moved does this settle what is there.
+    const inFlight = walletPayment.current;
+    if (inFlight && (await inFlight)) return true;
+    if (refused.current) return false;
+    const result = await callAp2Tool<Settled>('settle_escrow_payment', {
+      ...terms(),
+      ...attribution,
+      external_id: prepared.external_id,
+    }, { fetcher: authenticatedFetch });
+    if (isAp2ToolError(result)) {
+      // The money may well be there — this ran because the balance check saw it. Say why settle
+      // turned it down, rather than letting the panel read it as "no payment found".
+      if (result.error === 'sanctioned_party') refuse(result.message);
+      else fail(result.message);
+      return false;
+    }
+    setSettled(result);
+    return true;
+    // terms() reads the same state these name.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prepared, seller, baseUnits, expiryTimestamp, payer, nominalBuyer, selectedTokenSymbol, description, brandId, arbiter, authenticatedFetch]);
+
+  const qr = useQrPayment({
+    authenticatedFetch,
+    getTokenBalance,
+    selectedTokenAddress: selectedToken?.address,
+    chainId: config?.chainId,
+    requiredAmount: amountInTokens,
+    requiredAmountMicro: baseUnits,
+    // Already derived by prepare, and already on file: nothing to create.
+    createContract: useCallback(async () => prepared?.escrow_address, [prepared]),
+    onActivated: useCallback(() => setStage('done'), []),
+    activation: { endpoint: 'settle_escrow_payment', run: settleTransfer },
+    existingContractAddress: transferOffered ? prepared!.escrow_address : null,
+  });
+
+  // How much is where a purchase delivers, read now, for a buyer just back from buying
+  // (hooks/useFundingTrouble): their wallet, or the payment's own address.
+  const walletTokenAddress = selectedToken?.address;
+  const lookAtPayment = qr.lookNow;
+  const readHeld = useCallback(
+    async (route: 'wallet' | 'payment'): Promise<number | null> => {
+      if (route === 'payment') return lookAtPayment();
+      if (!address || !walletTokenAddress) return null;
+      try {
+        const held = parseFloat(await getTokenBalance(address, walletTokenAddress));
+        return Number.isFinite(held) ? held : null;
+      } catch {
+        return null;
+      }
+    },
+    // getTokenBalance is new on every render (useSimpleEthers) and reads the same either way.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [address, walletTokenAddress, lookAtPayment]
+  );
+
+  /*
+   * Resuming. A payment on the review screen lives in the URL as well as in memory, so coming
+   * back from Coinbase on a phone, a refresh, or the Back button all land on it again. The URL
+   * is refilled into the form first; prepare runs on the next render, once the form (and the
+   * token it selects) actually holds those values.
+   */
+  const resumeParam = prepared
+    ? encodePayResume({
+        seller: seller.trim(),
+        amount: amount.trim(),
+        expiryTimestamp,
+        description: description.trim(),
+        tokenSymbol: selectedTokenSymbol,
+        externalId: prepared.external_id,
+        ...(nominalBuyer ? { nominalBuyer } : {}),
+        ...(arbiter ? { arbiter } : {}),
+      })
+    : null;
+  // A request comes back to its own link: preparing it again finds the same buyer and escrow.
+  const resumeHref = request
+    ? router.asPath
+    : checkout
+      ? withPayResume(router.asPath, resumeParam)
+      : brandedHref(resumeParam ? `/pay?resume=${resumeParam}` : '/pay');
+
+  const [resumingId, setResumingId] = useState<string | null>(null);
+  const [resumingToken, setResumingToken] = useState<string | null>(null);
+  const resumeRead = useRef(false);
+  useEffect(() => {
+    if (resumeRead.current || !router.isReady) return;
+    resumeRead.current = true;
+    // A request's terms are the stored ones, whatever a ?resume= says.
+    if (request) return;
+    const resume = decodePayResume(router.query.resume);
+    if (!resume) return;
+    setSeller(resume.seller);
+    setAmount(resume.amount);
+    setInstant(resume.expiryTimestamp === 0);
+    if (resume.expiryTimestamp !== 0) setPayoutTimestamp(resume.expiryTimestamp);
+    setDescription(resume.description);
+    setTokenSymbol(resume.tokenSymbol);
+    setNominalBuyer(resume.nominalBuyer);
+    setArbiter(resume.arbiter);
+    setResumingToken(resume.tokenSymbol);
+    setResumingId(resume.externalId);
+  }, [router.isReady, router.query.resume]);
+
+  useEffect(() => {
+    // Waits for the signed-in wallet (it is the payer and the disputer) and for the resumed
+    // token to be the selected one, since the amount's base units depend on its decimals.
+    if (!resumingId || !payer || !config || busy) return;
+    if (resumingToken && selectedTokenSymbol.toUpperCase() !== resumingToken.toUpperCase()) return;
+    const id = resumingId;
+    setResumingId(null);
+    void handlePrepare(id);
+    // handlePrepare reads the refilled form from this same render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resumingId, payer, config, busy, selectedTokenSymbol, resumingToken]);
+
+  // The address bar follows the screen: the payment's own link while it is being paid, plain
+  // /pay once it is done, so a refresh never offers a finished payment again. Left alone on the
+  // form, so a ?resume= link survives signing in before it has been picked up.
+  //
+  // ⚠️ NEVER IN A CHECKOUT. Its URL carries the merchant's return address and order id, and its
+  //    path is what the layout recognises to drop our header and footer inside their page.
+  // ⚠️ NOR ON A REQUEST. Its link is /contract-pay?contractId=, which is what the seller sent.
+  useEffect(() => {
+    if (checkout || request) return;
+    if (!router.isReady || (stage === 'review' && !prepared) || stage === 'details') return;
+    const want = stage === 'review' ? resumeHref : brandedHref('/pay');
+    if (router.asPath !== want) void router.replace(want, undefined, { shallow: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage, prepared, resumeHref, router.isReady]);
+
+  /*
+   * A checkout has no form to fill: its terms are the merchant's. Prepare runs once the payer is
+   * signed in and the merchant's token is the selected one (the amount's base units depend on its
+   * decimals) — unless a resume is about to, with the external id that keeps the same escrow.
+   */
+  const checkoutPrepared = useRef(false);
+  useEffect(() => {
+    if (!locked || ownRequest || checkoutPrepared.current || !router.isReady) return;
+    // The resume effect prepares this one, with its external id; a second, id-less prepare
+    // would quote a different escrow. (A request's id is fixed, so it never resumes.)
+    if (checkout && decodePayResume(router.query.resume)) {
+      checkoutPrepared.current = true;
+      return;
+    }
+    if (!payer || !config || busy || stage !== 'details') return;
+    const wanted = locked.tokenSymbol;
+    if (wanted && selectedTokenSymbol.toUpperCase() !== wanted.toUpperCase()) return;
+    checkoutPrepared.current = true;
+    void handlePrepare();
+    // handlePrepare reads the locked terms from this same render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locked, ownRequest, router.isReady, router.query.resume, payer, config, busy, stage, selectedTokenSymbol]);
+
+  // Handed to the checkout once, when the escrow exists: the receipt says which one it is.
+  const handedOff = useRef(false);
+  useEffect(() => {
+    if (!checkout || stage !== 'done' || handedOff.current || !prepared) return;
+    handedOff.current = true;
+    checkout.onPaid(paidEscrowFrom(settled, prepared.escrow_address));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkout, stage, settled, prepared]);
+
+  // The receipt's link selects this payment on the dashboard. Its path and query only, so a
+  // partner brand's site keeps its own domain rather than following the link to ours.
+  const viewPayment = () => {
+    const where = settled?.dispute?.where;
+    if (!where) return router.push('/dashboard');
+    const url = new URL(where, window.location.origin);
+    router.push(`${url.pathname}${url.search}`);
+  };
+
+  const reset = () => {
+    void router.replace(brandedHref('/pay'), undefined, { shallow: true });
+    setSeller('');
+    setAmount('');
+    setDescription('');
+    setPayoutTimestamp(getDefaultTimestamp());
+    setInstant(false);
+    setNominalBuyer(undefined);
+    setPrepared(null);
+    setSettled(null);
+    setStage('details');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-10 space-y-6">
+        <Skeleton className="h-8 w-80 mx-auto" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
+
+  // The same gate as /create: the payer pays from their own wallet, and holds the right to
+  // dispute from the same account.
+  if (!isConnected || !address) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+        <CreateProgressSteps current={0} steps={PUSH_JOURNEY_STEPS} />
+        <div className="text-center">
+          <h1 className="text-3xl sm:text-4xl font-bold text-secondary-900 dark:text-white tracking-tight">
+            {t('push.title')}
+          </h1>
+          <p className="mt-3 text-secondary-500 dark:text-secondary-400">{t('push.signInBlurb')}</p>
+        </div>
+        <WalletChoiceCards />
+        {checkout && (
+          <div className="mt-6 flex justify-center">
+            <Button variant="outline" onClick={checkout.onCancel}>{t('common.cancel')}</Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="py-10">
+      <div className="w-full max-w-2xl mx-auto px-4">
+        <CreateProgressSteps
+          // A request's terms are already settled: its payer starts at confirming them.
+          current={stage === 'details' && !ownRequest && !locked ? 0 : stage === 'done' ? 2 : 1}
+          steps={PUSH_JOURNEY_STEPS}
+          // Closer to what follows on the review screen, where the ways of paying have to be in view.
+          className={(stage === 'review' && prepared) || ownRequest || locked ? 'mb-8' : undefined}
+          // The screen that asks how to pay has enough to read: the steps keep their names only.
+          titlesOnly={(stage === 'review' && !!prepared) || ownRequest || !!locked}
+        />
+
+        {/* The terms are known before the payment is ready, and getting it ready takes seconds
+            (2026-11-23: 4.7s). What is owed is shown at once, and the wait is for the ways of
+            paying only, instead of a screen with one line on it. */}
+        {stage === 'details' && locked && !ownRequest && !checkoutError && (
+          <div className="mb-5">
+            <ReviewRequest
+              title={t('push.review')}
+              amount={amount}
+              tokenSymbol={selectedTokenSymbol}
+              networkLabel={networkLabel}
+              description={description}
+              payoutTimestamp={expiryTimestamp}
+              isInstantPayment={instant}
+              extraRows={[
+                { label: t('push.paying'), value: request?.sellerLabel || seller.trim() },
+                { label: t('push.sellerReceives'), value: previewFigure((fee) => amountInTokens - fee) },
+                { label: t('push.fee'), value: previewFigure((fee) => fee) },
+              ]}
+              nextBody={null}
+              compact
+              moneyFirst
+            />
+          </div>
+        )}
+        {stage === 'details' && locked && !ownRequest && (
+          <div className="rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-6 sm:p-8 text-center">
+            {checkoutError ? (
+              <>
+                <p className="text-error-600 dark:text-error-400">{checkoutError}</p>
+                <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+                  <Button onClick={() => handlePrepare()} disabled={busy !== null}>{t('push.retry')}</Button>
+                  {checkout && <Button variant="outline" onClick={checkout.onCancel}>{t('common.cancel')}</Button>}
+                </div>
+              </>
+            ) : (
+              <p role="status" className="text-secondary-600 dark:text-secondary-300">{t('push.checkoutPreparing')}</p>
+            )}
+          </div>
+        )}
+
+        {stage === 'details' && !locked && (
+          <>
+            <div className="text-center mb-6">
+              <h2 className="text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white">{t('push.title')}</h2>
+              <p className="mt-2 text-secondary-500 dark:text-secondary-400">{t('push.subtitle')}</p>
+            </div>
+            <div className="rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-5 sm:p-6 mb-6">
+              <Input
+                label={t('push.seller')}
+                value={seller}
+                onChange={(e) => setSeller(e.target.value)}
+                placeholder={t('push.sellerPlaceholder')}
+                helpText={t('push.sellerHelp')}
+                error={sellerError}
+                autoComplete="off"
+              />
+            </div>
+            <PaymentTermsForm
+              amount={amount}
+              onAmountChange={(value) => {
+                setAmount(value);
+                setAmountError(undefined);
+              }}
+              payoutTimestamp={payoutTimestamp}
+              onPayoutTimestampChange={setPayoutTimestamp}
+              instantPayment={instant}
+              onInstantPaymentChange={setInstant}
+              description={description}
+              onDescriptionChange={setDescription}
+              showFeeGuidance={false}
+              amountLabels={{ requested: t('push.amountFiat'), receiving: t('push.amountToken') }}
+              errors={{ amount: amountError }}
+              tokenSymbol={selectedTokenSymbol}
+              tokenOptions={availableTokens.map((token) => token.symbol)}
+              onTokenChange={setTokenSymbol}
+              networkLabel={networkLabel}
+              payableWith={otherToken?.symbol}
+              balanceText={isLoadingBalance ? undefined : `Balance: ${tokenBalance} ${selectedTokenSymbol}`}
+            />
+            <div className="mt-8 flex justify-center">
+              <Button
+                onClick={() => handlePrepare()}
+                disabled={!seller.trim() || !amount || !description.trim() || busy !== null}
+                className="w-full sm:w-auto px-8"
+              >
+                {busy === 'prepare' ? t('push.checking') : t('push.continue')}
+              </Button>
+            </div>
+          </>
+        )}
+
+        {((stage === 'review' && prepared) || ownRequest) && (
+          <>
+            {ownRequest && (
+              <div role="status" className="mb-6 rounded-lg border border-secondary-300 dark:border-secondary-600 bg-secondary-50 dark:bg-secondary-800/50 p-4">
+                <p className="text-sm font-semibold text-secondary-900 dark:text-white">{t('push.previewTitle')}</p>
+                <p className="mt-1 text-sm text-secondary-600 dark:text-secondary-300">{t('push.previewBody')}</p>
+                {/* The next thing a seller does with a request that looks right: send it. */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(window.location.href);
+                      setLinkCopied(true);
+                      setTimeout(() => setLinkCopied(false), 2000);
+                    } catch {
+                      // Clipboard can be blocked; the link is in the address bar.
+                    }
+                  }}
+                >
+                  {linkCopied ? t('push.previewLinkCopied') : t('push.previewCopyLink')}
+                </Button>
+              </div>
+            )}
+            <ReviewRequest
+              title={t('push.review')}
+              amount={amount}
+              tokenSymbol={selectedTokenSymbol}
+              networkLabel={networkLabel}
+              description={description}
+              payoutTimestamp={expiryTimestamp}
+              isInstantPayment={instant}
+              onEdit={locked ? undefined : () => setStage('details')}
+              extraRows={[
+                { label: t('push.paying'), value: request?.sellerLabel || seller.trim() },
+                // A request names who may dispute; say so when it is not the wallet paying.
+                ...(nominalBuyer && !(payer && addressesEqual(nominalBuyer, payer))
+                  ? [{ label: t('push.disputer'), value: nominalBuyer }]
+                  : []),
+                { label: t('push.sellerReceives'), value: prepared?.seller_receives_estimate ?? previewFigure((fee) => amountInTokens - fee) },
+                { label: t('push.fee'), value: prepared?.platform_fee_estimate ?? previewFigure((fee) => fee) },
+              ]}
+              // PaymentOptions states what happens, once, over every way of paying.
+              nextBody={null}
+              compact
+              moneyFirst
+            />
+            {/* Not on file means nothing would finish a payment whose settle failed, so no way
+                of paying is offered. Said, not left as a dead button. */}
+            {/* A disabled fieldset turns off every control inside it, styled as disabled too. */}
+            <fieldset disabled={ownRequest} className="min-w-0 border-0 p-0">
+              {request?.notice && <div className="mt-5">{request.notice}</div>}
+              {prepared && !transferOffered && !ownRequest && (
+                <p className="mt-5 text-sm text-error-600 dark:text-error-400 text-center">{t('push.cannotPay')}</p>
+              )}
+            </fieldset>
+            {/* Outside the fieldset: a seller's preview opens the two choices to look at, and the
+                panel itself turns off everything in them that would pay (preview). */}
+            <div>
+              <div className="mt-5">
+                <PaymentOptions
+                  paymentSteps={paymentSteps}
+                  reassurance={t(instant ? 'pay.escrowInstant' : 'pay.escrowHeld', { amount: `${amount} ${selectedTokenSymbol}` })}
+                  amountLabel={`${amount} ${selectedTokenSymbol}`}
+                  amountInTokens={amountInTokens}
+                  balanceFloat={balanceFloat}
+                  tokenSymbol={selectedTokenSymbol}
+                  tokenAddress={selectedToken?.address ?? ''}
+                  tokenDecimals={selectedToken?.decimals ?? 6}
+                  chainId={config?.chainId}
+                  walletAddress={address}
+                  networkName={networkLabel ?? ''}
+                  isLoadingBalance={isLoadingBalance}
+                  hasInsufficientBalance={balanceFloat < amountInTokens}
+                  isSameAddress={false}
+                  preview={ownRequest}
+                  conversion={conversion}
+                  isPaymentInProgress={busy === 'pay'}
+                  onPay={handleWalletPay}
+                  onPayFromExternalWallet={() => {
+                    document.getElementById('pay-from-elsewhere')?.scrollIntoView({ behavior: 'smooth' });
+                  }}
+                  // Back onto this payment, not a blank form: after adding funds the wallet can now
+                  // pay; after a card payment the balance check finds the escrow funded and
+                  // settles it. (The escrow is on file either way, so a buyer who never comes back
+                  // still has a card payment completed by the sweep.)
+                  addFundsReturnPath={resumeHref}
+                  resolveEscrowAddress={transferOffered || ownRequest ? async () => prepared?.escrow_address ?? null : undefined}
+                  escrowAddress={transferOffered ? prepared?.escrow_address : undefined}
+                  onRefreshBalance={refreshBalances}
+                  readHeld={ownRequest ? undefined : readHeld}
+                  // A seller's request (/contract-pay): Zipchat's questions for a buyer who has to buy.
+                  buyQuestions={!!request && !checkout}
+                  elsewhere={
+                    transferOffered || ownRequest
+                      ? {
+                          qr: ownRequest
+                            ? {
+                                ...qr,
+                                qrContractAddress: t('push.previewAddress'),
+                                hasCheckedBalance: true,
+                                qrActivationStatus: 'idle',
+                              }
+                            : qr,
+                          preview: ownRequest,
+                          createButtonLabel: t('pay.payButton'),
+                          createDisabled: false,
+                          successMessage: t('push.doneTitle'),
+                        }
+                      : undefined
+                  }
+                />
+              </div>
+            </div>
+            {checkout && (
+              <div className="mt-6 flex justify-center">
+                <Button variant="outline" onClick={checkout.onCancel} disabled={busy === 'pay'}>{t('common.cancel')}</Button>
+              </div>
+            )}
+          </>
+        )}
+
+        {stage === 'refused' && (
+          <div className="rounded-2xl border border-error-500 bg-white dark:bg-secondary-900 p-6 sm:p-8 text-center">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-error-600">{t('push.refusedTitle')}</h2>
+            <p className="mt-3 text-secondary-600 dark:text-secondary-300">{t('push.refusedBody')}</p>
+            {refusal && <p className="mt-3 text-sm text-secondary-500 dark:text-secondary-400 break-words">{refusal}</p>}
+          </div>
+        )}
+
+        {stage === 'done' && (
+          <div className="rounded-2xl border border-secondary-200 dark:border-secondary-700 bg-white dark:bg-secondary-900 p-6 sm:p-8 text-center">
+            <h2 className="text-2xl sm:text-3xl font-semibold text-secondary-900 dark:text-white">{t('push.doneTitle')}</h2>
+            <p className="mt-3 text-secondary-600 dark:text-secondary-300">
+              {instant
+                ? t('push.doneInstantBody', { amount, token: selectedTokenSymbol, seller: request?.sellerLabel || seller.trim() })
+                : t('push.doneBody', {
+                    amount,
+                    token: selectedTokenSymbol,
+                    seller: request?.sellerLabel || seller.trim(),
+                    date: formatDateTimeWithTZ(expiryTimestamp),
+                  })}
+            </p>
+            {/* A checkout takes the buyer back to the merchant from here. */}
+            {!checkout && (
+              <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+                <Button onClick={viewPayment} className="w-full sm:w-auto px-8">
+                  {t('push.viewPayment')}
+                </Button>
+                {/* A request was for one payment; another starts on /pay. */}
+                {!request && (
+                  <Button variant="outline" onClick={reset} className="w-full sm:w-auto px-8">
+                    {t('push.another')}
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

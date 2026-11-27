@@ -1,3 +1,4 @@
+import { recordingsConfigured } from '@/lib/server/recordingsConfig';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { TokenDetails } from '@/types';
 import { TokenConfig, parseTokensFromEnv } from '@/types/tokens';
@@ -19,20 +20,28 @@ export function clearConfigCache() {
  * @param rpcUrl RPC endpoint URL
  * @param tokenAddress Token contract address
  * @param tokenLabel Label for logging (e.g., "USDC", "USDT")
+ * @param chainId Chain the RPC serves — pins the provider (see below)
  * @returns Token details (symbol, decimals, name)
  */
 async function getTokenDetails(
   rpcUrl: string,
   tokenAddress: string,
-  tokenLabel: string
+  tokenLabel: string,
+  chainId: number
 ): Promise<TokenDetails | null> {
+  // ⚠️ PINNED AND DESTROYED. Unpinned, ethers discovers the network itself, and when the RPC
+  //    fails that discovery it retries every second FOREVER — logging "failed to detect
+  //    network" each time. One per token per config refresh, none ever torn down: that was
+  //    the flood in the server log.
+  const rpcClient = new RpcClient(rpcUrl, chainId);
   try {
     // Read via the single read-RPC owner (RpcClient) instead of a local provider.
-    const rpcClient = new RpcClient(rpcUrl);
     return await rpcClient.getTokenMetadata(tokenAddress);
   } catch (error) {
     console.error(`Failed to fetch ${tokenLabel} token details:`, error);
     return null;
+  } finally {
+    rpcClient.getProvider().destroy();
   }
 }
 
@@ -128,10 +137,12 @@ async function buildConfig() {
   // Fetch contract addresses from chainservice
   const contractAddresses = await getContractAddresses(process.env.CHAIN_SERVICE_URL);
 
+  const chainId = parseInt(process.env.CHAIN_ID || '8453'); // Default: Base Mainnet
+
   // Fetch on-chain details for all enabled tokens in parallel
   const enabledTokens = tokenConfigs.filter(t => t.enabled !== false);
   const tokenDetailsPromises = enabledTokens.map(token =>
-    getTokenDetails(process.env.RPC_URL!.trim(), token.address, token.symbol)
+    getTokenDetails(process.env.RPC_URL!.trim(), token.address, token.symbol, chainId)
       .then(details => ({ ...token, ...details }))
       .catch(err => {
         console.error(`Failed to fetch details for ${token.symbol}:`, err);
@@ -147,8 +158,6 @@ async function buildConfig() {
   // Legacy fields for backward compatibility
   const usdcDetails = supportedTokens.find(t => t.symbol === 'USDC') || null;
   const usdtDetails = supportedTokens.find(t => t.symbol === 'USDT') || null;
-
-  const chainId = parseInt(process.env.CHAIN_ID || '8453'); // Default: Base Mainnet
 
   const config = {
     chainId,
@@ -169,9 +178,10 @@ async function buildConfig() {
     contractFactoryAddress: contractAddresses.factoryAddress,
     defaultArbiterAddress: contractAddresses.defaultArbiterAddress,
     // Service URLs
-    userServiceUrl: process.env.USER_SERVICE_URL,
-    chainServiceUrl: process.env.CHAIN_SERVICE_URL,
-    contractServiceUrl: process.env.CONTRACT_SERVICE_URL,
+    // ⚠️ NO SERVICE ADDRESSES HERE. This response is public, and until 2026-11-20 it listed
+    //    the internal host and port of userservice, chainservice and contractservice. The
+    //    browser never calls them (it calls /api/*, which does), so all it gave anyone was a
+    //    map of the back end.
     // Third-party services
     moonPayApiKey: process.env.MOONPAY_API_KEY,
     coinbaseProjectId: process.env.COINBASE_PROJECT_ID,
@@ -182,13 +192,17 @@ async function buildConfig() {
     coinbaseNetwork: process.env.COINBASE_NETWORK || coinbaseNetworkForChainId(chainId),
     walletConnectProjectId: process.env.WALLETCONNECT_PROJECT_ID,
     privyAppId: process.env.PRIVY_APP_ID,
-    neynarApiKey: process.env.NEYNAR_API_KEY,
+    // Whether the sign-in card still offers the provider Privy replaced (the "old wallet" tick
+    // box). Off unless SHOW_LEGACY_AUTH is exactly "true".
+    showLegacyAuth: process.env.SHOW_LEGACY_AUTH === 'true',
+    // ⚠️ NO NEYNAR KEY HERE. This response is public, and until 2026-11-20 it carried
+    //    NEYNAR_API_KEY to anyone who asked. Nothing in the browser ever read it: the Neynar
+    //    calls are made server-side by pages/api/users/*.
     // Gas configuration
     minGasWei: process.env.MIN_GAS_WEI || '5',
     maxGasPriceGwei: process.env.MAX_GAS_PRICE_GWEI || '0.001',
     maxGasCostGwei: process.env.MAX_GAS_COST_GWEI || '0.15',
     usdcGrantFoundryGas: process.env.USDC_GRANT_FOUNDRY_GAS || '150000',
-    depositFundsFoundryGas: process.env.DEPOSIT_FUNDS_FOUNDRY_GAS || '150000',
     resolutionVoteFoundryGas: process.env.RESOLUTION_VOTE_FOUNDRY_GAS || '80000',
     raiseDisputeFoundryGas: process.env.RAISE_DISPUTE_FOUNDRY_GAS || '150000',
     claimFundsFoundryGas: process.env.CLAIM_FUNDS_FOUNDRY_GAS || '150000',
@@ -198,8 +212,12 @@ async function buildConfig() {
     // Release flags (see utils/featureFlags.ts) — the client reads them from here
     projectsLive: isProjectsLive(),
     emailVerificationLive: isEmailVerificationLive(),
+    // "Report a problem" is offered only where there is a bucket to send recordings to
+    problemRecordingsLive: recordingsConfigured(),
     explorerBaseUrl: process.env.EXPLORER_BASE_URL,
     serviceLink: process.env.SERVICE_LINK || 'http://localhost:3000',
+    // The Terms of Service version a sign-in accepts (next.config.js); the SIWE statement names it
+    termsVersion: process.env.TERMS_VERSION || null,
     // Optional wallet services configuration
     walletServicesShowWidget: process.env.WALLET_SERVICES_SHOW_WIDGET,
     walletServicesButtonPosition: process.env.WALLET_SERVICES_BUTTON_POSITION,

@@ -28,9 +28,27 @@ export function themeToVars(theme: BrandTheme): Record<string, string> {
     });
   });
 
+  Object.entries(theme.palettes).forEach(([name, palette]) => {
+    Object.entries(palette).forEach(([step, triple]) => {
+      vars[`${VAR_PREFIX}-${name}-${step}`] = triple;
+    });
+  });
+  vars[`${VAR_PREFIX}-white`] = theme.white;
+  vars[`${VAR_PREFIX}-black`] = theme.black;
+
   vars[`${VAR_PREFIX}-radius`] = theme.radius;
   vars[`${VAR_PREFIX}-font`] = theme.fontFamily;
   vars[`${VAR_PREFIX}-font-heading`] = theme.headingFontFamily ?? theme.fontFamily;
+  vars[`${VAR_PREFIX}-font-mono`] = theme.monoFontFamily;
+  vars[`${VAR_PREFIX}-font-accent`] = theme.accentFontFamily;
+
+  vars[`${VAR_PREFIX}-button-radius`] = theme.button.radius;
+  vars[`${VAR_PREFIX}-button-bg`] = theme.button.bg;
+  vars[`${VAR_PREFIX}-button-fg`] = theme.button.fg;
+  vars[`${VAR_PREFIX}-button-hover-bg`] = theme.button.hoverBg;
+  vars[`${VAR_PREFIX}-button-dark-bg`] = theme.button.darkBg;
+  vars[`${VAR_PREFIX}-button-dark-fg`] = theme.button.darkFg;
+  vars[`${VAR_PREFIX}-button-dark-hover-bg`] = theme.button.darkHoverBg;
 
   return vars;
 }

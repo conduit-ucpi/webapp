@@ -6,10 +6,13 @@ import { useAuth } from '@/components/auth';
 import { ESCROW_CONTRACT_ABI } from '@conduit-ucpi/sdk';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import Modal from '@/components/ui/Modal';
 import DisputeModal from './DisputeModal';
+import { SETTLED_IN_CASH_REASON } from '@/lib/cashSettlement';
 import DisputeManagementModal from './DisputeManagementModal';
 import { formatDateTimeWithTZ } from '@/utils/validation';
 import { useBrandedHref } from '../../theme';
+import { payHref } from '../../utils/payHref';
 import { useT } from '../../i18n';
 
 interface ContractActionsProps {
@@ -33,9 +36,13 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   const [loadingMessage, setLoadingMessage] = useState('');
   const [hasError, setHasError] = useState(false);
   const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [showCashSettlementModal, setShowCashSettlementModal] = useState(false);
   const [showDisputeManagementModal, setShowDisputeManagementModal] = useState(false);
 
   const isPending = !('contractAddress' in contract);
+  // For the wallet's own prompt, which has little room. Old records can lack a description.
+  const described = contract.description || '';
+  const shortDescription = described.length > 60 ? `${described.slice(0, 57)}…` : described;
   
   // Debug contract data when status is ERROR
   if ((contract as Contract).status === 'ERROR') {
@@ -115,6 +122,13 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         userAddress,
         reason,
         refundPercent,
+        // The wallet asks twice, and left to itself says the same unexplained thing both times.
+        prompts: {
+          open: t('contractActions.promptDisputeOpen', {
+            description: shortDescription,
+          }),
+          vote: (figure: number) => t('contractActions.promptDisputeVote', { buyer: figure, seller: 100 - figure }),
+        },
         // Pass the enhanced contract object with email fallbacks
         contract: enhancedContract,
         config,
@@ -128,6 +142,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       setIsLoading(false);
       setLoadingMessage('');
       setShowDisputeModal(false);
+      setShowCashSettlementModal(false);
     } catch (error: any) {
       console.error('❌ Dispute failed:', error);
       setHasError(true);
@@ -173,10 +188,23 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
       }
 
       // Use the abstracted claimFunds method (works for both Web3Auth and Farcaster)
-      const txHash = await claimFunds(
-        (contract as Contract).contractAddress,
-        userAddress
+      // Said in the wallet's own prompt, which otherwise gives no amount and no payment.
+      // The token is named only when the record says which it is: a guessed symbol or guessed
+      // decimals would put a wrong figure in front of someone about to approve.
+      const record = contract as Contract;
+      const token = config.supportedTokens?.find(
+        (listed) =>
+          (!!record.tokenAddress && listed.address.toLowerCase() === record.tokenAddress.toLowerCase()) ||
+          (!record.tokenAddress && !!record.currencySymbol && listed.symbol.toUpperCase() === record.currencySymbol.toUpperCase())
       );
+      const about = shortDescription;
+      const txHash = await claimFunds((contract as Contract).contractAddress, userAddress, {
+        decimals: token?.decimals,
+        describe: (amount: string | null) =>
+          amount && token
+            ? t('contractActions.promptCollect', { amount, token: token.symbol, description: about })
+            : t('contractActions.promptCollectNoAmount', { description: about }),
+      });
 
       console.log('✅ Claim funds successful! Transaction hash:', txHash);
       onAction(); // Refresh contracts
@@ -206,7 +234,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
   switch (contract.ctaType) {
     case 'RAISE_DISPUTE':
       return (
-        <>
+        <div className="space-y-2">
           <Button
             variant="outline"
             size="sm"
@@ -223,13 +251,62 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
               contract.ctaLabel || 'Raise Dispute'
             )}
           </Button>
+          {/*
+            "I settled in cash": the same dispute path with its arguments fixed — 100% to the buyer
+            and the sentinel reason from lib/cashSettlement.ts, which the seller's screen and
+            disputeservice recognise. It is not a refund button: the buyer's 100% is one vote, and
+            the seller (or a Third Voter) must match it before anything moves. The dialog says so.
+          */}
+          {isBuyer && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCashSettlementModal(true)}
+              disabled={isLoading}
+              className="w-full"
+            >
+              {t('contractActions.settledInCash')}
+            </Button>
+          )}
           <DisputeModal
             isOpen={showDisputeModal}
             onClose={() => setShowDisputeModal(false)}
             onSubmit={handleRaiseDispute}
             isSubmitting={isLoading}
           />
-        </>
+          <Modal
+            isOpen={showCashSettlementModal}
+            onClose={() => { if (!isLoading) setShowCashSettlementModal(false); }}
+            title={t('contractActions.settledInCashTitle')}
+            size="small"
+          >
+            <p className="text-sm text-gray-700">{t('contractActions.settledInCashBody')}</p>
+            <div className="flex justify-end space-x-3 mt-6">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowCashSettlementModal(false)}
+                disabled={isLoading}
+              >
+                {t('contractActions.settledInCashCancel')}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => handleRaiseDispute(SETTLED_IN_CASH_REASON, 100)}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <>
+                    <LoadingSpinner className="w-4 h-4 mr-2" />
+                    {loadingMessage}
+                  </>
+                ) : (
+                  t('contractActions.settledInCashConfirm')
+                )}
+              </Button>
+            </div>
+          </Modal>
+        </div>
       );
 
     case 'CLAIM_FUNDS':
@@ -247,9 +324,10 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
               {loadingMessage}
             </>
           ) : isClaimingInProgress ? (
-            'Another claim in progress...'
+            t('contractActions.anotherCollecting')
           ) : (
-            contract.ctaLabel || 'Claim Funds'
+            // The backend's label for this is "Claim Funds"; the wallet prompt says "collect".
+            t('contractActions.collectFunds')
           )}
         </Button>
       );
@@ -273,7 +351,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         return (
           <Button
             size="sm"
-            onClick={() => router.push(brandedHref(`/contract-pay?contractId=${contract.id}`))}
+            onClick={() => router.push(payHref(contract, brandedHref)!)}
             className="w-full"
           >
             {contract.ctaLabel || 'Complete Payment'}
@@ -292,7 +370,7 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
         return (
           <Button
             size="sm"
-            onClick={() => router.push(brandedHref(`/contract-pay?contractId=${contract.id}`))}
+            onClick={() => router.push(payHref(contract, brandedHref)!)}
             className="w-full"
           >
             {contract.ctaLabel || 'Complete Payment'}
@@ -343,6 +421,22 @@ export default function ContractActions({ contract, isBuyer, isSeller, onAction,
             {contract.ctaLabel || 'Completed'}
           </span>
         </div>
+      );
+
+    // Refused on sanctions grounds: money sent is frozen at the address. A status, never a
+    // button — above all not a route back to the pay page.
+    case 'SANCTIONS_REFUSED':
+      return (
+        <p className="text-sm text-error-600">
+          {contract.ctaLabel || 'Refused: sanctions check'}. Do not send any more funds to this payment.
+        </p>
+      );
+
+    // Paid only after the payout date, so it never started and the money went back to the buyer.
+    // A status, never a button: there is nothing left to pay or do.
+    case 'REFUNDED':
+      return (
+        <p className="text-sm text-secondary-600 dark:text-secondary-300">{t('contractActions.refunded')}</p>
       );
 
     case 'NONE':

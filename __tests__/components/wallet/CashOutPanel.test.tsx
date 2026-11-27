@@ -459,6 +459,31 @@ describe('CashOutPanel', () => {
       ).not.toBeInTheDocument();
     });
 
+    it("tells the wallet's own screen what is being sent, that it goes to Coinbase, and what Coinbase does with it", async () => {
+      renderPanel();
+      mockPendingResponse(pendingOrder({ paymentMethod: 'ACH_BANK_ACCOUNT', fiatCurrency: 'USD' }));
+
+      await fireReturnFromCoinbase();
+      await waitFor(() => expect(mockFundAndSend).toHaveBeenCalledTimes(1));
+
+      // The token amount and the name; no address, and no cash figure, which the order does not give.
+      expect(mockFundAndSend.mock.calls[0][0].walletDescription).toBe(
+        'Send 25 USDC to Coinbase to complete your cash-out. Coinbase sells it and pays the USD to your bank account.'
+      );
+    });
+
+    it('does not promise a bank payout the order does not make', async () => {
+      renderPanel();
+      mockPendingResponse(pendingOrder({ amount: '25.50' }));
+
+      await fireReturnFromCoinbase();
+      await waitFor(() => expect(mockFundAndSend).toHaveBeenCalledTimes(1));
+
+      expect(mockFundAndSend.mock.calls[0][0].walletDescription).toBe(
+        'Send 25.5 USDC to Coinbase to complete your cash-out. Coinbase sells it and pays the GBP by the method you chose there.'
+      );
+    });
+
     it('refreshes balances after a successful send', async () => {
       const onSent = jest.fn();
       renderPanel({ onSent });

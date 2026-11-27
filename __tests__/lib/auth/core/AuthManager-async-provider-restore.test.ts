@@ -305,3 +305,70 @@ describe('AuthManager async provider restore — regression guards', () => {
     expect(manager.getState().isConnected).toBe(true);
   });
 });
+
+/**
+ * A provider can name one wallet and then, once its own has loaded, another. AuthManager used to
+ * ignore every event from a provider it already held as connected, so it kept the first address:
+ * the page then built transactions for a wallet that was not the one signing them, and they never
+ * confirmed (dev, 11 Nov 2026; see pickWallet-leftover-wallet.test.ts).
+ */
+describe('AuthManager when a connected provider changes its address', () => {
+  const FIRST = '0xc9D0602A87E55116F633b1A1F95D083Eb115f942';
+  const THEN = '0x78A67E815db3D0D60F5018F1DbFF173fFB25afBD';
+  const settle = () => new Promise((r) => setTimeout(r, 50));
+
+  beforeEach(() => {
+    resetSingleton();
+    delete (window as any).authUser;
+  });
+
+  const connectedAt = async (address: string) => {
+    const fake = makeFakeProvider({ startConnected: false, withSubscription: true });
+    mockGetAllProviders.mockReturnValue([fake.provider]);
+    const manager = AuthManager.getInstance();
+    await manager.initialize(config);
+    fake.fireConnect(address);
+    await settle();
+    return { manager, ...fake };
+  };
+
+  it('follows it, and so does the address Web3Service builds transactions for', async () => {
+    const { manager, fireConnect } = await connectedAt(FIRST);
+    expect(manager.getState().address).toBe(FIRST);
+
+    fireConnect(THEN);
+    await settle();
+
+    expect(manager.getState().address).toBe(THEN);
+    expect(manager.getState().isConnected).toBe(true);
+    // Web3Service.getUserAddress reads this, not the provider.
+    expect((window as any).authUser.walletAddress).toBe(THEN);
+  });
+
+  it('fetches the wallet for the new address, and tells the page', async () => {
+    const { manager, provider, fireConnect } = await connectedAt(FIRST);
+    const heard = jest.fn();
+    manager.subscribe(heard);
+    provider.getEthersProviderAsync.mockClear();
+
+    fireConnect(THEN);
+    await settle();
+
+    expect(provider.getEthersProviderAsync).toHaveBeenCalled();
+    expect(heard).toHaveBeenCalled();
+  });
+
+  it('does nothing when the same address is announced again, in any case', async () => {
+    const { manager, fireConnect } = await connectedAt(FIRST);
+    const heard = jest.fn();
+    manager.subscribe(heard);
+
+    fireConnect(FIRST);
+    fireConnect(FIRST.toLowerCase());
+    await settle();
+
+    expect(manager.getState().address).toBe(FIRST);
+    expect(heard).not.toHaveBeenCalled();
+  });
+});
+

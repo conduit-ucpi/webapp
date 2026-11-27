@@ -27,13 +27,25 @@ export type ConnectionMode = 'default' | 'wallet-only' | 'social-only';
 /** What to put in the connected wallet, in whole tokens as a decimal string ("15" = 15 USDC). */
 export interface FundWalletRequest {
   amount: string;
-  asset: 'USDC' | 'native-currency' | { erc20: string };
+  /**
+   * The token to buy. `symbol` lets the provider name the token the way its onramps know it
+   * (Privy matches provider support by symbol, not address - see depositFundsOptions); the
+   * address is the fallback for a token it does not recognise.
+   */
+  asset: 'USDC' | { erc20: string; symbol?: string };
   chainId: number;
 }
 
 export interface FundWalletResult {
-  status: 'completed' | 'cancelled';
+  /**
+   * 'processing': the purchase went through on the buyer's side but the provider had not confirmed
+   * it when its window closed (Privy's "submitted"). The tokens may arrive later, or not at all;
+   * the buyer must be told not to buy again.
+   */
+  status: 'completed' | 'processing' | 'cancelled';
   transactionHash?: string;
+  /** The provider's own word for how it ended, for the log. */
+  detail?: string;
 }
 
 export interface ProviderCapabilities {

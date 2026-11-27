@@ -60,10 +60,10 @@ function WizardProgress({ steps, currentStep, onStepChange }: WizardProgressProp
       <div className="sm:hidden">
         <div className="flex items-center justify-between mb-4">
           <p className="text-sm font-medium text-secondary-900 dark:text-secondary-100">
-            Step {currentStep + 1} of {steps.length}
+            {t('wizard.stepOf', { current: currentStep + 1, total: steps.length })}
           </p>
           <p className="text-sm text-secondary-500 dark:text-secondary-400">
-            {Math.round(((currentStep + 1) / steps.length) * 100)}% complete
+            {t('wizard.percentComplete', { percent: Math.round(((currentStep + 1) / steps.length) * 100) })}
           </p>
         </div>
         <div className="w-full bg-secondary-200 dark:bg-secondary-700 rounded-full h-2">

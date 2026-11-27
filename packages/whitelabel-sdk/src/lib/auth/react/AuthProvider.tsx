@@ -26,6 +26,8 @@ interface AuthContextValue {
   setConnectionMode: (mode: 'default' | 'wallet-only' | 'social-only') => Promise<void>;
   /** Whether an "old wallet" route exists in this deployment — shows the tick box when true. */
   canConnectLegacyWallet: () => boolean;
+  /** Whether that sign-in depends on Magic (tee.express.magiclabs.com) — only Reown's does. */
+  signInUsesMagic: (legacyWallet: boolean) => boolean;
   authenticateBackend: (connectionResult?: ConnectionResult) => Promise<boolean>;
   requestAuthentication: () => Promise<boolean>; // Manually trigger SIWX authentication
   getLastAuthFailure: () => { kind: string; message: string } | null;
@@ -482,6 +484,10 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     () => authManager.canConnectLegacyWallet(),
     [authManager]
   );
+  const signInUsesMagic = useCallback(
+    (legacyWallet: boolean) => authManager.signInUsesMagic(legacyWallet),
+    [authManager]
+  );
 
   // Memoize the context value so it only changes when its actual inputs change.
   // Previously this was a fresh object literal every render: AuthProvider
@@ -505,6 +511,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     requestAuthentication,
     getLastAuthFailure,
     canConnectLegacyWallet,
+    signInUsesMagic,
     disconnect,
     switchWallet,
     signMessage,
@@ -530,6 +537,7 @@ export function AuthProvider({ children, config }: AuthProviderProps) {
     authenticateBackend,
     requestAuthentication,
     getLastAuthFailure,
+    signInUsesMagic,
     disconnect,
     switchWallet,
     signMessage,

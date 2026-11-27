@@ -1,0 +1,1258 @@
+/**
+ * /pay: a buyer pushes a payment through ap2service's MCP tools.
+ *
+ * The page decides nothing, so what matters is the wire: the terms it hands prepare and settle
+ * must be the same (they ARE the escrow's address), the payer and the nominal buyer must be the
+ * signed-in wallet, and the wallet must send an ordinary, gas-sponsored transfer to exactly the
+ * escrow address prepare quoted and the factory confirmed. Nothing is signed for.
+ */
+
+import { act, render } from '@testing-library/react';
+import { screen, fireEvent, waitFor } from '@testing-library/dom';
+import { ethers } from 'ethers';
+
+// A fixed throwaway key: createRandom needs a Buffer jsdom does not provide.
+const payerWallet = new ethers.Wallet('0x' + '11'.repeat(32));
+const PAYER = payerWallet.address;
+const USDC = '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913';
+const ESCROW = '0x7b0e8Fa36cF4E8AE5416F759692759ae7745F51B';
+
+const push = jest.fn();
+const replace = jest.fn();
+const mockRouter: { query: Record<string, string>; asPath: string } = { query: {}, asPath: '/pay' };
+jest.mock('next/router', () => ({
+  useRouter: () => ({
+    push,
+    replace,
+    pathname: '/pay',
+    isReady: true,
+    query: mockRouter.query,
+    asPath: mockRouter.asPath,
+    events: { on: jest.fn(), off: jest.fn() },
+  }),
+}));
+jest.mock('@/components/auth/ConfigProvider');
+jest.mock('@/components/auth');
+jest.mock('@/lib/ap2Mcp', () => ({
+  ...jest.requireActual('@/lib/ap2Mcp'),
+  callAp2Tool: jest.fn(),
+}));
+// What the chain reads back: the payer's wallet, and the escrow address (empty until funded).
+const mockBalances = { wallet: '100.0', escrow: '0' };
+// The wallet's own transfer (gas sponsored inside it), and the estimate made ahead of it.
+const mockTransfer = jest.fn();
+const mockPrewarm = jest.fn();
+const TRANSFER_HASH = '0x' + 'cd'.repeat(32);
+jest.mock('@/hooks/useSimpleEthers', () => ({
+  useSimpleEthers: () => ({
+    transferToContract: mockTransfer,
+    prewarmTransferToContract: mockPrewarm,
+    getTokenBalance: async (owner: string) =>
+      owner.toLowerCase() === '0x7b0e8fa36cf4e8ae5416f759692759ae7745f51b' ? mockBalances.escrow : mockBalances.wallet,
+  }),
+}));
+const showToast = jest.fn();
+jest.mock('@/components/ui/Toast', () => ({
+  useToast: () => ({ showToast }),
+  ToastProvider: ({ children }: any) => <>{children}</>,
+}));
+jest.mock('@/components/auth/WalletChoiceCards', () => () => <div data-testid="wallet-gate" />);
+
+// The factory this build pins, and the RPC it reads through: every quoted address is checked
+// against what this factory says before the page shows it or anyone signs. The fake factory
+// answers ESCROW unless a test says otherwise.
+const PINNED_FACTORY = '0x95B1d60FdaFd727378EF2c16108351b619F8F5e5';
+const DEFAULT_ARBITER = '0x9bB8e809EA6F5A74f46027D8016641D9cE9A149C';
+const SELLER_WALLET = '0xc9D0602A87E55116F633b1A1F95D083Eb115f942';
+const EXTERNAL_ID_BYTES32 = '0x' + 'ef'.repeat(32);
+const mockPredict = jest.fn();
+jest.mock('@/lib/escrow/verificationRpc', () => ({
+  getVerificationReader: () => ({ predictEscrowAddress: mockPredict }),
+}));
+process.env.NEXT_PUBLIC_ESCROW_FACTORY_ADDRESS = PINNED_FACTORY;
+
+import PayPage from '@/pages/pay';
+import CustomArbiterNotice from '@/components/contracts/CustomArbiterNotice';
+import { useConfig } from '@/components/auth/ConfigProvider';
+import { useAuth } from '@/components/auth';
+import { callAp2Tool } from '@/lib/ap2Mcp';
+import { decodePayResume, encodePayResume, withPayResume } from '@/lib/payResume';
+
+const mockCall = callAp2Tool as jest.Mock;
+
+const typedData = {
+  domain: { name: 'USD Coin', version: '2', chainId: 8453, verifyingContract: USDC },
+  types: {
+    TransferWithAuthorization: [
+      { name: 'from', type: 'address' },
+      { name: 'to', type: 'address' },
+      { name: 'value', type: 'uint256' },
+      { name: 'validAfter', type: 'uint256' },
+      { name: 'validBefore', type: 'uint256' },
+      { name: 'nonce', type: 'bytes32' },
+    ],
+  },
+  primaryType: 'TransferWithAuthorization',
+  message: {
+    from: PAYER,
+    to: ESCROW,
+    value: '10000000',
+    validAfter: '0',
+    validBefore: '1900000000',
+    nonce: '0x' + 'ab'.repeat(32),
+  },
+};
+
+const prepared = (overrides: Record<string, unknown> = {}, top: Record<string, unknown> = {}) => ({
+  escrow_address: ESCROW,
+  fund_by_transfer: { payment_uri: `ethereum:${USDC}@8453/transfer?address=${ESCROW}&uint256=10000000` },
+  external_id: 'mcp-123',
+  external_id_bytes32: EXTERNAL_ID_BYTES32,
+  // What prepare resolved an email seller to; a wallet seller is used as typed.
+  parties: { seller: { address: SELLER_WALLET } },
+  seller_receives_estimate: '9.700000 USDC',
+  platform_fee_estimate: '0.300000 USDC',
+  fund_by_signature: {
+    typed_data: typedData,
+    authorization: typedData.message,
+    payer_can_cover: true,
+    ...overrides,
+  },
+  dispute: { until: '2026-10-05T07:31:17Z' },
+  ...top,
+});
+
+function signIn(connected = true) {
+  (useAuth as jest.Mock).mockReturnValue({
+    user: connected ? { email: 'buyer@example.com', walletAddress: PAYER } : null,
+    isLoading: false,
+    isConnected: connected,
+    address: connected ? PAYER : null,
+  });
+}
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  // clearAllMocks keeps queued answers; a test that queues one it never uses would leak it.
+  mockCall.mockReset();
+  mockRouter.query = {};
+  mockRouter.asPath = '/pay';
+  mockBalances.wallet = '100.0';
+  mockBalances.escrow = '0';
+  mockPredict.mockReset();
+  mockPredict.mockResolvedValue(ESCROW);
+  // A transfer that lands: the escrow address holds the money by the time it returns.
+  mockTransfer.mockReset();
+  mockTransfer.mockImplementation(async () => {
+    mockBalances.escrow = '10';
+    return TRANSFER_HASH;
+  });
+  mockPrewarm.mockReset();
+  mockPrewarm.mockResolvedValue(undefined);
+  (useConfig as jest.Mock).mockReturnValue({
+    config: {
+      chainId: 8453,
+      defaultArbiterAddress: DEFAULT_ARBITER,
+      rpcUrl: 'https://mainnet.base.org',
+      supportedTokens: [{ symbol: 'USDC', address: USDC, decimals: 6, name: 'USD Coin', enabled: true }],
+      defaultToken: { symbol: 'USDC', address: USDC, decimals: 6, name: 'USD Coin' },
+    },
+    isLoading: false,
+  });
+  signIn();
+});
+
+/**
+ * Paying from somewhere else is under "Crypto I already have", as three steps: 1 the payment
+ * address and its QR to send to, 2 "I have paid", 3 protected.
+ */
+async function openElsewhere() {
+  const tile = await screen.findByRole('button', { name: /Crypto I already have/ });
+  if (tile.getAttribute('aria-pressed') !== 'true') fireEvent.click(tile);
+}
+async function iHavePaid() {
+  if (!screen.queryByRole('button', { name: 'I have paid' })) {
+    await openElsewhere();
+    fireEvent.click(await screen.findByRole('button', { name: 'Step 2: I have paid' }));
+  }
+  return screen.findByRole('button', { name: 'I have paid' });
+}
+
+function fill(seller = 'seller@example.com') {
+  fireEvent.change(screen.getByPlaceholderText('Email address or wallet (0x…)'), { target: { value: seller } });
+  fireEvent.change(screen.getByPlaceholderText("What's this payment for?"), { target: { value: 'Logo design' } });
+  fireEvent.change(screen.getByPlaceholderText('0.0000'), { target: { value: '10' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+}
+
+describe('/pay', () => {
+  it('asks a signed-out visitor to sign in first', () => {
+    signIn(false);
+    render(<PayPage />);
+    expect(screen.getByTestId('wallet-gate')).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText('Email address or wallet (0x…)')).toBeNull();
+  });
+
+  it('does not offer the seller-side fee guidance or an arbiter override', () => {
+    render(<PayPage />);
+    expect(screen.queryByText('Advanced Options')).toBeNull();
+    expect(screen.queryByText(/you receive/i)).toBeNull();
+  });
+
+  it('asks prepare for the terms, in base units, with the signed-in wallet as the disputer', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+
+    await screen.findByText('Confirm payment');
+    const [tool, args] = mockCall.mock.calls[0];
+    expect(tool).toBe('prepare_escrow_payment');
+    expect(args).toMatchObject({
+      seller: 'seller@example.com',
+      amount: 10_000_000,
+      nominal_buyer: PAYER,
+      token_symbol: 'USDC',
+      description: 'Logo design',
+    });
+    // No payer named: that asks for an authorization to sign, a chain read this page never uses.
+    expect(args).not.toHaveProperty('payer');
+    expect(args.expiry_timestamp).toBeGreaterThan(Date.now() / 1000);
+    // The quote is ap2service's, not the page's.
+    expect(screen.getByText('9.70 USDC')).toBeInTheDocument();
+    expect(screen.getByText('0.30 USDC')).toBeInTheDocument();
+  });
+
+  it('offers an instant payment, as /create does: expiry 0, no dispute window', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fireEvent.click(screen.getByRole('radio', { name: 'Instantly' }));
+    fill();
+
+    await screen.findByText('Confirm payment');
+    expect(mockCall.mock.calls[0][1]).toMatchObject({ expiry_timestamp: 0 });
+  });
+
+  it('switching back from instant keeps the date that was picked', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fireEvent.click(screen.getByRole('radio', { name: 'Instantly' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'On a date' }));
+    fill();
+
+    await screen.findByText('Confirm payment');
+    expect(mockCall.mock.calls[0][1].expiry_timestamp).toBeGreaterThan(Date.now() / 1000);
+  });
+
+  it("records the partner a payment is made under, alongside the terms, not as one of them", async () => {
+    const { BrandProvider } = jest.requireActual('@conduit-ucpi/whitelabel-sdk');
+    window.history.replaceState({}, '', '/pay?b=escrow-me');
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({
+      escrow_address: ESCROW,
+      receipt: { contract_id: 'c-1' },
+    });
+    try {
+      render(
+        <BrandProvider
+          brands={{ stabledrop: { id: 'stabledrop', name: 'Stabledrop.me' }, 'escrow-me': { id: 'escrow-me', name: 'Escrow Me' } }}
+          defaultBrandId="stabledrop"
+        >
+          <PayPage />
+        </BrandProvider>
+      );
+      fill();
+      await screen.findByText('Confirm payment');
+      expect(mockCall.mock.calls[0][1]).toMatchObject({ brand: 'escrow-me', description: 'Logo design' });
+    } finally {
+      window.history.replaceState({}, '', '/');
+    }
+  });
+
+  it('sends no brand on our own pages', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+    await screen.findByText('Confirm payment');
+    expect(mockCall.mock.calls[0][1]).not.toHaveProperty('brand');
+  });
+
+  it('pays by an ordinary transfer to the quoted escrow, then settles the same terms unsigned', async () => {
+    const sign = jest.spyOn(payerWallet, 'signTypedData');
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({
+      status: 'settled',
+      dispute: { where: 'https://stabledrop.me/dashboard?contract=abc' },
+    });
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await screen.findByText('Payment protected', { selector: 'h2' });
+    // The token, the address the factory confirmed, and the amount in base units.
+    expect(mockTransfer).toHaveBeenCalledTimes(1);
+    expect(mockTransfer).toHaveBeenCalledWith(
+      USDC,
+      ESCROW,
+      '10000000',
+      // For the wallet's own prompt: how much, of what, for whom, and what happens to it. No address.
+      'Pay 10 USDC into the payment contract for seller@example.com. It is held there and released to them on the payout date unless you raise a dispute.'
+    );
+    const [, prepareArgs] = mockCall.mock.calls[0];
+    const [tool, settleArgs] = mockCall.mock.calls[1];
+    expect(tool).toBe('settle_escrow_payment');
+    const { payer: _payer, ...terms } = prepareArgs;
+    // Exactly the terms: no authorization and no signature, so settle builds on what is there.
+    expect(settleArgs).toEqual({ ...terms, external_id: 'mcp-123' });
+    expect(sign).not.toHaveBeenCalled();
+    sign.mockRestore();
+
+    fireEvent.click(screen.getByRole('button', { name: 'View this payment' }));
+    expect(push).toHaveBeenCalledWith('/dashboard?contract=abc');
+  });
+
+  it('pays from the wallet in a token that cannot be signed for (no EIP-3009: USDT on Base)', async () => {
+    mockCall
+      .mockResolvedValueOnce(prepared({ typed_data: undefined, authorization: undefined }))
+      .mockResolvedValueOnce({ status: 'settled' });
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await screen.findByText('Payment protected', { selector: 'h2' });
+    expect(mockTransfer).toHaveBeenCalledWith(USDC, ESCROW, '10000000', expect.any(String));
+    expect(screen.queryByText(/can't be signed for/)).toBeNull();
+  });
+
+  it("tells the wallet's prompt an instant payment is passed straight on, and shortens a seller given as a wallet", async () => {
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({ status: 'settled' });
+    render(<PayPage />);
+    fireEvent.click(screen.getByRole('radio', { name: 'Instantly' }));
+    fill(SELLER_WALLET);
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await waitFor(() => expect(mockTransfer).toHaveBeenCalled());
+    expect(mockTransfer.mock.calls[0][3]).toBe(
+      'Pay 10 USDC into the payment contract for 0xc9D0…f942. It is released to them straight away.'
+    );
+  });
+
+  it('settles nothing when the wallet did not send the transfer', async () => {
+    mockTransfer.mockRejectedValueOnce(new Error('User rejected the request'));
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })));
+    expect(mockCall).toHaveBeenCalledTimes(1);
+    // Still open to try again.
+    expect(await screen.findByRole('button', { name: /from this wallet/ })).toBeEnabled();
+  });
+
+  it('warms the transfer up once while the payer reads the review screen', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+
+    await waitFor(() => expect(mockPrewarm).toHaveBeenCalledWith(USDC, ESCROW, '10000000'));
+    expect(mockPrewarm).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers to add funds, not to pay, when the wallet is short — as /contract-pay does', async () => {
+    mockBalances.wallet = '5';
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+
+    // The question and its two answers, and no greyed-out pay button above them.
+    expect(await screen.findByRole('heading', { name: 'How do you want to pay?' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Card or bank/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: /Crypto I already have/ })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: /from this wallet$/ })).toBeNull();
+    // What the wallet holds is said quietly at the foot, not as a failure at the top.
+    expect(screen.getByText('Your wallet here:').closest('p')).toHaveTextContent('5.0000 USDC');
+    expect(screen.queryByText(/short/)).toBeNull();
+  });
+
+  it('going back and pressing Continue with the same terms keeps the same escrow', async () => {
+    mockCall.mockResolvedValue(prepared());
+    render(<PayPage />);
+    fill();
+    await screen.findByText('Confirm payment');
+
+    fireEvent.click(screen.getByLabelText('Back to payment terms'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    await screen.findByText('Confirm payment');
+
+    expect(mockCall.mock.calls[0][1]).not.toHaveProperty('external_id');
+    expect(mockCall.mock.calls[1][1]).toMatchObject({ external_id: 'mcp-123' });
+  });
+
+  it('changed terms get a new escrow, and the address shown follows it', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
+    const SECOND = '0x704AAAD9b0E82d6d889417FEd58b4a410C73258A';
+    mockCall
+      .mockResolvedValueOnce(prepared())
+      .mockResolvedValueOnce(prepared({}, { escrow_address: SECOND, external_id: 'mcp-456' }));
+    // The factory puts the new terms somewhere new, as the real one would.
+    mockPredict.mockImplementation(async (_factory: string, t: { amount: bigint }) =>
+      t.amount === BigInt(20_000_000) ? SECOND : ESCROW
+    );
+    render(<PayPage />);
+    fill();
+    await openElsewhere();
+    expect(await screen.findByDisplayValue(ESCROW)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Back to payment terms'));
+    fireEvent.change(await screen.findByPlaceholderText('0.0000'), { target: { value: '20' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    // The bug: the panel kept offering the first escrow while settle checked the second.
+    await openElsewhere();
+    expect(await screen.findByDisplayValue(SECOND)).toBeInTheDocument();
+    expect(screen.queryByDisplayValue(ESCROW)).toBeNull();
+    expect(mockCall.mock.calls[1][1]).not.toHaveProperty('external_id');
+  });
+
+  it('offers the escrow address and QR for paying from any other wallet', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+
+    // Not on the screen for everyone: only for the buyer who says their money is elsewhere.
+    await screen.findByRole('button', { name: /Crypto I already have/ });
+    expect(screen.queryByDisplayValue(ESCROW)).toBeNull();
+    expect(screen.queryByRole('button', { name: 'I have paid' })).toBeNull();
+
+    await openElsewhere();
+    // Said for the payment's address, and again inside the closed "or add it to your wallet" beneath.
+    expect((await screen.findAllByText(/^Send only USDC on /)).length).toBeGreaterThan(0);
+    // Step 1: where to send it. The button that confirms is the next step.
+    expect(await screen.findByDisplayValue(ESCROW)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'I have paid' })).toBeNull();
+    expect(await iHavePaid()).toBeEnabled();
+  });
+
+  // ── a sanctions refusal is final: nothing to pay with is left on the page ──
+
+  const SANCTIONED = { error: 'sanctioned_party', retryable: false, message: 'seller 0xd366 of contract 0x53f5 is on the sanctioned list' };
+
+  function expectNothingToPayWith() {
+    expect(screen.queryByRole('button', { name: /from this wallet/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'I have paid' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Continue' })).toBeNull();
+    expect(screen.queryByText(ESCROW)).toBeNull();
+  }
+
+  it('a sanctions refusal when paying from the wallet ends the payment instead of re-offering it', async () => {
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce(SANCTIONED);
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await screen.findByText('Payment refused', { selector: 'h2' });
+    expectNothingToPayWith();
+  });
+
+  it('a sanctions refusal after a transfer ends the payment and is not asked again', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce(SANCTIONED);
+    render(<PayPage />);
+    fill();
+    const paid = await iHavePaid();
+
+    mockBalances.escrow = '10';
+    fireEvent.click(paid);
+
+    await screen.findByText('Payment refused', { selector: 'h2' });
+    expectNothingToPayWith();
+    expect(mockCall).toHaveBeenCalledTimes(2);
+  });
+
+  it('any other settle failure is not a refusal, and the money is not sent again', async () => {
+    mockCall
+      .mockResolvedValueOnce(prepared())
+      .mockResolvedValueOnce({ error: 'service_unavailable', retryable: true, message: 'down' })
+      // The balance poll may then settle what the transfer left at the address.
+      .mockResolvedValue({ status: 'settled' });
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', message: 'down' })));
+    expect(screen.queryByText('Payment refused', { selector: 'h2' })).toBeNull();
+    expect(mockTransfer).toHaveBeenCalledTimes(1);
+  });
+
+  it('only settles when the escrow address already holds the payment: pressing pay sends nothing more', async () => {
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({ status: 'settled' });
+    render(<PayPage />);
+    fill();
+    const pay = await screen.findByRole('button', { name: /from this wallet/ });
+
+    mockBalances.escrow = '10';
+    fireEvent.click(pay);
+
+    await screen.findByText('Payment protected', { selector: 'h2' });
+    expect(mockTransfer).not.toHaveBeenCalled();
+  });
+
+  it('"I have paid" settles the funded address through the same tool, unsigned, with the same terms', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({ status: 'settled' });
+    render(<PayPage />);
+    fill();
+    const paid = await iHavePaid();
+
+    mockBalances.escrow = '10';
+    fireEvent.click(paid);
+
+    await screen.findByText('Payment protected', { selector: 'h2' });
+    const [, prepareArgs] = mockCall.mock.calls[0];
+    const [tool, settleArgs] = mockCall.mock.calls[1];
+    expect(tool).toBe('settle_escrow_payment');
+    const { payer: _payer, ...terms } = prepareArgs;
+    expect(settleArgs).toEqual({ ...terms, external_id: 'mcp-123' });
+  });
+
+  it('never settles the transfer route under a wallet payment that is still settling', async () => {
+    jest.useFakeTimers();
+    // test, 1 Oct: the wallet's transfer landed, the balance check saw it and settled
+    // too, and the two raced to one deploy — the loser flashed "already known" at the payer.
+    let finishWalletSettle: (value: unknown) => void = () => {};
+    mockCall
+      .mockResolvedValueOnce(prepared())
+      .mockImplementationOnce(() => new Promise((resolve) => (finishWalletSettle = resolve)));
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+    await waitFor(() => expect(mockCall).toHaveBeenCalledTimes(2));
+
+    // The transfer has landed; the balance poll finds it while the wallet's settle runs.
+    expect(mockBalances.escrow).toBe('10');
+    await act(async () => {
+      jest.advanceTimersByTime(10_000);
+    });
+    finishWalletSettle({ status: 'settled' });
+
+    await screen.findByText('Payment protected', { selector: 'h2' });
+    const settles = mockCall.mock.calls.filter(([tool]) => tool === 'settle_escrow_payment');
+    expect(settles).toHaveLength(1);
+    expect(mockTransfer).toHaveBeenCalledTimes(1);
+  });
+
+  it('settles the money itself if the wallet payment failed after it moved', async () => {
+    jest.useFakeTimers();
+    let failWalletSettle: (value: unknown) => void = () => {};
+    mockCall
+      .mockResolvedValueOnce(prepared())
+      .mockImplementationOnce(() => new Promise((resolve) => (failWalletSettle = resolve)))
+      .mockResolvedValueOnce({ status: 'settled' });
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+    await waitFor(() => expect(mockCall).toHaveBeenCalledTimes(2));
+
+    mockBalances.escrow = '10';
+    await act(async () => {
+      jest.advanceTimersByTime(10_000);
+    });
+    failWalletSettle({ error: 'service_unavailable', message: 'deploy failed' });
+
+    await screen.findByText('Payment protected', { selector: 'h2' });
+    const settles = mockCall.mock.calls.filter(([tool]) => tool === 'settle_escrow_payment');
+    expect(settles).toHaveLength(2);
+    // The money moved once; only the settle was repeated.
+    expect(mockTransfer).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not settle an address that holds nothing yet', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+    fireEvent.click(await iHavePaid());
+
+    expect(await screen.findByText(/No payment found|not found|haven't received/i)).toBeInTheDocument();
+    expect(mockCall).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers no way of paying when ap2service could not put the escrow on file', async () => {
+    mockCall.mockResolvedValueOnce(prepared({}, { fund_by_transfer: 'Not offered: could not be put on file' }));
+    render(<PayPage />);
+    fill();
+
+    // Nothing would finish a payment whose settle failed, so nothing is sent there.
+    expect(await screen.findByText(/can't be taken right now/)).toBeInTheDocument();
+    expect(screen.queryByText('Or pay from another wallet')).toBeNull();
+    expect(screen.queryByDisplayValue(ESCROW)).toBeNull();
+    expect(mockPrewarm).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /from this wallet/ }));
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })));
+    expect(mockTransfer).not.toHaveBeenCalled();
+    expect(mockCall).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['0.5', false],
+    ['0.002', false],
+    ['0.001', true],
+    ['1', true],
+  ])('checks the site rule before asking ap2service: %s allowed=%s', async (value, allowed) => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fireEvent.change(screen.getByPlaceholderText('Email address or wallet (0x…)'), { target: { value: 'seller@example.com' } });
+    fireEvent.change(screen.getByPlaceholderText("What's this payment for?"), { target: { value: 'Logo design' } });
+    fireEvent.change(screen.getByPlaceholderText('0.0000'), { target: { value } });
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+
+    if (allowed) {
+      await waitFor(() => expect(mockCall).toHaveBeenCalled());
+    } else {
+      expect(await screen.findByText('Enter $1.00 or more, or exactly 0.001 for a free test')).toBeInTheDocument();
+      expect(mockCall).not.toHaveBeenCalled();
+    }
+  });
+
+  it('refuses an amount below the minimum under the amount field, before there is anything to pay', async () => {
+    mockCall.mockResolvedValueOnce({
+      error: 'settlement_refused',
+      retryable: false,
+      message:
+        'The minimum payment is 1 USD. This one is below the minimum (1000 base units, under 1000000 at 6 decimals): we pay gas...',
+    });
+    render(<PayPage />);
+    fill();
+
+    expect(await screen.findByText('The minimum payment is 1 USD.')).toBeInTheDocument();
+    // Still on the form: no review, no address, nothing to pay into.
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+    expect(screen.queryByText('Confirm payment')).toBeNull();
+    expect(showToast).not.toHaveBeenCalled();
+
+    // Changing the amount clears it.
+    fireEvent.change(screen.getByPlaceholderText('0.0000'), { target: { value: '5' } });
+    expect(screen.queryByText('The minimum payment is 1 USD.')).toBeNull();
+  });
+
+  it('says why settle refused a transfer, instead of "no payment found"', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
+    mockCall
+      .mockResolvedValueOnce(prepared())
+      .mockResolvedValueOnce({ error: 'settlement_refused', message: 'The minimum payment is 1 USD. …' });
+    render(<PayPage />);
+    fill();
+    const paid = await iHavePaid();
+
+    mockBalances.escrow = '10';
+    fireEvent.click(paid);
+
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ message: 'The minimum payment is 1 USD. …' }))
+    );
+    expect(screen.queryByText('Payment protected', { selector: 'h2' })).toBeNull();
+  });
+
+  it("shows prepare's refusal and stays on the form", async () => {
+    mockCall.mockResolvedValueOnce({ error: 'sanctioned_party', message: 'A party is on a sanctions list' });
+    render(<PayPage />);
+    fill();
+
+    await waitFor(() =>
+      expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ message: 'A party is on a sanctions list' }))
+    );
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeInTheDocument();
+  });
+
+  it('refuses a seller that is neither an email nor a wallet without calling anything', () => {
+    render(<PayPage />);
+    fill('not a person');
+    expect(screen.getByText('Enter an email address or a wallet address.')).toBeInTheDocument();
+    expect(mockCall).not.toHaveBeenCalled();
+  });
+
+  // ── the quoted address is checked against the factory this build pins ────────────────
+
+  it('asks the pinned factory where the escrow lives, with the terms this page holds', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+    await screen.findByText('Confirm payment');
+
+    expect(mockPredict).toHaveBeenCalledTimes(1);
+    const [factory, terms] = mockPredict.mock.calls[0];
+    expect(factory).toBe(PINNED_FACTORY);
+    expect(terms).toEqual({
+      token: USDC,
+      buyer: PAYER,
+      seller: SELLER_WALLET, // the email's wallet, as prepare resolved it
+      amount: BigInt(10_000_000),
+      expiryTimestamp: expect.any(BigInt),
+      arbiter: DEFAULT_ARBITER,
+      externalId: EXTERNAL_ID_BYTES32,
+    });
+  });
+
+  it('a wallet seller is checked as typed, not as anything the API resolved', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill('0x1111111111111111111111111111111111111111');
+    await screen.findByText('Confirm payment');
+    expect(mockPredict.mock.calls[0][1].seller).toBe('0x1111111111111111111111111111111111111111');
+  });
+
+  it('refuses an address the factory does not give for these terms, and shows nothing to pay', async () => {
+    const ATTACKER = '0x000000000000000000000000000000000000dEaD';
+    mockCall.mockResolvedValueOnce(prepared({}, { escrow_address: ATTACKER }));
+    render(<PayPage />);
+    fill();
+
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })));
+    expect(showToast.mock.calls.at(-1)[0].message).toMatch(/couldn't confirm this payment/);
+    expect(screen.queryByText('Confirm payment')).toBeNull();
+    expect(screen.queryByDisplayValue(ATTACKER)).toBeNull();
+  });
+
+  it('refuses when the factory cannot be asked, rather than trusting the API', async () => {
+    mockPredict.mockRejectedValue(new Error('rpc down'));
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage />);
+    fill();
+
+    await waitFor(() => expect(showToast).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' })));
+    expect(screen.queryByText('Confirm payment')).toBeNull();
+  });
+
+  describe('resuming from the URL', () => {
+    const RESUME = {
+      seller: 'seller@example.com',
+      amount: '10',
+      expiryTimestamp: 1893456000,
+      description: 'Logo design',
+      tokenSymbol: 'USDC',
+      externalId: 'mcp-123',
+    };
+
+    it('puts the payment in the address bar once it is on the review screen', async () => {
+      mockCall.mockResolvedValueOnce(prepared());
+      render(<PayPage />);
+      fill();
+      await screen.findByText('Confirm payment');
+
+      await waitFor(() => expect(replace).toHaveBeenCalled());
+      const url = replace.mock.calls.at(-1)[0] as string;
+      const resume = decodePayResume(new URL(url, 'https://x').searchParams.get('resume'));
+      expect(resume).toMatchObject({ seller: 'seller@example.com', amount: '10', externalId: 'mcp-123' });
+    });
+
+    it('comes back to the same escrow: prepare is asked again with the same external id', async () => {
+      mockRouter.query = { resume: encodePayResume(RESUME) };
+      mockCall.mockResolvedValueOnce(prepared());
+      render(<PayPage />);
+
+      await screen.findByText('Confirm payment');
+      const [tool, args] = mockCall.mock.calls[0];
+      expect(tool).toBe('prepare_escrow_payment');
+      expect(args).toMatchObject({
+        seller: 'seller@example.com',
+        amount: 10_000_000,
+        expiry_timestamp: 1893456000,
+        description: 'Logo design',
+        external_id: 'mcp-123',
+        nominal_buyer: PAYER,
+      });
+    });
+
+    it('comes back to an instant payment as instant', async () => {
+      mockRouter.query = { resume: encodePayResume({ ...RESUME, expiryTimestamp: 0 }) };
+      mockCall.mockResolvedValueOnce(prepared());
+      render(<PayPage />);
+
+      await screen.findByText('Confirm payment');
+      expect(mockCall.mock.calls[0][1]).toMatchObject({ expiry_timestamp: 0, external_id: 'mcp-123' });
+    });
+
+    it('settles a card payment that landed while the buyer was at Coinbase', async () => {
+      mockRouter.query = { resume: encodePayResume(RESUME) };
+      mockBalances.escrow = '10';
+      mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({ status: 'settled' });
+      render(<PayPage />);
+
+      await screen.findByText('Payment protected', { selector: 'h2' });
+      expect(mockCall.mock.calls[1][1]).toMatchObject({ external_id: 'mcp-123' });
+      expect(mockCall.mock.calls[1][1]).not.toHaveProperty('signature');
+    });
+
+    it('waits for sign-in without dropping the link', async () => {
+      signIn(false);
+      mockRouter.query = { resume: encodePayResume(RESUME) };
+      render(<PayPage />);
+
+      expect(screen.getByTestId('wallet-gate')).toBeInTheDocument();
+      expect(mockCall).not.toHaveBeenCalled();
+      expect(replace).not.toHaveBeenCalled();
+    });
+
+    it('ignores a malformed link and shows the empty form', () => {
+      mockRouter.query = { resume: 'garbage' };
+      render(<PayPage />);
+
+      expect(screen.getByPlaceholderText('Email address or wallet (0x…)')).toHaveValue('');
+      expect(mockCall).not.toHaveBeenCalled();
+    });
+  });
+});
+
+/*
+ * A payment REQUEST's link: made by ap2service's prepare (or contractservice's request email),
+ * naming the buyer up front. Whoever signs in to pay, the escrow is the one the request named.
+ */
+describe('/pay from a request link', () => {
+  // Made by ap2service's mcp_server._pay_link — the two sides must agree on the format.
+  const FROM_PYTHON =
+    'eyJzZWxsZXIiOiJtZXJjaGFudEBleGFtcGxlLmNvbSIsImFtb3VudCI6IjEyLjUiLCJleHBpcnlUaW1lc3RhbXAiOjE3OTM1MDAwMDAsImRlc2NyaXB0aW9uIjoiTG9nbyBkZXNpZ24gXHUyMDE0IGRyYWZ0IDIiLCJ0b2tlblN5bWJvbCI6IlVTREMiLCJleHRlcm5hbElkIjoibWNwLTFmMDQiLCJub21pbmFsQnV5ZXIiOiIweDM5QzMyMzZBMkY3RkNFNENjMjE1YTI0ZkZiMzJhQzQ4NjQ2YjIyODgifQ';
+  const NAMED_BUYER = '0x39C3236A2F7FCE4Cc215a24fFb32aC48646b2288';
+
+  it("reads ap2service's link exactly", () => {
+    expect(decodePayResume(FROM_PYTHON)).toEqual({
+      seller: 'merchant@example.com',
+      amount: '12.5',
+      expiryTimestamp: 1793500000,
+      description: 'Logo design — draft 2',
+      tokenSymbol: 'USDC',
+      externalId: 'mcp-1f04',
+      nominalBuyer: NAMED_BUYER,
+    });
+  });
+
+  it('quotes the escrow the request named, whoever is signed in to pay it', async () => {
+    mockRouter.query = { resume: FROM_PYTHON };
+    mockCall.mockResolvedValue(prepared());
+    render(<PayPage />);
+
+    await screen.findByText('Confirm payment');
+    expect(mockCall.mock.calls[0][1]).toMatchObject({
+      seller: 'merchant@example.com',
+      amount: 12_500_000,
+      nominal_buyer: NAMED_BUYER,
+      external_id: 'mcp-1f04',
+    });
+    expect(screen.getByText('Who can dispute')).toBeInTheDocument();
+    expect(screen.getByText(NAMED_BUYER)).toBeInTheDocument();
+  });
+
+  it('keeps the named buyer when it puts the payment back in the address bar', async () => {
+    mockRouter.query = { resume: FROM_PYTHON };
+    mockCall.mockResolvedValue(prepared());
+    render(<PayPage />);
+    await screen.findByText('Confirm payment');
+
+    await waitFor(() => expect(replace).toHaveBeenCalled());
+    const url = replace.mock.calls.at(-1)[0] as string;
+    expect(decodePayResume(new URL(url, 'https://x').searchParams.get('resume'))).toMatchObject({ nominalBuyer: NAMED_BUYER });
+  });
+});
+
+/*
+ * /pay inside a merchant's checkout (/contract-create). The terms are the merchant's, so there is
+ * no form; what happens after is the checkout's, so it is handed back rather than done here.
+ */
+describe('/pay in a checkout', () => {
+  const SELLER = '0x742d35cc6634c0532925a3b844bc9e7595f0beb0';
+  const handlers = () => ({ onPaid: jest.fn(), onFailed: jest.fn(), onCancel: jest.fn() });
+  const terms = (overrides: Record<string, unknown> = {}) => ({
+    seller: SELLER,
+    amount: '10',
+    description: 'Order 456',
+    expiryTimestamp: 1900000000,
+    ...overrides,
+  });
+  const receipt = {
+    status: 'settled',
+    receipt_claims: {
+      'stabledrop.escrow': {
+        contract_id: '507f1f77bcf86cd799439011',
+        escrow_account: `eip155:8453:${ESCROW}`,
+        funding_tx_hash: '0x' + 'cd'.repeat(32),
+      },
+    },
+  };
+
+  beforeEach(() => {
+    mockRouter.asPath = `/contract-create?seller=${SELLER}&amount=10&return=https%3A%2F%2Fshop.example%2Fdone&order_id=456`;
+  });
+
+  it("prepares the merchant's terms as soon as the payer is signed in, with no form", async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage checkout={{ terms: terms(), ...handlers() }} />);
+
+    await screen.findByText('Confirm payment');
+    expect(screen.queryByPlaceholderText('Email address or wallet (0x…)')).toBeNull();
+    expect(mockCall.mock.calls[0][1]).toMatchObject({
+      seller: SELLER,
+      amount: 10_000_000,
+      expiry_timestamp: 1900000000,
+      description: 'Order 456',
+      nominal_buyer: PAYER,
+    });
+    // The terms are not the buyer's to edit.
+    expect(screen.queryByLabelText('Back to payment terms')).toBeNull();
+    expect(mockCall).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails the checkout when the quoted address is not the factory\'s, and offers nothing to pay', async () => {
+    mockCall.mockResolvedValueOnce(prepared({}, { escrow_address: '0x000000000000000000000000000000000000dEaD' }));
+    const h = handlers();
+    render(<PayPage checkout={{ terms: terms(), ...h }} />);
+
+    await waitFor(() => expect(h.onFailed).toHaveBeenCalled());
+    expect(h.onFailed.mock.calls[0][0]).toMatch(/couldn't confirm this payment/);
+    expect(screen.queryByText('Confirm payment')).toBeNull();
+  });
+
+  it('waits for sign-in, and can be cancelled from there', () => {
+    signIn(false);
+    const h = handlers();
+    render(<PayPage checkout={{ terms: terms(), ...h }} />);
+
+    expect(screen.getByTestId('wallet-gate')).toBeInTheDocument();
+    expect(mockCall).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(h.onCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('hands the receipt to the checkout once paid, and never rewrites its URL', async () => {
+    const h = handlers();
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce(receipt);
+    render(<PayPage checkout={{ terms: terms(), ...h }} />);
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await waitFor(() => expect(h.onPaid).toHaveBeenCalledTimes(1));
+    expect(h.onPaid).toHaveBeenCalledWith({
+      contractId: '507f1f77bcf86cd799439011',
+      escrowAddress: ESCROW,
+      txHash: '0x' + 'cd'.repeat(32),
+    });
+    // The merchant takes the buyer back; there is no "another payment" here.
+    expect(screen.queryByRole('button', { name: 'Make another payment' })).toBeNull();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('hands off a transfer payment too, without a funding hash (the money arrived before settle)', async () => {
+    // A wallet that can pay is only offered its own button: this buyer's is short.
+    mockBalances.wallet = '0';
+    const h = handlers();
+    mockCall.mockResolvedValueOnce(prepared()).mockResolvedValueOnce({
+      status: 'settled',
+      receipt_claims: { 'stabledrop.escrow': { contract_id: 'c-2', escrow_account: `eip155:8453:${ESCROW}` } },
+    });
+    render(<PayPage checkout={{ terms: terms(), ...h }} />);
+    const paid = await iHavePaid();
+    mockBalances.escrow = '10';
+    fireEvent.click(paid);
+
+    await waitFor(() => expect(h.onPaid).toHaveBeenCalledWith({ contractId: 'c-2', escrowAddress: ESCROW, txHash: undefined }));
+  });
+
+  it('reports a refused prepare as a failure, and offers to try again or cancel', async () => {
+    const h = handlers();
+    mockCall.mockResolvedValueOnce({ error: 'amount_too_small', message: 'The minimum payment is $1. More detail.' });
+    render(<PayPage checkout={{ terms: terms(), ...h }} />);
+
+    expect(await screen.findByText('The minimum payment is $1.')).toBeInTheDocument();
+    expect(h.onFailed).toHaveBeenCalledWith('The minimum payment is $1.', 'prepare');
+
+    mockCall.mockResolvedValueOnce(prepared());
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await screen.findByText('Confirm payment');
+  });
+
+  it('comes back to the checkout URL, merchant parameters intact, with the payment added', () => {
+    const back = withPayResume(`/contract-create?seller=${SELLER}&return=https%3A%2F%2Fshop.example%2Fdone&order_id=456&resume=old`, 'new');
+    const url = new URL(back, 'https://x');
+    expect(url.pathname).toBe('/contract-create');
+    expect(url.searchParams.get('return')).toBe('https://shop.example/done');
+    expect(url.searchParams.get('order_id')).toBe('456');
+    expect(url.searchParams.get('resume')).toBe('new');
+  });
+
+  it('resumes with the same escrow instead of preparing a new one', async () => {
+    mockRouter.query = {
+      resume: encodePayResume({
+        seller: SELLER,
+        amount: '10',
+        expiryTimestamp: 1900000000,
+        description: 'Order 456',
+        tokenSymbol: 'USDC',
+        externalId: 'mcp-123',
+      }),
+    };
+    mockCall.mockResolvedValue(prepared());
+    render(<PayPage checkout={{ terms: terms(), ...handlers() }} />);
+
+    await screen.findByText('Confirm payment');
+    expect(mockCall).toHaveBeenCalledTimes(1);
+    expect(mockCall.mock.calls[0][1]).toMatchObject({ external_id: 'mcp-123' });
+  });
+
+  it("refuses a merchant description the form would not have allowed", async () => {
+    const h = handlers();
+    render(<PayPage checkout={{ terms: terms({ description: 'x'.repeat(161) }), ...h }} />);
+    expect(await screen.findByText('Description must be 1-160 characters')).toBeInTheDocument();
+    expect(h.onFailed).toHaveBeenCalledWith('Description must be 1-160 characters', 'prepare');
+    expect(mockCall).not.toHaveBeenCalled();
+  });
+
+  it('refuses a checkout that pays the signed-in wallet itself', async () => {
+    const h = handlers();
+    render(<PayPage checkout={{ terms: terms({ seller: PAYER }), ...h }} />);
+    expect(await screen.findByText(/cannot make a payment to yourself/)).toBeInTheDocument();
+    expect(mockCall).not.toHaveBeenCalled();
+  });
+
+  it('says an instant payment is instant', async () => {
+    mockCall.mockResolvedValueOnce(prepared());
+    render(<PayPage checkout={{ terms: terms({ expiryTimestamp: 0 }), ...handlers() }} />);
+
+    await screen.findByText('Confirm payment');
+    expect(mockCall.mock.calls[0][1]).toMatchObject({ expiry_timestamp: 0 });
+  });
+});
+
+describe('/pay for a payment request (/contract-pay)', () => {
+  const SELLER = '0x742d35cc6634c0532925a3b844bc9e7595f0beb0';
+  const ARBITER = '0x1111111111111111111111111111111111111111';
+  const request = (overrides: Record<string, unknown> = {}) => ({
+    id: '507f1f77bcf86cd799439011',
+    terms: {
+      seller: SELLER,
+      amount: '10',
+      amountBaseUnits: 10_000_000,
+      description: 'Logo design',
+      expiryTimestamp: 1900000000,
+      tokenSymbol: 'USDC',
+      arbiter: ARBITER,
+      ...overrides,
+    },
+    sellerLabel: 'seller@example.com',
+  });
+  let fetchMock: jest.Mock;
+  const answers = (status: number, body: unknown) =>
+    fetchMock.mockResolvedValueOnce({ ok: status < 400, status, json: async () => body });
+
+  beforeEach(() => {
+    mockRouter.asPath = '/contract-pay?contractId=507f1f77bcf86cd799439011';
+    fetchMock = jest.fn();
+    (useAuth as jest.Mock).mockReturnValue({
+      user: { email: 'buyer@example.com', walletAddress: PAYER },
+      isLoading: false,
+      isConnected: true,
+      address: PAYER,
+      authenticatedFetch: fetchMock,
+    });
+  });
+
+  it('uses the prepare already asked for while the request was read, rather than asking again', async () => {
+    const takeEarlyPrepare = jest.fn().mockReturnValueOnce(
+      Promise.resolve({ ok: true, body: prepared({}, { external_id: '507f1f77bcf86cd799439011' }) })
+    );
+    render(<PayPage request={{ ...request(), takeEarlyPrepare }} />);
+
+    await screen.findByText('Confirm payment');
+    expect(takeEarlyPrepare).toHaveBeenCalledWith('507f1f77bcf86cd799439011');
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('asks for itself when the early prepare never arrived', async () => {
+    answers(200, prepared({}, { external_id: '507f1f77bcf86cd799439011' }));
+    render(<PayPage request={{ ...request(), takeEarlyPrepare: () => Promise.resolve(null) }} />);
+
+    await screen.findByText('Confirm payment');
+    expect(fetchMock.mock.calls[0][0]).toBe('/api/ap2/request/507f1f77bcf86cd799439011/prepare');
+  });
+
+  it('says why when the early prepare was refused', async () => {
+    const refused = Promise.resolve({ ok: false, body: { detail: 'This request has already been paid.' } });
+    render(<PayPage request={{ ...request(), takeEarlyPrepare: () => refused }} />);
+
+    expect(await screen.findByText('This request has already been paid.')).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('prepares the stored request as the signed-in buyer, not through the MCP tool', async () => {
+    answers(200, prepared({}, { external_id: '507f1f77bcf86cd799439011' }));
+    render(<PayPage request={request()} />);
+
+    await screen.findByText('Confirm payment');
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/ap2/request/507f1f77bcf86cd799439011/prepare');
+    // Nothing but the id in the path: no payer, so no authorization is built for nobody to sign.
+    expect(JSON.parse(init.body)).toEqual({});
+    expect(mockCall).not.toHaveBeenCalled();
+    // The seller by name, and no way to edit what they asked for.
+    expect(screen.getByText('seller@example.com')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Back to payment terms')).toBeNull();
+  });
+
+  it('settles with the stored terms exactly — arbiter, request id and base units included', async () => {
+    answers(200, prepared({}, { external_id: '507f1f77bcf86cd799439011' }));
+    mockCall.mockResolvedValueOnce({ status: 'settled', dispute: { where: '/dashboard?contract=x' } });
+    render(<PayPage request={request()} />);
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await screen.findByText('Payment protected', { selector: 'h2' });
+    const [tool, args] = mockCall.mock.calls[0];
+    expect(tool).toBe('settle_escrow_payment');
+    expect(args).toMatchObject({
+      seller: SELLER,
+      amount: 10_000_000,
+      expiry_timestamp: 1900000000,
+      nominal_buyer: PAYER,
+      description: 'Logo design',
+      arbiter: ARBITER,
+      external_id: '507f1f77bcf86cd799439011',
+    });
+    // One payment per request: nothing offers another, and the link stays the seller's.
+    expect(screen.queryByRole('button', { name: 'Make another payment' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'View this payment' })).toBeInTheDocument();
+    expect(replace).not.toHaveBeenCalled();
+  });
+
+  it('leaves the arbiter out when the seller did not choose one', async () => {
+    answers(200, prepared({}, { external_id: '507f1f77bcf86cd799439011' }));
+    mockCall.mockResolvedValueOnce({ status: 'settled' });
+    render(<PayPage request={request({ arbiter: undefined })} />);
+    fireEvent.click(await screen.findByRole('button', { name: /from this wallet/ }));
+
+    await screen.findByText('Payment protected', { selector: 'h2' });
+    expect(mockCall.mock.calls[0][1]).not.toHaveProperty('arbiter');
+  });
+
+  it("says why ap2service refused, and offers to try again without a cancel that goes nowhere", async () => {
+    answers(409, { detail: 'This request has already been paid.' });
+    render(<PayPage request={request()} />);
+
+    expect(await screen.findByText('This request has already been paid.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cancel' })).toBeNull();
+  });
+
+  describe('opened by the seller who made it', () => {
+    // The fee is a public chain fact, asked without the session; anything else would go through it.
+    const realFetch = global.fetch;
+    let publicFetch: jest.Mock;
+    beforeEach(() => {
+      publicFetch = jest.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, creatorFee: '300000', amountTooSmall: false }),
+      });
+      global.fetch = publicFetch;
+    });
+    afterEach(() => {
+      global.fetch = realFetch;
+    });
+
+    it('shows the payment screen as a preview, with the factory fee', async () => {
+      render(<PayPage request={request({ seller: PAYER })} />);
+
+      expect(await screen.findByText('This is what your customer will see')).toBeInTheDocument();
+      expect(screen.getByText('Confirm payment')).toBeInTheDocument();
+      expect(await screen.findByText('0.30 USDC')).toBeInTheDocument();
+      expect(screen.queryByText(/cannot make a payment to yourself/)).toBeNull();
+      // The two answers their customer gets, and no technical block at the foot of the page.
+      expect(screen.getByRole('button', { name: /Card or bank/ })).toBeEnabled();
+      expect(screen.getByRole('button', { name: /Crypto I already have/ })).toBeEnabled();
+      expect(screen.queryByTestId('qr-placeholder')).toBeNull();
+    });
+
+    it('lets them open the address view to look at: a picture for the code, a label for the address, nothing to press', async () => {
+      // A wallet that can pay is only offered its own button: this buyer's is short.
+      mockBalances.wallet = '0';
+      render(<PayPage request={request({ seller: PAYER })} />);
+      await screen.findByText('0.30 USDC');
+      await openElsewhere();
+
+      expect(screen.getByTestId('qr-placeholder')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Protected payment address')).toBeDisabled();
+      expect(await iHavePaid()).toBeDisabled();
+    });
+
+    it('lets them open the card providers to look at, with none that can be continued with', async () => {
+      render(<PayPage request={request({ seller: PAYER })} />);
+      await screen.findByText('0.30 USDC');
+
+      const providers = await screen.findAllByRole('button', { name: /^Continue with/ });
+      providers.forEach((provider) => expect(provider).toBeDisabled());
+    });
+
+    it('offers no way to pay from their own wallet', async () => {
+      render(<PayPage request={request({ seller: PAYER })} />);
+      await screen.findByText('0.30 USDC');
+      expect(screen.queryByRole('button', { name: /from this wallet/ })).toBeNull();
+      expect(mockTransfer).not.toHaveBeenCalled();
+    });
+
+    it('gives them the next step: copying the link to send', async () => {
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      Object.assign(navigator, { clipboard: { writeText } });
+      render(<PayPage request={request({ seller: PAYER })} />);
+      fireEvent.click(await screen.findByRole('button', { name: 'Copy payment link' }));
+
+      await waitFor(() => expect(writeText).toHaveBeenCalledWith(window.location.href));
+      expect(await screen.findByRole('button', { name: 'Link copied' })).toBeInTheDocument();
+    });
+
+    it('never prepares, so the request is not claimed and no address exists to pay', async () => {
+      render(<PayPage request={request({ seller: PAYER })} />);
+      await screen.findByText('0.30 USDC');
+
+      expect(fetchMock).not.toHaveBeenCalled();
+      expect(publicFetch.mock.calls.map(([url]) => String(url)).filter((url) => /ap2|prepare|settle|mcp/.test(url))).toEqual([]);
+      expect(mockCall).not.toHaveBeenCalled();
+      expect(screen.queryByRole('img', { name: /qr/i })).toBeNull();
+      expect(screen.queryByText(ESCROW)).toBeNull();
+    });
+
+    it("shows a custom arbiter as the customer would see it, with its copy button off too", async () => {
+      const notice = <CustomArbiterNotice arbiterAddress={ARBITER} />;
+      render(<PayPage request={{ ...request({ seller: PAYER }), notice }} />);
+
+      expect(await screen.findByTestId('custom-arbiter-address')).toHaveTextContent(ARBITER);
+      expect(screen.getByTestId('custom-arbiter-copy-button')).toBeDisabled();
+    });
+
+    it('says so when the fee cannot be read, rather than showing a figure', async () => {
+      publicFetch.mockResolvedValue({ ok: false, status: 503, json: async () => ({}) });
+      render(<PayPage request={request({ seller: PAYER })} />);
+
+      await waitFor(() => expect(screen.getAllByText('—')).toHaveLength(2));
+    });
+  });
+});
+
+describe('a /pay link carrying a chosen arbiter', () => {
+  it('reads it back, and refuses one that is not an address', () => {
+    const base = {
+      seller: '0x742d35cc6634c0532925a3b844bc9e7595f0beb0',
+      amount: '10',
+      expiryTimestamp: 1900000000,
+      description: 'Logo design',
+      tokenSymbol: 'USDC',
+      externalId: 'mcp-1',
+    };
+    const arbiter = '0x1111111111111111111111111111111111111111';
+    expect(decodePayResume(encodePayResume({ ...base, arbiter }))).toEqual({ ...base, arbiter });
+    expect(decodePayResume(encodePayResume({ ...base, arbiter: 'the usual one' }))).toBeNull();
+  });
+});

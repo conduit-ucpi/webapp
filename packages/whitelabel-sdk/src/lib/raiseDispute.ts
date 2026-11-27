@@ -1,0 +1,130 @@
+import { ethers } from 'ethers';
+
+const escrowInterface = new ethers.Interface([
+  'function raiseDispute() external',
+  'function submitResolutionVote(uint256 _buyerPercentage) external',
+]);
+
+export interface DisputeEntry {
+  timestamp: number;
+  reason: string;
+  refundPercent: number;
+}
+
+export interface RaiseDisputeDeps {
+  /** Sends one transaction from the buyer's own wallet and resolves with its hash. */
+  send: (tx: { to: string; data: string; value: string; walletDescription?: string; movesFunds?: boolean }) => Promise<string>;
+  /** Records the entry with contractservice. A failure here never undoes what is on-chain. */
+  record: (contractId: string, entry: DisputeEntry) => Promise<void>;
+  /**
+   * The signed-message route, for a contract that takes it (lib/signedActions.ts). Each answers
+   * NULL when this contract does not, and the matching `send` above is used instead.
+   *
+   * `raise` is delivered AND recorded by chainservice: `recorded` says whether the record was
+   * written. Absent altogether, every step uses `send`, as it always did.
+   */
+  signed?: {
+    raise: (request: {
+      contractAddress: string;
+      data: string;
+      reason: string;
+      refundPercent: number;
+      contractId?: string;
+      walletDescription?: string;
+    }) => Promise<{ transactionHash: string; recorded: boolean | null } | null>;
+    vote: (request: { contractAddress: string; data: string; figure: number; walletDescription?: string }) => Promise<string | null>;
+  };
+}
+
+/**
+ * Raise a dispute, then put the buyer's figure on-chain as their vote.
+ *
+ * raiseDispute() takes no arguments, so the figure the buyer enters has to be sent separately as
+ * submitResolutionVote, exactly as every later figure is on the dispute screen. Without it the
+ * figure would exist only in contractservice's record, and a seller voting the same number would
+ * settle nothing.
+ *
+ * Votes are whole numbers, so the figure is rounded and the rounded figure is what is recorded.
+ * If the vote does not land the dispute is still raised and recorded, and the caller is told, in
+ * terms the buyer can act on, that their vote is not in.
+ */
+export async function raiseDisputeAndVote(
+  deps: RaiseDisputeDeps,
+  params: {
+    contractAddress: string;
+    reason: string;
+    refundPercent: number;
+    contractId?: string;
+    /**
+     * What the wallet's own screen says at each of the two steps. The vote's is built from the
+     * rounded figure, so the sentence and the vote cannot differ.
+     */
+    prompts?: { open: string; vote: (figure: number) => string };
+  }
+): Promise<string> {
+  const figure = Math.round(params.refundPercent);
+  const reason = params.reason || 'Dispute raised on blockchain';
+  const raiseData = escrowInterface.encodeFunctionData('raiseDispute', []);
+
+  // By signed message where the contract takes it: chainservice delivers the dispute and writes
+  // the record itself, because the service that raised it is the one that knows it happened.
+  const raised = await deps.signed?.raise({
+    contractAddress: params.contractAddress,
+    data: raiseData,
+    reason,
+    refundPercent: figure,
+    contractId: params.contractId,
+    walletDescription: params.prompts?.open,
+  });
+  const txHash =
+    raised?.transactionHash ??
+    (await deps.send({
+      to: params.contractAddress,
+      data: raiseData,
+      value: '0',
+      walletDescription: params.prompts?.open,
+      // Opening a dispute holds the payment where it is; it moves nothing.
+      movesFunds: false,
+    }));
+
+  const voteData = escrowInterface.encodeFunctionData('submitResolutionVote', [figure]);
+  let voteFailed = false;
+  try {
+    const voted = await deps.signed?.vote({
+      contractAddress: params.contractAddress,
+      data: voteData,
+      figure,
+      walletDescription: params.prompts?.vote(figure),
+    });
+    if (!voted) {
+      await deps.send({
+        to: params.contractAddress,
+        data: voteData,
+        value: '0',
+        // Left as moving funds: a vote that matches one already cast pays the payment out.
+        walletDescription: params.prompts?.vote(figure),
+      });
+    }
+  } catch (error) {
+    console.error('Dispute raised, but the vote did not land:', error);
+    voteFailed = true;
+  }
+
+  // Record it here only when chainservice did not: the older route never records, and a signed
+  // dispute whose record could not be written (`recorded: false`) is on chain all the same, so
+  // the record is written again. It is never written twice.
+  if (params.contractId && raised?.recorded !== true) {
+    await deps.record(params.contractId, {
+      timestamp: Math.floor(Date.now() / 1000),
+      reason,
+      refundPercent: figure,
+    });
+  }
+
+  if (voteFailed) {
+    throw new Error(
+      `Your dispute was raised, but your figure of ${figure}% was not submitted as your vote. Open Manage Dispute to submit it.`
+    );
+  }
+  return txHash;
+}

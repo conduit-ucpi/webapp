@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const escrowContract = routeParam(req, 'escrowContract');
   if (!escrowContract) {
-    return res.status(400).json({ error: 'Escrow contract address is required' });
+    return res.status(400).json({ error: 'Payment contract address is required' });
   }
 
   await proxyToService(req, res, {

@@ -36,3 +36,19 @@ export function withBrandParam(path: string, brandId: string | null | undefined)
   params.set(BRAND_QUERY_KEYS[0], brandId);
   return `${base}?${params.toString()}${hash}`;
 }
+
+/**
+ * The absolute URL to hand someone for one of our pages: on the brand's own site when it hosts
+ * pages framing ours (`payPageBase`), else on the site we are on. [path] is ours, query and all —
+ * `/contract-pay?contractId=…&b=cobro` — and is kept whole, so the partner's page can pass its
+ * query straight into the frame.
+ *
+ * Only for links that LEAVE the app (copied, shared, put in a QR). Navigation inside the app
+ * stays on our paths: inside a partner's frame, that is the frame.
+ *
+ * A base that is not https is ignored rather than followed; whitelabelservice refuses one anyway.
+ */
+export function shareableUrl(path: string, payPageBase: string | null | undefined, ownOrigin: string): string {
+  const base = payPageBase && /^https:\/\/[^/?#]+(\/[^?#]*)?$/.test(payPageBase) ? payPageBase.replace(/\/+$/, '') : ownOrigin;
+  return `${base}${path.startsWith('/') ? path : `/${path}`}`;
+}

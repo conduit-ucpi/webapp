@@ -66,7 +66,7 @@ describe('CreatePage - Wallet-Only Access', () => {
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
   });
 
-  it('should show "Connect Your Wallet" when no wallet is connected', () => {
+  it('should show the sign-in screen when no wallet is connected', () => {
     const { useAuth } = require('@/components/auth');
     useAuth.mockReturnValue({
       user: null,
@@ -77,9 +77,12 @@ describe('CreatePage - Wallet-Only Access', () => {
 
     render(<CreatePage />);
 
-    // Should show connect wallet UI
-    expect(screen.getByText('Connect Your Wallet')).toBeInTheDocument();
-    expect(screen.getByTestId('connect-wallet-button')).toBeInTheDocument();
+    // The "Get Started with {brand}" screen: the heading, and the sign-in card. The card offers
+    // more than one way in (the embedded wallet and the legacy one), so the connect component
+    // appears more than once — any is enough, and the wizard must not.
+    expect(screen.getByRole('heading', { level: 1, name: /get started with/i })).toBeInTheDocument();
+    expect(screen.getAllByTestId('connect-wallet-button').length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('create-contract-wizard')).not.toBeInTheDocument();
   });
 
   it('SHOULD FAIL: should show CreateContractWizard when wallet is connected but no backend user (SIWE session)', () => {

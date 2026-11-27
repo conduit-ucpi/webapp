@@ -2,12 +2,14 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { getChainShortName } from '@/utils/chainNames';
-
-const SSR_DEFAULT_CHAIN_NAME = 'blockchain';
+import { openConsentSettings } from '@/lib/consent';
+import { usePageT } from '@/config/locales';
 
 export default function Footer() {
+  const t = usePageT();
   const { config } = useConfig();
-  const [chainName, setChainName] = useState(SSR_DEFAULT_CHAIN_NAME);
+  // Null until the config names the chain, so SSR can show a translated generic word instead.
+  const [chainName, setChainName] = useState<string | null>(null);
 
   useEffect(() => {
     if (config) {
@@ -20,17 +22,24 @@ export default function Footer() {
       <div className="max-w-5xl mx-auto px-6 sm:px-8 py-10">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
           <p className="text-xs text-secondary-400 dark:text-secondary-500">
-            &copy; 2026 Conduit UCPI. Secure escrow contracts on {chainName}. Company No. 880319.
+            {t('footer.copyright', {
+              year: 2026,
+              company: 'Conduit UCPI',
+              chain: chainName ?? t('footer.genericChain'),
+            })}
           </p>
           <div className="flex flex-wrap gap-x-8 gap-y-3 text-xs text-secondary-400 dark:text-secondary-500">
             <Link href="/terms-of-service" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
-              Terms of Service
+              {t('footer.terms')}
             </Link>
             <Link href="/privacy-policy" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
-              Privacy Policy
+              {t('footer.privacy')}
             </Link>
-            <a href="mailto:info@conduit-ucpi.com" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
-              Contact
+            <button type="button" onClick={openConsentSettings} className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
+              {t('footer.cookieSettings')}
+            </button>
+            <a href="mailto:info@stabledrop.me" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors">
+              {t('footer.contact')}
             </a>
           </div>
         </div>

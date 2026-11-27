@@ -122,10 +122,56 @@ describe('the real manifest', () => {
     expect(superseded.length).toBeGreaterThan(0);
 
     const before = { walletConnectProjectId: 'p' } as any;
-    const after = { walletConnectProjectId: 'p', privyAppId: 'a' } as any;
+    const after = { walletConnectProjectId: 'p', privyAppId: 'a', showLegacyAuth: true } as any;
     for (const p of superseded) {
       expect(p.applies(before) && !p.legacy!(before)).toBe(true);
       expect(p.applies(after) && p.legacy!(after)).toBe(true);
     }
+  });
+
+  it('offers no old-wallet route unless SHOW_LEGACY_AUTH is on', async () => {
+    // The default. With Privy configured the provider it replaced does not apply at all: no
+    // tick box, nothing to load on request, and no old session restored at boot.
+    const superseded = PROVIDERS.filter((p) => p.legacy);
+    for (const showLegacyAuth of [undefined, false]) {
+      const config = { walletConnectProjectId: 'p', privyAppId: 'a', showLegacyAuth } as any;
+      for (const p of superseded) expect(p.applies(config)).toBe(false);
+    }
+    // Without Privy it is the only way in, and the flag is not consulted.
+    for (const p of superseded) expect(p.applies({ walletConnectProjectId: 'p' } as any)).toBe(true);
+  });
+});
+
+describe('whether a sign-in goes through Magic', () => {
+  function magicSetup() {
+    const loads = { old: jest.fn(async () => fakeProvider('old')), new: jest.fn(async () => fakeProvider('new')) };
+    const descriptors = manifest(loads).map((d) => (d.type === ('old' as any) ? { ...d, usesMagic: true as const } : d));
+    return new ProviderRegistry(descriptors);
+  }
+
+  it('is no for the provider that wins, when that one does not use Magic', async () => {
+    const registry = magicSetup();
+    await registry.initialize(both);
+    expect(registry.signInUsesMagic(false)).toBe(false);
+  });
+
+  it('is yes for the "old wallet" route, when the legacy provider uses Magic', async () => {
+    const registry = magicSetup();
+    await registry.initialize(both);
+    expect(registry.signInUsesMagic(true)).toBe(true);
+  });
+
+  it('is yes when the Magic provider is the main one', async () => {
+    const registry = magicSetup();
+    await registry.initialize(oldOnly);
+    expect(registry.signInUsesMagic(false)).toBe(true);
+  });
+
+  it('is no before there is any config', () => {
+    expect(magicSetup().signInUsesMagic(false)).toBe(false);
+  });
+
+  it('marks Reown, and only Reown, in the real manifest', () => {
+    expect(PROVIDERS.filter((d) => d.usesMagic).map((d) => d.type)).toEqual(['walletconnect']);
   });
 });

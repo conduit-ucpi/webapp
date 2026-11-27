@@ -122,9 +122,9 @@ export default function SellerOfferBook({
       setViewing(null);
 
       /*
-       * Same staleness as accepting, and for the same reason: `reject()` goes from the
-       * seller's own wallet — the contract requires it — so chainservice never sees the
-       * transaction and `OfferRejected` reaches the index only when someone reconciles. A bare
+       * Same staleness as accepting, and for the same reason: the seller signs it and
+       * chainservice delivers it, but `OfferRejected` reaches the index only when someone
+       * reconciles. A bare
        * refetch brings the offer back OPEN, and the seller is looking at a bid they have
        * already killed.
        *

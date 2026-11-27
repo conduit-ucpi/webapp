@@ -1,57 +1,122 @@
 import { apiFetch } from '@/lib/apiFetch';
-import { useState, useEffect, useMemo } from 'react';
+import { Fragment, useState, useEffect, useMemo } from 'react';
 import { PendingContract } from '@/types';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import Input from '@/components/ui/Input';
 import Button from '@/components/ui/Button';
 import ExpandableHash from '@/components/ui/ExpandableHash';
 import { displayCurrency, formatDateTimeWithTZ, normalizeTimestamp } from '@/utils/validation';
+import { downloadCsv } from '@/utils/csv';
+import { buildAdminContractsCsv, adminContractsCsvFilename } from './adminContractsCsv';
 
 interface AdminDatabaseListProps {
   onContractSelect?: (contract: PendingContract) => void;
+  /** The route the list is read through. /admin uses the default; /sd-reporting has its own, checked for its user type. */
+  endpoint?: string;
 }
 
 type SortField = 'createdAt' | 'expiryTimestamp' | 'amount' | 'sellerEmail' | 'buyerEmail' | 'description' | 'status';
 type SortDirection = 'asc' | 'desc';
 
-// Derive status from local contract data
-const getDerivedStatus = (contract: PendingContract) => {
-  const now = Date.now() / 1000;
-  
-  // If has chain address, it's deployed
-  if (contract.chainAddress) {
-    return 'DEPLOYED';
+/**
+ * The status contractservice computed for the row: the dashboard's, from the record and a chain
+ * read. It used to be guessed here from three fields (an address meant "DEPLOYED" whether or not
+ * anyone had paid, a buyer email "ACCEPTED" for ever). UNKNOWN until contractservice sends it.
+ */
+const statusOf = (contract: PendingContract): string => contract.status ?? 'UNKNOWN';
+
+/**
+ * In the order a payment moves through them: the filter, the badge's tooltip and the key under
+ * the heading. The meanings are contractservice's (ContractStatusCalculationService); keep them
+ * in step with it.
+ */
+const STATUSES: Array<{ value: string; label: string; meaning: string }> = [
+  {
+    value: 'PENDING_ACCEPTANCE',
+    label: 'Awaiting buyer',
+    meaning: 'Request created; nobody has taken it up yet, so no payment address has been issued. Payout date not yet passed.'
+  },
+  {
+    value: 'AWAITING_FUNDING',
+    label: 'Awaiting funding',
+    meaning: 'A payment address has been issued for a buyer, but no money has arrived in it yet.'
+  },
+  {
+    value: 'REFUNDED',
+    label: 'Refunded (paid late)',
+    meaning: 'The payment arrived only after the payout date, so the escrow never started and the money was returned to the buyer.'
+  },
+  {
+    value: 'SANCTIONS_REFUSED',
+    label: 'Refused: sanctions',
+    meaning: 'chainservice refused to deploy it because a party carries sanctions risk. Any money sent is frozen at the address; nothing more should be sent.'
+  },
+  {
+    value: 'ACTIVE',
+    label: 'Active (funded)',
+    meaning: 'The money is held on chain and the payout date has not passed. The buyer can still raise a dispute.'
+  },
+  {
+    value: 'DISPUTED',
+    label: 'Disputed',
+    meaning: 'The buyer has raised a dispute. The money stays held until two of the three votes (buyer, seller, Third Voter) match.'
+  },
+  {
+    value: 'RESOLVED',
+    label: 'Resolved',
+    meaning: 'A dispute was settled by two matching votes, and the money was split and paid out as voted.'
+  },
+  {
+    value: 'EXPIRED',
+    label: 'Expired',
+    meaning: 'The payout date has passed. Either the request was never paid, or the money is still held and waiting to be paid out to the seller.'
+  },
+  {
+    value: 'CLAIMED',
+    label: 'Paid out',
+    meaning: 'The money has been released to the seller. Finished.'
+  },
+  {
+    value: 'ERROR',
+    label: 'Error',
+    meaning: 'The chain could not be read for this payment, or what it says disagrees with our record (buyer, seller or payout date). Includes older escrows chainservice can no longer read. Needs a look.'
+  },
+  {
+    value: 'UNKNOWN',
+    label: 'Unknown',
+    meaning: 'The status could not be worked out from the record and the chain.'
   }
-  
-  // If has buyer email, it's been accepted
-  if (contract.buyerEmail) {
-    return 'ACCEPTED';
-  }
-  
-  // Check if expired
-  if (contract.expiryTimestamp && now > contract.expiryTimestamp) {
-    return 'EXPIRED';
-  }
-  
-  return 'PENDING';
+];
+
+const statusLabel = (contract: PendingContract): string => {
+  const status = statusOf(contract);
+  return STATUSES.find((s) => s.value === status)?.label ?? status;
 };
+
+const statusMeaning = (status: string): string | undefined => STATUSES.find((s) => s.value === status)?.meaning;
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'DEPLOYED':
-      return 'bg-green-100 text-green-800';
-    case 'ACCEPTED':
-      return 'bg-blue-100 text-blue-800';
-    case 'PENDING':
-      return 'bg-yellow-100 text-yellow-800';
+    case 'ACTIVE':
+    case 'CLAIMED':
+      return 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300';
+    case 'PENDING_ACCEPTANCE':
+    case 'AWAITING_FUNDING':
+      return 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-300';
+    case 'DISPUTED':
+      return 'bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-300';
+    case 'RESOLVED':
+      return 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300';
     case 'EXPIRED':
-      return 'bg-red-100 text-red-800';
+    case 'ERROR':
+    case 'SANCTIONS_REFUSED':
+      return 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300';
     default:
-      return 'bg-gray-100 text-gray-800';
+      return 'bg-gray-100 dark:bg-secondary-800 text-gray-800 dark:text-secondary-200';
   }
 };
 
-export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseListProps) {
+export default function AdminDatabaseList({ onContractSelect, endpoint = '/api/contracts/admin/database' }: AdminDatabaseListProps) {
   const [contracts, setContracts] = useState<PendingContract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -97,7 +162,7 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
     try {
       const { from, to } = getDateRange(dateRangeFilter);
       
-      const response = await apiFetch('/api/contracts/admin/database', {
+      const response = await apiFetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,8 +213,7 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
       );
 
       // Status filter
-      const derivedStatus = getDerivedStatus(contract);
-      const matchesStatus = statusFilter === 'ALL' || derivedStatus === statusFilter;
+      const matchesStatus = statusFilter === 'ALL' || statusOf(contract) === statusFilter;
 
       return matchesSearch && matchesStatus;
     });
@@ -163,8 +227,8 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
 
       // Special handling for derived status
       if (sortField === 'status') {
-        aValue = getDerivedStatus(a);
-        bValue = getDerivedStatus(b);
+        aValue = statusOf(a);
+        bValue = statusOf(b);
       } else {
         // Safe access to contract properties
         aValue = (a as any)[sortField];
@@ -215,6 +279,11 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
     setCurrentPage(1); // Reset to first page when sorting changes
   };
 
+  /** Every row the list is showing (all pages, in its order), for sharing with colleagues. */
+  const handleExport = () => {
+    downloadCsv(adminContractsCsvFilename(dateRangeFilter), buildAdminContractsCsv(sortedContracts, statusLabel));
+  };
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
@@ -238,7 +307,7 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
   if (error) {
     return (
       <div className="text-center py-20">
-        <div className="text-red-600 mb-4">{error}</div>
+        <div className="text-red-600 dark:text-red-400 mb-4">{error}</div>
         <Button onClick={fetchContracts} variant="outline">
           Try Again
         </Button>
@@ -247,18 +316,18 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm border border-gray-200 dark:border-secondary-700">
       {/* Header and Controls */}
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-6 border-b border-gray-200 dark:border-secondary-700">
         <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <h2 className="text-lg font-semibold text-gray-900">Local Database Contracts</h2>
-              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Local Database Contracts</h2>
+              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300">
                 LOCAL DB
               </span>
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-secondary-300">
               Showing {paginatedContracts.length} of {sortedContracts.length} contracts from local storage
               {dateRangeFilter !== 'ALL' && ` (${dateRangeFilter.toLowerCase()} range)`}
             </p>
@@ -277,19 +346,18 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-3 py-2 border border-gray-300 dark:border-secondary-600 bg-white text-secondary-900 dark:bg-secondary-800 dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="ALL">All Status</option>
-              <option value="DEPLOYED">Deployed</option>
-              <option value="ACCEPTED">Accepted</option>
-              <option value="PENDING">Pending</option>
-              <option value="EXPIRED">Expired</option>
+              {STATUSES.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
             </select>
             
             <select
               value={dateRangeFilter}
               onChange={(e) => setDateRangeFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-3 py-2 border border-gray-300 dark:border-secondary-600 bg-white text-secondary-900 dark:bg-secondary-800 dark:text-white rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value="TODAY">Today</option>
               <option value="WEEK">Past Week</option>
@@ -297,107 +365,142 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
               <option value="QUARTER">Past 3 Months</option>
               <option value="YEAR">Past Year</option>
             </select>
+
+            <Button
+              onClick={handleExport}
+              disabled={sortedContracts.length === 0}
+              variant="outline"
+              size="sm"
+              title="Download every contract matching the current search and filters, across all pages"
+            >
+              Export CSV ({sortedContracts.length})
+            </Button>
           </div>
         </div>
       </div>
 
+      {/* What each status means */}
+      <details className="px-6 py-3 border-b border-gray-200 dark:border-secondary-700 text-sm">
+        <summary className="cursor-pointer text-gray-700 dark:text-secondary-300 font-medium">
+          What the statuses mean
+        </summary>
+        <dl className="mt-3 grid gap-x-4 gap-y-2 sm:grid-cols-[max-content_1fr]">
+          {STATUSES.map((s) => (
+            <Fragment key={s.value}>
+              <dt>
+                <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(s.value)}`}>
+                  {s.label}
+                </span>
+              </dt>
+              <dd className="text-gray-600 dark:text-secondary-300">{s.meaning}</dd>
+            </Fragment>
+          ))}
+        </dl>
+        <p className="mt-3 text-xs text-gray-500 dark:text-secondary-400">
+          Worked out by contractservice from our record and a live chain read, the same way as on users&apos; dashboards.
+        </p>
+      </details>
+
       {/* Table */}
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-secondary-700">
+          <thead className="bg-gray-50 dark:bg-secondary-800">
             <tr>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-secondary-700"
                 onClick={() => handleSort('createdAt')}
               >
                 Created {sortField === 'createdAt' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-secondary-700"
                 onClick={() => handleSort('amount')}
               >
                 Amount {sortField === 'amount' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-secondary-700"
                 onClick={() => handleSort('sellerEmail')}
               >
                 Seller {sortField === 'sellerEmail' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-secondary-700"
                 onClick={() => handleSort('buyerEmail')}
               >
                 Buyer {sortField === 'buyerEmail' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider">
                 Seller Address
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-secondary-700"
                 onClick={() => handleSort('expiryTimestamp')}
               >
                 Expiry {sortField === 'expiryTimestamp' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-secondary-700"
                 onClick={() => handleSort('status')}
               >
                 Status {sortField === 'status' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
               <th 
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-secondary-700"
                 onClick={() => handleSort('description')}
               >
                 Description {sortField === 'description' && (sortDirection === 'asc' ? '↑' : '↓')}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-secondary-400 uppercase tracking-wider">
                 Contract Address
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white dark:bg-secondary-900 divide-y divide-gray-200 dark:divide-secondary-700">
             {paginatedContracts.map((contract) => {
-              const derivedStatus = getDerivedStatus(contract);
+              const status = statusOf(contract);
               return (
                 <tr 
                   key={contract.id} 
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  className={`hover:bg-gray-50 dark:hover:bg-secondary-800 transition-colors ${onContractSelect ? 'cursor-pointer' : ''}`}
                   onClick={() => onContractSelect?.(contract)}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {formatDateTimeWithTZ(contract.createdAt)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                     {displayCurrency(contract.amount, 'microUSDC')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {contract.sellerEmail}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {contract.buyerEmail || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     <ExpandableHash hash={contract.sellerAddress} />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {contract.expiryTimestamp ? formatDateTimeWithTZ(contract.expiryTimestamp) : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(derivedStatus)}`}>
-                      {derivedStatus}
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(status)}`}
+                      title={statusMeaning(status)}
+                    >
+                      {statusLabel(contract)}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                  <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-xs">
                     <div className="truncate" title={contract.description}>
                       {contract.description || '-'}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                     {contract.chainAddress ? (
                       <ExpandableHash hash={contract.chainAddress} />
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <span className="text-gray-400 dark:text-secondary-500">-</span>
                     )}
                   </td>
                 </tr>
@@ -409,23 +512,23 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-secondary-700 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-700">Show</span>
+            <span className="text-sm text-gray-700 dark:text-secondary-300">Show</span>
             <select
               value={itemsPerPage}
               onChange={(e) => {
                 setItemsPerPage(Number(e.target.value));
                 setCurrentPage(1);
               }}
-              className="px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="px-2 py-1 border border-gray-300 dark:border-secondary-600 bg-white text-secondary-900 dark:bg-secondary-800 dark:text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             >
               <option value={10}>10</option>
               <option value={25}>25</option>
               <option value={50}>50</option>
               <option value={100}>100</option>
             </select>
-            <span className="text-sm text-gray-700">per page</span>
+            <span className="text-sm text-gray-700 dark:text-secondary-300">per page</span>
           </div>
           
           <div className="flex items-center gap-2">
@@ -438,7 +541,7 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
               Previous
             </Button>
             
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-gray-700 dark:text-secondary-300">
               Page {currentPage} of {totalPages}
             </span>
             
@@ -457,7 +560,7 @@ export default function AdminDatabaseList({ onContractSelect }: AdminDatabaseLis
       {/* Empty State */}
       {sortedContracts.length === 0 && (
         <div className="text-center py-20">
-          <div className="text-gray-600 mb-4">
+          <div className="text-gray-600 dark:text-secondary-300 mb-4">
             {searchTerm || statusFilter !== 'ALL' 
               ? 'No contracts match your filters' 
               : `No contracts found for ${dateRangeFilter.toLowerCase()}`

@@ -1,9 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { isPathSegment } from '@/lib/server/serviceProxy';
+import { requireAdmin } from '@/lib/server/requireAdmin';
+import { logBackendAnswer } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
 
-  if (!id || typeof id !== 'string') {
+  if (!isPathSegment(id)) {
     return res.status(400).json({ error: 'Contract ID is required' });
   }
 
@@ -11,6 +14,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: 'Method not allowed' });
   }
+
+  if (!(await requireAdmin(req, res))) return;
 
   const { 
     buyerPercentage, 
@@ -42,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   // Validate chainAddress is provided
-  if (!chainAddress || typeof chainAddress !== 'string') {
+  if (!isPathSegment(chainAddress)) {
     return res.status(400).json({ error: 'Chain address is required' });
   }
 
@@ -73,7 +78,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Chain service error:', response.status, errorText);
+      logBackendAnswer('Chain service', response.status, errorText);
       return res.status(response.status).json({ 
         error: response.status === 404 ? 'Contract not found on chain' : 'Failed to resolve dispute' 
       });

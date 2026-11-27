@@ -17,10 +17,11 @@ const getPayoutAmount = jest.fn();
 const getEscrowTerms = jest.fn();
 jest.mock('@/lib/rpc/RpcClient', () => ({
   RpcClient: jest.fn().mockImplementation(() => ({ getPayoutAmount, getEscrowTerms })),
+  sharedRpcClient: jest.fn().mockImplementation(() => ({ getPayoutAmount, getEscrowTerms })),
 }));
 
 import { usePayoutAmounts, useEscrowMaturities } from '@/hooks/useEscrowReads';
-import { RpcClient } from '@/lib/rpc/RpcClient';
+import { sharedRpcClient } from '@/lib/rpc/RpcClient';
 
 const A = '0xaaa1111111111111111111111111111111111111';
 const B = '0xbbb2222222222222222222222222222222222222';
@@ -75,7 +76,7 @@ describe('usePayoutAmounts', () => {
     it('does nothing without an RPC URL', () => {
       renderHook(() => usePayoutAmounts([A], undefined));
 
-      expect(RpcClient).not.toHaveBeenCalled();
+      expect(sharedRpcClient).not.toHaveBeenCalled();
       expect(getPayoutAmount).not.toHaveBeenCalled();
     });
 

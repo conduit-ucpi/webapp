@@ -127,3 +127,39 @@ describe('brand resolution', () => {
     expect(resolve({})).toEqual({ id: 'stabledrop', source: 'default' });
   });
 });
+
+/**
+ * Our own other domains each wear their own brand record. The domain sits below every explicit
+ * choice: it says which of our sites this is, and a partner link opened on it stays the partner's.
+ */
+describe('brand resolution by hostname', () => {
+  const hostRegistry = {
+    ...registry,
+    'conduit-ucpi': { id: 'conduit-ucpi', name: 'Conduit UCPI' },
+    instantescrow: { id: 'instantescrow', name: 'Instant Escrow' },
+  } as unknown as BrandRegistry;
+  const hostBrands = { 'stabledrop.me': 'stabledrop', 'conduit-ucpi.com': 'conduit-ucpi', 'instantescrow.nz': 'instantescrow' };
+  const at = (hostname: string, input: Partial<Parameters<typeof resolveBrandId>[0]> = {}) =>
+    resolveBrandId({ registry: hostRegistry, fallbackId: 'stabledrop', hostname, hostBrands, ...input });
+
+  it('maps a domain and its subdomains to their brand', () => {
+    expect(at('conduit-ucpi.com')).toEqual({ id: 'conduit-ucpi', source: 'host' });
+    expect(at('test.conduit-ucpi.com')).toEqual({ id: 'conduit-ucpi', source: 'host' });
+    expect(at('app.instantescrow.nz')).toEqual({ id: 'instantescrow', source: 'host' });
+  });
+
+  it('does not match a lookalike domain', () => {
+    expect(at('evil-conduit-ucpi.com')).toEqual({ id: 'stabledrop', source: 'default' });
+    expect(at('conduit-ucpi.com.evil.example')).toEqual({ id: 'stabledrop', source: 'default' });
+  });
+
+  it('gives way to a partner link, a pinned route and the contract', () => {
+    expect(at('test.conduit-ucpi.com', { search: '?b=cobro' })).toEqual({ id: 'cobro', source: 'query' });
+    expect(at('test.conduit-ucpi.com', { routeBrandId: 'cobro' })).toEqual({ id: 'cobro', source: 'route' });
+    expect(at('test.conduit-ucpi.com', { contractBrandId: 'cobro' })).toEqual({ id: 'cobro', source: 'contract' });
+  });
+
+  it('falls to the default on an unmapped host such as localhost', () => {
+    expect(at('localhost')).toEqual({ id: 'stabledrop', source: 'default' });
+  });
+});

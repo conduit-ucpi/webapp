@@ -43,11 +43,6 @@ jest.mock('@/components/ui/Toast', () => ({
   ToastProvider: ({ children }: any) => <>{children}</>,
 }));
 
-jest.mock('@/components/ui/WalletInfo', () => ({
-  __esModule: true,
-  default: () => <div data-testid="wallet-info-stub" />,
-}));
-
 import { useRouter } from 'next/router';
 import CreateContractWizard from '@/components/contracts/CreateContractWizard';
 import { useConfig } from '@/components/auth/ConfigProvider';
@@ -105,7 +100,7 @@ describe('CreateContractWizard - instant release', () => {
   const okFetch = () =>
     jest.fn().mockResolvedValue({
       ok: true,
-      json: jest.fn().mockResolvedValue({ contractId: 'abc-123' }),
+      json: jest.fn().mockResolvedValue({ request_id: 'abc-123' }),
     });
 
   const dateInput = () => document.querySelector('input[type="datetime-local"]');
@@ -181,7 +176,7 @@ describe('CreateContractWizard - instant release', () => {
       // Zero is the sentinel, so this must be the number 0 and not '' or
       // undefined — a falsy stand-in would not survive the contract's
       // `EXPIRY_TIMESTAMP == 0` check the same way.
-      expect(await postedBody(authenticatedFetch)).toMatchObject({ expiryTimestamp: 0 });
+      expect(await postedBody(authenticatedFetch)).toMatchObject({ expiry_timestamp: 0 });
     });
 
     it('posts the chosen date, not the sentinel, on the default path', async () => {
@@ -192,7 +187,7 @@ describe('CreateContractWizard - instant release', () => {
       await fillAndSubmit();
 
       const body = await postedBody(authenticatedFetch);
-      expect(body.expiryTimestamp).toBeGreaterThan(Math.floor(Date.now() / 1000));
+      expect(body.expiry_timestamp).toBeGreaterThan(Math.floor(Date.now() / 1000));
     });
   });
 

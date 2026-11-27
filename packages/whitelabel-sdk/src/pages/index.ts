@@ -11,4 +11,14 @@ export { default as CreatePage } from './CreatePage';
 // a tenant's own checkout.
 export { default as ContractCreatePage } from './ContractCreatePage';
 export { default as DashboardPage } from './DashboardPage';
+// The Third Voter's screen: escrows naming the signed-in wallet as arbiter, with the same dispute
+// modal the parties use (read both sides, vote with a reason, resign the seat).
+export { default as ArbiterDisputesPage } from './ArbiterDisputesPage';
 export { default as ContractPayPage } from './ContractPayPage';
+// A buyer pushing a payment to a seller, through ap2service's MCP tools.
+export { default as PayPage } from './PayPage';
+// Where Coinbase returns a buyer after paying by card, or a seller after cashing out. A tenant
+// using either flow must mount these at /onramp-return and /offramp-return: the SDK's Coinbase
+// code sends people back to exactly those paths.
+export { default as OnrampReturnPage } from './OnrampReturnPage';
+export { default as OfframpReturnPage } from './OfframpReturnPage';

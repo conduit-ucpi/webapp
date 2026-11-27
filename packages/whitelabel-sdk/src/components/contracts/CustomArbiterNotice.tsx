@@ -3,6 +3,8 @@ import { useT } from '../../i18n';
 
 interface CustomArbiterNoticeProps {
   arbiterAddress?: string | null;
+  /** Shown beside the wallet when the seller named the Third Voter by email: who they chose, not only where it resolved. */
+  arbiterEmail?: string | null;
 }
 
 /**
@@ -19,7 +21,7 @@ interface CustomArbiterNoticeProps {
  * verify it before paying. A small copy button lets them copy the full
  * address to the clipboard.
  */
-export default function CustomArbiterNotice({ arbiterAddress }: CustomArbiterNoticeProps) {
+export default function CustomArbiterNotice({ arbiterAddress, arbiterEmail }: CustomArbiterNoticeProps) {
   const t = useT();
   const [isCopied, setIsCopied] = useState(false);
 
@@ -48,7 +50,12 @@ export default function CustomArbiterNotice({ arbiterAddress }: CustomArbiterNot
       <p className="text-sm font-medium text-yellow-800 dark:text-yellow-300">{t('customArbiterNotice.customDisputeResolver')}</p>
       <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-1">{t('customArbiterNotice.thisContractUsesA')}</p>
       <p className="text-sm text-yellow-800 dark:text-yellow-300 mt-2">
-        Arbiter:{' '}
+        {t('customArbiterNotice.thirdVoter')}{' '}
+        {arbiterEmail ? (
+          <>
+            <span data-testid="custom-arbiter-email">{arbiterEmail}</span>{' '}
+          </>
+        ) : null}
         <span
           className="font-mono break-all"
           data-testid="custom-arbiter-address"
@@ -63,7 +70,7 @@ export default function CustomArbiterNotice({ arbiterAddress }: CustomArbiterNot
           data-testid="custom-arbiter-copy-button"
           className="inline-flex items-center text-xs font-medium text-yellow-800 dark:text-yellow-300 underline decoration-dotted hover:decoration-solid focus:outline-none focus:ring-1 focus:ring-yellow-500 rounded"
         >
-          {isCopied ? 'Copied!' : 'Copy'}
+          {isCopied ? t('contractDetailsModal.copied') : t('contractDetailsModal.copy')}
         </button>
       </p>
     </div>

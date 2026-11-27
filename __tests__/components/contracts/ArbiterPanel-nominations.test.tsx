@@ -12,14 +12,16 @@
  * other side's choice is most of what makes the seat re-fillable at all.
  */
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const nominateArbiter = jest.fn();
+const resolveArbiterEmail = jest.fn();
 
 jest.mock('@/hooks/useMarketplaceActions', () => ({
   useMarketplaceActions: () => ({
     nominateArbiter,
+    resolveArbiterEmail,
     evictArbiter: jest.fn(),
     seatDefaultArbiter: jest.fn(),
   }),
@@ -52,6 +54,9 @@ const state = (overrides: Partial<ArbiterState> = {}): ArbiterState =>
     ...overrides,
   }) as ArbiterState;
 
+const BUYER = '0xD36698991EF328275c8F9598A33B2378D7ecE183';
+const SELLER = '0x78A67E815db3D0D60F5018F1DbFF173fFB25afBD';
+
 const show = (s: Partial<ArbiterState>, viewerRole: 'buyer' | 'recipient' | null) =>
   render(
     <ArbiterPanel
@@ -60,6 +65,8 @@ const show = (s: Partial<ArbiterState>, viewerRole: 'buyer' | 'recipient' | null
       loading={false}
       onChanged={jest.fn()}
       viewerRole={viewerRole}
+      buyerAddress={BUYER}
+      recipientAddress={SELLER}
     />
   );
 
@@ -138,13 +145,218 @@ describe('agreeing to their suggestion', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /use this address/i }));
 
-    expect(screen.getByLabelText(/nominate an arbiter/i)).toHaveValue(BUYERS_PICK);
+    expect(screen.getByLabelText(/nominate a Third Voter/i)).toHaveValue(BUYERS_PICK);
     expect(nominateArbiter).not.toHaveBeenCalled();
   });
 
   it('still keeps the warning about who the address belongs to', () => {
     show({ nominatedByBuyer: BUYERS_PICK }, 'recipient');
 
-    expect(screen.getByText(/no register of approved arbiters/i)).toBeInTheDocument();
+    expect(screen.getByText(/no register of approved Third Voters/i)).toBeInTheDocument();
+  });
+});
+
+describe('naming a Third Voter by email', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resolveArbiterEmail.mockReset();
+  });
+
+  const MEDIATORS_WALLET = '0xdddd000000000000000000000000000000000003';
+
+  it('looks the email up and nominates the wallet it names', async () => {
+    resolveArbiterEmail.mockResolvedValue(MEDIATORS_WALLET);
+    nominateArbiter.mockResolvedValue(undefined);
+    show({}, 'buyer');
+
+    await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'mediator@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Nominate' }));
+
+    await waitFor(() => expect(nominateArbiter).toHaveBeenCalledWith('0xescrow', MEDIATORS_WALLET));
+    expect(resolveArbiterEmail).toHaveBeenLastCalledWith('mediator@example.com', { create: true });
+    expect(await screen.findByText(/Nomination recorded for mediator@example.com/)).toBeInTheDocument();
+  });
+
+  it('reports a match when the email names the wallet the other party already nominated', async () => {
+    resolveArbiterEmail.mockResolvedValue(RECIPIENTS_PICK);
+    nominateArbiter.mockResolvedValue(undefined);
+    show({ nominatedByRecipient: RECIPIENTS_PICK }, 'buyer');
+
+    await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'mediator@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Nominate' }));
+
+    expect(await screen.findByText('Nominations matched — that Third Voter is now seated.')).toBeInTheDocument();
+  });
+
+  it('nominates nobody when the email cannot be looked up, and says why', async () => {
+    resolveArbiterEmail.mockRejectedValue(new Error('Could not look up that email right now. Try again, or use a wallet address.'));
+    show({}, 'buyer');
+
+    await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'mediator@example.com');
+    await userEvent.click(screen.getByRole('button', { name: 'Nominate' }));
+
+    expect(await screen.findByText(/Could not look up that email/)).toBeInTheDocument();
+    expect(nominateArbiter).not.toHaveBeenCalled();
+  });
+
+  it('does not look anything up for a wallet address', async () => {
+    nominateArbiter.mockResolvedValue(undefined);
+    show({}, 'buyer');
+
+    await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), MEDIATORS_WALLET);
+    await userEvent.click(screen.getByRole('button', { name: 'Nominate' }));
+
+    await waitFor(() => expect(nominateArbiter).toHaveBeenCalledWith('0xescrow', MEDIATORS_WALLET));
+    expect(resolveArbiterEmail).not.toHaveBeenCalled();
+  });
+
+  it('will not nominate something that is neither', async () => {
+    show({}, 'buyer');
+
+    await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'mediator');
+
+    expect(screen.getByRole('button', { name: 'Nominate' })).toBeDisabled();
+    expect(screen.getByText('That is not a valid wallet address or email address.')).toBeInTheDocument();
+  });
+
+  describe('the live lookup, before anything is nominated', () => {
+    it('shows the wallet the email names, looking up only, never creating', async () => {
+      resolveArbiterEmail.mockResolvedValue(MEDIATORS_WALLET);
+      show({}, 'buyer');
+
+      await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'mediator@example.com');
+
+      expect(await screen.findByText(MEDIATORS_WALLET)).toBeInTheDocument();
+      expect(screen.getByText(/mediator@example.com has the StableDrop wallet/)).toBeInTheDocument();
+      expect(resolveArbiterEmail).toHaveBeenCalledWith('mediator@example.com', { create: false });
+      expect(resolveArbiterEmail).not.toHaveBeenCalledWith(expect.anything(), { create: true });
+      expect(nominateArbiter).not.toHaveBeenCalled();
+    });
+
+    it('tells the second party their email is the other party’s pick, before they nominate', async () => {
+      resolveArbiterEmail.mockResolvedValue(RECIPIENTS_PICK);
+      show({ nominatedByRecipient: RECIPIENTS_PICK }, 'buyer');
+
+      expect(screen.getByText(/type that person's email below/)).toBeInTheDocument();
+      await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'mediator@example.com');
+
+      expect(await screen.findByText(/This is the person the other party suggested/)).toBeInTheDocument();
+      expect(nominateArbiter).not.toHaveBeenCalled();
+    });
+
+    it('says when the email is somebody else', async () => {
+      resolveArbiterEmail.mockResolvedValue(MEDIATORS_WALLET);
+      show({ nominatedByRecipient: RECIPIENTS_PICK }, 'buyer');
+
+      await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'someone@example.com');
+
+      expect(await screen.findByText('This is not the person the other party suggested.')).toBeInTheDocument();
+    });
+
+    it('says a wallet will be made for an email nobody has signed in with', async () => {
+      resolveArbiterEmail.mockResolvedValue(null);
+      show({ nominatedByRecipient: RECIPIENTS_PICK }, 'buyer');
+
+      await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), 'new@example.com');
+
+      expect(await screen.findByText(/new@example.com has not signed in to StableDrop yet/)).toBeInTheDocument();
+      expect(screen.getByText('This is not the person the other party suggested.')).toBeInTheDocument();
+    });
+
+    it('shows a match for a pasted wallet address too, with no lookup', async () => {
+      show({ nominatedByRecipient: RECIPIENTS_PICK }, 'buyer');
+
+      await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), RECIPIENTS_PICK);
+
+      expect(screen.getByText(/This is the person the other party suggested/)).toBeInTheDocument();
+      expect(resolveArbiterEmail).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('refusing a party before anybody signs', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resolveArbiterEmail.mockReset();
+  });
+
+  const field = () => screen.getByLabelText(/nominate a Third Voter/i);
+
+  it('says an email is the seller and disables Nominate', async () => {
+    // Production, 2026-10-07: charlie@stabledrop.me was the seller, and the escrow reverted.
+    resolveArbiterEmail.mockResolvedValue(SELLER.toLowerCase());
+    show({}, 'buyer');
+
+    await userEvent.type(field(), 'charlie@stabledrop.me');
+
+    expect(await screen.findByText("That's the seller on this payment; a party can't be the Third Voter.")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nominate' })).toBeDisabled();
+  });
+
+  it('says a pasted address is the buyer', async () => {
+    show({}, 'recipient');
+
+    await userEvent.type(field(), BUYER);
+
+    expect(screen.getByText("That's the buyer on this payment; a party can't be the Third Voter.")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nominate' })).toBeDisabled();
+  });
+
+  it('says when the candidate already holds the seat', async () => {
+    const seated = '0xeeee000000000000000000000000000000000005';
+    show({ seated: true, arbiter: seated }, 'buyer');
+
+    await userEvent.type(field(), seated);
+
+    expect(screen.getByText(/already seated on this payment/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nominate' })).toBeDisabled();
+  });
+
+  it('does not call a party "not the other party\u2019s pick" as well', async () => {
+    show({ nominatedByRecipient: RECIPIENTS_PICK }, 'buyer');
+
+    await userEvent.type(field(), SELLER);
+
+    expect(screen.queryByText('This is not the person the other party suggested.')).not.toBeInTheDocument();
+  });
+});
+
+describe('a refusal from the escrow, in words', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const refusal = (name: string, args: string[]) =>
+    Object.assign(new Error('execution reverted'), { name: 'ContractRefusedError', reason: { name, args } });
+
+  const nominate = async (error: Error) => {
+    nominateArbiter.mockRejectedValue(error);
+    show({}, 'buyer');
+    await userEvent.type(screen.getByLabelText(/nominate a Third Voter/i), '0x1111111111111111111111111111111111111111');
+    await userEvent.click(screen.getByRole('button', { name: 'Nominate' }));
+  };
+
+  it('names the wallet it would have come from when that wallet is not a party', async () => {
+    const sender = '0xa123f4464044115fda6d642cabab5702d39e019c';
+    await nominate(refusal('NotDisputeParty', [sender]));
+
+    expect(await screen.findByText(new RegExp(`would have come from wallet ${sender}, which is not the buyer or the seller`))).toBeInTheDocument();
+    expect(screen.queryByText('execution reverted')).not.toBeInTheDocument();
+  });
+
+  it('explains a refused candidate', async () => {
+    await nominate(refusal('InvalidArbiterCandidate', [SELLER]));
+
+    expect(await screen.findByText(new RegExp(`The payment contract refused ${SELLER}`))).toBeInTheDocument();
+  });
+
+  it('explains an escrow that is no longer open', async () => {
+    await nominate(refusal('NotFundedOrAlreadyProcessed', []));
+
+    expect(await screen.findByText(/no longer open for nominations/)).toBeInTheDocument();
+  });
+
+  it('falls back to the raw message for anything else', async () => {
+    await nominate(new Error('user rejected the request'));
+
+    expect(await screen.findByText('user rejected the request')).toBeInTheDocument();
   });
 });

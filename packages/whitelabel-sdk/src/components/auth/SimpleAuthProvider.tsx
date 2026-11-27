@@ -34,6 +34,7 @@ const defaultAuthValue = {
   },
   connect: () => Promise.resolve(),
   canConnectLegacyWallet: () => false,
+  signInUsesMagic: () => false,
   authenticateBackend: () => Promise.resolve(false),
   requestAuthentication: () => Promise.resolve(false), // Manual SIWX authentication trigger
   getLastAuthFailure: () => null,
@@ -219,6 +220,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
     connect: newAuth.connect,
     setConnectionMode: newAuth.setConnectionMode,
     canConnectLegacyWallet: newAuth.canConnectLegacyWallet,
+    signInUsesMagic: newAuth.signInUsesMagic,
     authenticateBackend: newAuth.authenticateBackend,
     requestAuthentication: newAuth.requestAuthentication, // Manually trigger SIWX authentication
     disconnect: newAuth.disconnect,
@@ -258,48 +260,16 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       }
     },
 
-    // Blockchain operations using fundAndSendTransaction
-    claimFunds: async (contractAddress: string, userAddress: string): Promise<string> => {
-      console.log('🔧 SimpleAuthProvider: claimFunds called', { contractAddress, userAddress });
-
-      if (!contractAddress || !userAddress) {
-        throw new Error('Contract address and user address are required');
-      }
-
-      // Import contract ABI
-      const { ESCROW_CONTRACT_ABI } = await import('@conduit-ucpi/sdk');
-      const { ethers } = await import('ethers');
-
-      // Encode the claimFunds function call
-      const contractInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
-      const data = contractInterface.encodeFunctionData('claimFunds', []);
-
-      if (!config) {
-        throw new Error('Config not available');
-      }
-
-      // Get ethers provider directly from auth (avoid circular dependency)
-      const ethersProvider = await newAuth.getEthersProvider();
-      if (!ethersProvider) {
-        throw new Error('Ethers provider not available');
-      }
-
-      // Import and create Web3Service directly (avoid useSimpleEthers hook)
-      const { Web3Service } = await import('@/lib/web3');
-      const web3Service = Web3Service.getInstance(config!);
-
-      // Initialize Web3Service if needed
-      if (!web3Service.isServiceInitialized()) {
-        console.log('🔧 SimpleAuthProvider: Initializing Web3Service for claim');
-        await web3Service.initialize(ethersProvider);
-      }
-
-      // Use Web3Service directly for the blockchain operation
-      return await web3Service.fundAndSendTransaction({
-        to: contractAddress,
-        data,
-        value: '0' // No value needed for claiming
-      });
+    // Collecting needs no signature and no gas in the seller's wallet: the relayer sends it.
+    // See lib/claimFunds.ts. `userAddress` and `prompt` are kept so callers need not change;
+    // there is no wallet prompt to word any more, because the wallet is not asked for anything.
+    claimFunds: async (
+      contractAddress: string,
+      _userAddress?: string,
+      _prompt?: { decimals?: number; describe: (amount: string | null) => string }
+    ): Promise<string> => {
+      const { claimFundsViaRelayer } = await import('@/lib/claimFunds');
+      return claimFundsViaRelayer(contractAddress, (url, init) => apiFetch(url, init));
     },
 
     raiseDispute: async (params: {
@@ -307,6 +277,7 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       userAddress: string;
       reason: string;
       refundPercent: number;
+      prompts?: { open: string; vote: (figure: number) => string };
       contract?: any;
       config?: any;
       utils?: any;
@@ -321,16 +292,6 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
       if (!params.contractAddress || !params.userAddress || !params.reason || params.refundPercent == null) {
         throw new Error('Contract address, user address, reason, and refund percent are required');
       }
-
-      // Import ethers for encoding
-      const { ethers } = await import('ethers');
-
-      // Encode the raiseDispute function call using hardcoded ABI (takes no parameters)
-      const escrowAbi = [
-        "function raiseDispute() external"
-      ];
-      const contractInterface = new ethers.Interface(escrowAbi);
-      const data = contractInterface.encodeFunctionData('raiseDispute', []);
 
       // Get ethers provider directly from auth (avoid circular dependency)
       const ethersProvider = await newAuth.getEthersProvider();
@@ -348,45 +309,46 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
         await web3Service.initialize(ethersProvider);
       }
 
-      // Step 1: Execute blockchain transaction using Web3Service directly
-      const txHash = await web3Service.fundAndSendTransaction({
-        to: params.contractAddress,
-        data,
-        value: '0' // No value needed for raising dispute
-      });
-
-      // Step 2: Notify contractservice about the dispute (if contract ID is provided)
-      if (params.contract?.id) {
-        console.log('Notifying contractservice about dispute...');
-
-        try {
-          const disputeEntry = {
-            timestamp: Math.floor(Date.now() / 1000),
-            reason: params.reason || 'Dispute raised on blockchain',
-            refundPercent: params.refundPercent || 0
-          };
-
-          const response = await backendClient.authenticatedFetch(`/api/contracts/${params.contract.id}/dispute`, {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(disputeEntry)
-          });
-
-          if (!response.ok) {
-            console.error('Contract service notification failed:', await response.text());
-            // Don't throw - the blockchain transaction succeeded
-          } else {
-            console.log('✅ Contract service notified about dispute');
+      // Raise the dispute, then cast the buyer's figure as their vote, then record it.
+      const { raiseDisputeAndVote } = await import('@/lib/raiseDispute');
+      const { raiseDisputeSigned, sendSignedAction } = await import('@/lib/signedActions');
+      const signing = { fetcher: apiFetch, wallet: web3Service };
+      return raiseDisputeAndVote(
+        {
+          // Where the contract takes signed messages the wallet signs and chainservice delivers
+          // (and records the dispute); each answers null where it does not, and `send` is used.
+          signed: {
+            raise: ({ walletDescription, ...request }) =>
+              raiseDisputeSigned(signing, { ...request, prompt: { walletDescription, movesFunds: false } }),
+            vote: ({ contractAddress, data, figure, walletDescription }) =>
+              sendSignedAction(signing, {
+                contractAddress,
+                action: 'submitResolutionVote',
+                args: [figure],
+                data,
+                prompt: { walletDescription }
+              })
+          },
+          send: (tx) => web3Service.fundAndSendTransaction(tx),
+          record: async (contractId, entry) => {
+            try {
+              const response = await backendClient.authenticatedFetch(`/api/contracts/${contractId}/dispute`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(entry)
+              });
+              if (!response.ok) {
+                // Don't throw - the blockchain transactions succeeded
+                console.error('Contract service notification failed:', await response.text());
+              }
+            } catch (error) {
+              // Don't throw - the blockchain transactions succeeded
+              console.error('Failed to notify contract service:', error);
+            }
           }
-        } catch (error) {
-          console.error('Failed to notify contract service:', error);
-          // Don't throw - the blockchain transaction succeeded
-        }
-      }
-
-      return txHash;
+        },
+        { contractAddress: params.contractAddress, reason: params.reason, refundPercent: params.refundPercent, contractId: params.contract?.id, prompts: params.prompts }
+      );
     }
   }), [
     // Depend on backendUserData and isLoadingUserData for clean re-renders
@@ -410,7 +372,10 @@ function AuthWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={authValue}>
-      {walletPrompt && <WalletSignaturePrompt prompt={walletPrompt} />}
+      {/* Not when the wallet's own screen already says it (walletSaysIt): then ours only repeats it. */}
+      {walletPrompt && !(walletPrompt.kind === 'transaction' && walletPrompt.saidByWallet) && (
+        <WalletSignaturePrompt prompt={walletPrompt} />
+      )}
       {children}
     </AuthContext.Provider>
   );
@@ -426,7 +391,10 @@ export function SimpleAuthProvider({ children }: SimpleAuthProviderProps) {
     rpcUrl: config.rpcUrl,
     explorerBaseUrl: config.explorerBaseUrl,
     walletConnectProjectId: config.walletConnectProjectId,
-    privyAppId: config.privyAppId
+    privyAppId: config.privyAppId,
+    showLegacyAuth: config.showLegacyAuth,
+    serviceLink: config.serviceLink,
+    termsVersion: config.termsVersion
   } : null;
 
   // CRITICAL: Always render the SAME component tree structure regardless of

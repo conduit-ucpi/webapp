@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import { motion, useInView } from 'framer-motion';
 import Button from '@/components/ui/Button';
 
@@ -70,8 +71,8 @@ export default function InteractiveDemo() {
     {
       id: 2,
       title: "John puts money in secure trust",
-      description: "John wants the laptop. He deposits $800 into the secure escrow - money doesn't go to Sarah yet.",
-      action: "Fund Escrow",
+      description: "John wants the laptop. He deposits $800 into a protected payment - money doesn't go to Sarah yet.",
+      action: "Fund Payment",
       visual: (
         <div className="space-y-3">
           <div className="flex items-center space-x-4">
@@ -94,7 +95,7 @@ export default function InteractiveDemo() {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <div className="flex items-center space-x-2">
               <ShieldIcon className="w-5 h-5 text-blue-500" />
-              <span className="text-sm font-medium text-blue-700">Secure Escrow</span>
+              <span className="text-sm font-medium text-blue-700">Protected Payment</span>
               <span className="text-sm text-blue-600">$800</span>
             </div>
           </div>
@@ -192,16 +193,9 @@ export default function InteractiveDemo() {
         <h2 className="text-3xl lg:text-4xl font-bold text-secondary-900 dark:text-white mb-4">
           Watch a Transaction in 30 Seconds
         </h2>
-        <p className="text-lg text-secondary-600 dark:text-secondary-400 max-w-2xl mx-auto mb-6">
+        <p className="text-lg text-secondary-600 dark:text-secondary-400 max-w-2xl mx-auto">
           Follow Sarah and John through a real transaction to see how secure payments work
         </p>
-        <Button
-          onClick={playDemo}
-          disabled={isPlaying}
-          className=""
-        >
-          {isPlaying ? 'Playing Demo...' : 'Play Interactive Demo'}
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -220,7 +214,7 @@ export default function InteractiveDemo() {
                   animate={activeStep === index ? { scale: [1, 1.1, 1] } : {}}
                   transition={{ repeat: activeStep === index ? Infinity : 0, duration: 1 }}
                 >
-                  {activeStep > index ? <CheckIcon className="w-4 h-4" /> : step.id}
+                  {step.id}
                 </motion.div>
                 <div className="flex-1">
                   <h3 className="font-semibold text-secondary-900 dark:text-white mb-2">{step.title}</h3>
@@ -239,9 +233,11 @@ export default function InteractiveDemo() {
         <p className="text-sm text-secondary-600 dark:text-secondary-400 mb-4">
           Want to try it yourself? Create a test payment with just $0.001
         </p>
-        <Button variant="outline" className="">
-          Start Free Test
-        </Button>
+        <Link href="/create">
+          <Button variant="outline" className="">
+            Start Free Test
+          </Button>
+        </Link>
       </div>
     </div>
   );

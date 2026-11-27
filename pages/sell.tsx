@@ -46,8 +46,8 @@ export default function Sell() {
   return (
     <>
       <SEO
-        title={`Sell with ${siteName} — Get Paid in Stablecoins with Escrow Protection`}
-        description="Create secure payment requests and get paid in USDC. Time-locked escrow protects both sides. No chargebacks, instant settlement, 1% flat fee."
+        title={`Sell with ${siteName} — Get Paid in Stablecoins with Payment Protection`}
+        description="Create secure payment requests and get paid in USDC. A time-locked protected payment covers both sides. No chargebacks, instant settlement, 1% flat fee."
         keywords="sell crypto, accept USDC, stablecoin payments, escrow payment request, get paid crypto, freelancer payments, secure invoicing"
         canonical="/sell"
         structuredData={[financialServiceSchema, articleSchema]}
@@ -78,9 +78,9 @@ export default function Sell() {
               <motion.p
                 variants={heroChild}
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
-                Send a payment request, your buyer pays into a time-locked escrow, and you get paid automatically on the payout date. 1&nbsp;% fee. No middleman holding your money.
+                Send a payment request, your buyer pays into a time-locked protected payment, and you get paid automatically on the payout date. 1&nbsp;% fee. No middleman holding your money.
               </motion.p>
 
               <motion.div variants={heroChild} className="mt-12 flex flex-wrap gap-3">
@@ -134,7 +134,7 @@ export default function Sell() {
                 },
                 {
                   num: '02',
-                  title: 'Buyer pays into escrow',
+                  title: 'Buyer pays into a protected payment',
                   desc: 'Your buyer clicks the link, connects a wallet, and pays. Funds are locked in a smart contract — safe from both sides until the payout date.',
                 },
                 {
@@ -175,7 +175,7 @@ export default function Sell() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-16"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Get paid without giving up control.
               </h2>
@@ -189,7 +189,7 @@ export default function Sell() {
                 },
                 {
                   label: 'No payment processor',
-                  text: 'Funds go from escrow to your wallet. No one holds your money, takes a float, or freezes your account.',
+                  text: 'Funds go from the payment contract to your wallet. No one holds your money, takes a float, or freezes your account.',
                 },
                 {
                   label: 'Instant settlement',
@@ -201,7 +201,7 @@ export default function Sell() {
                 },
                 {
                   label: 'Buyer gets protection too',
-                  text: 'The escrow gives your buyer confidence to pay. They know funds are safe until you deliver.',
+                  text: 'Payment protection gives your buyer confidence to pay. They know funds are safe until you deliver.',
                 },
                 {
                   label: 'No sign-up required',
@@ -237,7 +237,7 @@ export default function Sell() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-16"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 From freelancers to storefronts.
               </h2>
@@ -247,7 +247,7 @@ export default function Sell() {
               {[
                 {
                   label: 'Freelancers & contractors',
-                  text: 'Send a payment request before you start work. Your client funds the escrow upfront, and you get paid when the job is delivered.',
+                  text: 'Send a payment request before you start work. Your client funds the protected payment upfront, and you get paid when the job is delivered.',
                 },
                 {
                   label: 'Online sellers',
@@ -340,7 +340,7 @@ export default function Sell() {
             <Fade>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-3"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Ready to get paid?
               </h2>
@@ -371,10 +371,10 @@ export default function Sell() {
                   Source code
                 </a>
                 <a
-                  href="mailto:info@conduit-ucpi.com"
+                  href="mailto:info@stabledrop.me"
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
                 >
-                  info@conduit-ucpi.com
+                  info@stabledrop.me
                 </a>
               </div>
             </Fade>

@@ -34,11 +34,53 @@ export interface ColorScale {
   900: RgbTriple;
 }
 
+/**
+ * The other colour families the components use by name (Tailwind's own `gray-*`, `blue-*`,
+ * `red-*`…). They are themed the same way as primary and secondary, so a look can restyle every
+ * colour on a page without the components changing; their defaults are Tailwind's stock values,
+ * so a theme that leaves them alone looks exactly as it always has.
+ *
+ * success / warning / error carry only the steps tailwind.config.js has always defined (50, 500,
+ * 600). Classes naming other steps have never produced CSS, and defining them would start
+ * colouring elements that have always been uncoloured.
+ */
+export type PaletteName =
+  | 'gray' | 'neutral' | 'red' | 'orange' | 'amber' | 'yellow' | 'green' | 'emerald'
+  | 'blue' | 'indigo' | 'purple' | 'pink' | 'success' | 'warning' | 'error';
+
+/** Step ("50" … "950") to RGB triple. */
+export type Palette = Record<string, RgbTriple>;
+
+/**
+ * The primary button. Its own settings because it is not the accent colour: the app's main
+ * action has always been dark neutral on light, light on dark. Values are CSS colours, so a
+ * default can refer to a theme variable ("rgb(var(--wl-secondary-900))") and follow it.
+ */
+export interface ButtonTheme {
+  radius: string;
+  bg: string;
+  fg: string;
+  hoverBg: string;
+  darkBg: string;
+  darkFg: string;
+  darkHoverBg: string;
+}
+
 export interface BrandTheme {
   /** Accent family: primary actions, links, active states. */
   primary: ColorScale;
   /** Neutral family: text, surfaces, borders. */
   secondary: ColorScale;
+  /** Every other named colour family. See PaletteName. */
+  palettes: Record<PaletteName, Palette>;
+  /** `white` and `black` as used in classes (bg-white, text-black/50…). */
+  white: RgbTriple;
+  black: RgbTriple;
+  /** CSS font stack for code and addresses (`font-mono`). */
+  monoFontFamily: string;
+  /** The accent face used for display lines and quotes (Newsreader in the default look). */
+  accentFontFamily: string;
+  button: ButtonTheme;
   /**
    * Corner radius applied to buttons, inputs and cards, as a CSS length.
    * A surprising amount of a brand's character sits here — '0' reads as
@@ -52,11 +94,40 @@ export interface BrandTheme {
 }
 
 /** A theme as a tenant authors it: any subset, down to a single colour step. */
-export type PartialBrandTheme = Partial<Omit<BrandTheme, 'primary' | 'secondary'>> & {
+export type PartialBrandTheme = Partial<Omit<BrandTheme, 'primary' | 'secondary' | 'palettes' | 'button'>> & {
   primary?: Partial<ColorScale>;
   secondary?: Partial<ColorScale>;
+  palettes?: Partial<Record<PaletteName, Palette>>;
+  button?: Partial<ButtonTheme>;
 };
 
+/**
+ * How the faces a theme names get loaded. The theme's font stacks only name
+ * families; without this, a partner's face renders only where the visitor
+ * happens to have it installed.
+ */
+export interface BrandFonts {
+  /** A stylesheet on https://fonts.googleapis.com. */
+  stylesheetHref?: string;
+  /** Font files uploaded to the white-label service. */
+  faces?: FontFaceRef[];
+}
+
+export interface FontFaceRef {
+  /** The family name the theme's font stacks refer to. */
+  family: string;
+  /** `400`, or a variable range such as `100 900`. */
+  weight?: string;
+  style?: 'normal' | 'italic';
+  /** Uploaded woff2 asset id; a URL once resolved. */
+  asset: string;
+}
+
+/**
+ * Images. As authored in the white-label service each is an uploaded asset id
+ * or a path on our own site; resolveBrand turns ids into URLs, so components
+ * only ever see something they can put in `src`.
+ */
 export interface BrandAssets {
   /** Wordmark or logo for light surfaces. Falls back to the brand name as text. */
   logo?: string;
@@ -117,9 +188,9 @@ export interface BrandConfig {
   /** BCP 47 tag, e.g. 'en' or 'es-VE'. Reserved for the locale work. */
   locale?: string;
   /**
-   * Origin of the Node API. Empty string means same-origin, which is what the
-   * box build wants; the static build sets it to the API host. Mirrors
-   * NEXT_PUBLIC_API_BASE_URL so the two cannot disagree.
+   * @deprecated Never read, and never accepted from the white-label service:
+   * the API origin is deployment config (NEXT_PUBLIC_API_BASE_URL), and a brand
+   * record able to set it could point the app's API calls anywhere.
    */
   apiBaseUrl?: string;
 
@@ -134,6 +205,23 @@ export interface BrandConfig {
   copy?: BrandCopy;
   links?: BrandLinks;
   features?: BrandFeatures;
+  fonts?: BrandFonts;
+  /**
+   * Overrides of the SDK's i18n catalogue, per locale:
+   * `{ es: { 'create.title': '…' } }`. Applied by I18nProvider, which drops a
+   * key the catalogue does not have and an override whose `{placeholders}`
+   * differ from the string it replaces — see i18n/messageOverrides.ts.
+   */
+  messages?: Partial<Record<string, Record<string, string>>>;
+  /** https URLs a completed flow may send the visitor back to. */
+  returnUrls?: string[];
+  /**
+   * Where the partner hosts the pages that frame ours (`https://cobro.com`, or with a path,
+   * `https://cobro.com/pagos`). Links we hand out — a payment link to copy, a QR code — are built
+   * on it with the same path and query, so they open on the partner's site. Absent = our own site.
+   * Validated by whitelabelservice: https, no query or fragment.
+   */
+  payPageBase?: string;
 }
 
 /** A config with every optional branch filled in, as the components consume it. */

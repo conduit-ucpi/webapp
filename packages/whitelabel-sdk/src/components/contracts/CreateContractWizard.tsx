@@ -28,6 +28,7 @@ import {
 import ReleaseDateField from '@/components/contracts/ReleaseDateField';
 import AdvancedOptions from '@/components/contracts/AdvancedOptions';
 import PaymentTermsForm from '@/components/contracts/PaymentTermsForm';
+import { convertibleFrom } from '@/lib/stablecoinSwap';
 import CreateProgressSteps from '@/components/contracts/CreateProgressSteps';
 import ReviewRequest from '@/components/contracts/ReviewRequest';
 import SendRequestScreen from '@/components/contracts/SendRequestScreen';
@@ -37,7 +38,8 @@ import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import { emailsEqual } from '@/utils/address';
 import { useT } from '../../i18n';
 import type { MessageKey } from '../../i18n';
-import { useBrandedHref } from '../../theme';
+import { useBrandedHref, usePartnerBrand, useShareableUrl } from '../../theme';
+import { attachAnalyticsClientId } from '../../lib/analyticsClientId';
 
 interface CreateContractForm {
   buyerEmail: string;
@@ -78,6 +80,9 @@ const stepKeys: { id: string; title: MessageKey; description: MessageKey }[] = [
 export default function CreateContractWizard() {
   const t = useT();
   const brandedHref = useBrandedHref();
+  const shareable = useShareableUrl();
+  // Recorded on the contract: the white-label partner it was created under.
+  const brandId = usePartnerBrand()?.id;
 
   // Translated here rather than inside Wizard: Wizard is shared with callers
   // that pass their own already-worded steps, so it must not assume keys.
@@ -179,8 +184,8 @@ export default function CreateContractWizard() {
   // Generate payment link for created contract
   const generateContractPaymentLink = (): string => {
     if (!createdContractId) return '';
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : '';
-    return `${baseUrl}${brandedHref(`/contract-pay?contractId=${createdContractId}`)}`;
+    // On the partner's site when it frames ours, else this one.
+    return shareable(brandedHref(`/contract-pay?contractId=${createdContractId}`));
   };
 
   // Copy to clipboard. `kind` only affects wording — the send screen decides
@@ -255,12 +260,13 @@ export default function CreateContractWizard() {
           newErrors.description = t('wizard.errDescription');
         }
 
-        // Validate optional arbiter wallet address (advanced field)
+        // Validate the optional Third Voter (advanced field): a wallet address or an email.
         // If blank/whitespace-only: skip — this is an optional override.
-        // If provided: must be a valid Ethereum address.
+        // An email is resolved to that person's wallet by contractservice when the request is
+        // stored (it is part of the escrow's address, so it must be a wallet before any quote).
         {
           const trimmedArbiter = form.arbiterAddress.trim();
-          if (trimmedArbiter.length > 0 && !isValidWalletAddress(trimmedArbiter)) {
+          if (trimmedArbiter.length > 0 && !isValidWalletAddress(trimmedArbiter) && !isValidEmail(trimmedArbiter)) {
             newErrors.arbiterAddress = t('wizard.errArbiter');
           }
         }
@@ -344,40 +350,49 @@ export default function CreateContractWizard() {
         throw new Error(t('err.noWalletAddress'));
       }
       
-      const pendingContractRequest = {
-        buyerEmail: noBuyerEmail
-          ? 'createdempty@conduit-ucpi.com'
-          : (form.buyerType === 'email' ? form.buyerEmail : (form.buyerFid ? `${form.buyerFid}@farcaster.xyz` : '')),
-        buyerFarcasterHandle: form.buyerType === 'farcaster' ? form.buyerEmail : '',
-        sellerEmail: user.email,
-        sellerAddress: user.walletAddress,
+      // ⚠️ THROUGH ap2service, THE SAME SERVICE THAT TAKES THE PAYMENT. It stores the request in
+      //    contractservice as this seller, with no buyer: whoever opens the link and pays first
+      //    becomes the buyer. (The email and Farcaster buyer modes are unreachable — noBuyerEmail
+      //    is always true — and this endpoint does not take a buyer.)
+      const paymentRequest = {
+        // Token base units, which for a 6-decimal token are contractservice's micro-units.
         amount: toMicroUSDC(parseFloat(form.amount.trim())),
-        currency: `micro${selectedTokenSymbol}`,
-        currencySymbol: selectedTokenSymbol,
+        token_symbol: selectedTokenSymbol,
         description: form.description,
         // Zero is EscrowContract's instant-transfer sentinel: the deposit pays
         // the seller in the same transaction instead of funding an escrow.
-        expiryTimestamp: isInstantPayment ? 0 : form.payoutTimestamp,
-        serviceLink: config.serviceLink,
-        ...(form.arbiterAddress.trim() ? { arbiterAddress: ethers.getAddress(form.arbiterAddress.trim()) } : {})
+        expiry_timestamp: isInstantPayment ? 0 : form.payoutTimestamp,
+        ...(brandId ? { brand: brandId } : {}),
+        // A wallet goes checksummed; an email goes as typed (lower-cased), for contractservice to resolve.
+        ...(form.arbiterAddress.trim()
+          ? {
+              arbiter: isValidWalletAddress(form.arbiterAddress.trim())
+                ? ethers.getAddress(form.arbiterAddress.trim())
+                : form.arbiterAddress.trim().toLowerCase()
+            }
+          : {})
       };
 
       if (!authenticatedFetch) {
         throw new Error(t('err.notAuthenticated'));
       }
-      const response = await authenticatedFetch('/api/contracts', {
+      const response = await authenticatedFetch('/api/ap2/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(pendingContractRequest)
+        body: JSON.stringify(paymentRequest)
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || t('err.createFailed'));
+        // ap2service says why in `detail`; the proxy's own refusals use `error`.
+        const reason = typeof errorData.detail === 'string' ? errorData.detail : errorData.error;
+        throw new Error(reason || t('err.createFailed'));
       }
 
       const responseData = await response.json();
-      const contractId = responseData.contractId || responseData.id;
+      const contractId = responseData.request_id;
+      // The seller started this payment: the purchase event at funding is credited to their visit.
+      if (contractId) void attachAnalyticsClientId(contractId, authenticatedFetch);
 
       setCreatedContractId(contractId);
       setShowSuccessScreen(true);
@@ -428,6 +443,7 @@ export default function CreateContractWizard() {
                 tokenSymbol={selectedTokenSymbol}
                 tokenOptions={availableTokens.map(t => t.symbol)}
                 onTokenChange={setSelectedTokenSymbol}
+                payableWith={convertibleFrom(config?.chainId, selectedTokenSymbol)}
                 networkLabel={config ? getNetworkName(config.chainId) : undefined}
                 balanceText={isLoadingBalance ? undefined : `Balance: ${tokenBalance} ${selectedTokenSymbol}`}
               />
@@ -502,8 +518,9 @@ export default function CreateContractWizard() {
           networkLabel={config ? getNetworkName(config.chainId) : undefined}
           description={form.description}
           payoutLabel={
-            form.payoutTimestamp ? formatDateTimeWithTZ(form.payoutTimestamp) : undefined
+            !isInstantPayment && form.payoutTimestamp ? formatDateTimeWithTZ(form.payoutTimestamp) : undefined
           }
+          instant={isInstantPayment}
           copied={paymentLinkCopied}
           onCopy={handleCopyPaymentLink}
           onDone={() => router.push('/dashboard')}

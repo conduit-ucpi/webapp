@@ -39,7 +39,7 @@ export default function TransactionWalkthrough({ isOpen, onClose, onComplete }: 
     {
       id: 'welcome',
       title: 'Welcome to Your First Payment Request!',
-      description: 'Let\'s walk through creating a secure escrow payment step by step.',
+      description: 'Let\'s walk through creating a protected payment step by step.',
       content: (
         <div className="text-center py-8">
           <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">

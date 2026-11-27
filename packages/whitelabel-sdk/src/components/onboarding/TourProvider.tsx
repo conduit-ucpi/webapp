@@ -173,7 +173,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <span className="text-xs text-secondary-500 dark:text-secondary-400">
-                      {currentStep + 1} of {steps.length}
+                      {t('tourProvider.stepOf', { current: currentStep + 1, total: steps.length })}
                     </span>
                     <div className="flex space-x-1">
                       {steps.map((_, index) => (
@@ -213,7 +213,7 @@ export function TourProvider({ children }: { children: React.ReactNode }) {
                       onClick={nextStep}
                       className="text-xs"
                     >
-                      {currentStep === steps.length - 1 ? 'Finish' : 'Next'}
+                      {currentStep === steps.length - 1 ? t('tourProvider.finish') : t('tourProvider.next')}
                     </Button>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useBrandSource, useOptionalBrand } from './BrandProvider';
-import { withBrandParam } from './brandedHref';
+import { shareableUrl, withBrandParam } from './brandedHref';
 
 /**
  * Build in-app links that keep the visitor on the brand they arrived on.
@@ -14,7 +14,21 @@ export function useBrandedHref(): (path: string) => string {
   const source = useBrandSource();
 
   // 'default' means nothing asked for this brand, so there is nothing to carry.
-  const brandId = brand && source && source !== 'default' ? brand.id : null;
+  // A brand our own domain implies is not carried: the link opens on that
+  // domain, which implies it again.
+  const brandId = brand && source && source !== 'default' && source !== 'host' ? brand.id : null;
 
   return useCallback((path: string) => withBrandParam(path, brandId), [brandId]);
+}
+
+/**
+ * [shareableUrl] for the brand the page is showing: the partner's site when it frames ours,
+ * else this site. For links handed to someone else; see shareableUrl.
+ */
+export function useShareableUrl(): (path: string) => string {
+  const payPageBase = useOptionalBrand()?.payPageBase;
+  return useCallback(
+    (path: string) => shareableUrl(path, payPageBase, typeof window !== 'undefined' ? window.location.origin : ''),
+    [payPageBase]
+  );
 }

@@ -50,6 +50,13 @@ export interface MerchantSettings {
   createdAt: Date;
   updatedAt: Date;
   accessToken?: string; // Shopify access token
+  /**
+   * The Stabledrop user this shop belongs to: the userservice id of whoever was signed in when
+   * the shop was connected, or failing that of whoever first saved its settings. Only they may
+   * read or change the settings afterwards (pages/api/shopify/settings.ts). Absent on a shop
+   * nobody has claimed yet.
+   */
+  ownerUserId?: string;
 }
 
 export async function getMerchantSettings(shop: string): Promise<MerchantSettings | null> {

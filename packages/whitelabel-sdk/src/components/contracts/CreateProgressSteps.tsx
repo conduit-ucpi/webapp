@@ -39,12 +39,15 @@ interface CreateProgressStepsProps {
   className?: string;
   /** Which journey to render. Defaults to the seller's create journey. */
   steps?: JourneyStep[];
+  /** Leave out the line under each title, on a screen with enough to read already. */
+  titlesOnly?: boolean;
 }
 
 export default function CreateProgressSteps({
   current,
   className = 'mb-14',
   steps = CREATE_JOURNEY_STEPS,
+  titlesOnly = false,
 }: CreateProgressStepsProps) {
   const t = useT();
 
@@ -77,7 +80,7 @@ export default function CreateProgressSteps({
                 ) : (
                   i + 1
                 )}
-                <span className="sr-only">{isComplete ? 'completed' : ''}</span>
+                <span className="sr-only">{isComplete ? t('steps.completed') : ''}</span>
               </span>
               <div
                 className="flex-1 h-px bg-secondary-200 dark:bg-secondary-700"
@@ -94,9 +97,11 @@ export default function CreateProgressSteps({
             >
               {t(step.titleKey)}
             </p>
-            <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400 leading-snug">
-              {t(step.detailKey)}
-            </p>
+            {!titlesOnly && (
+              <p className="mt-1 text-xs text-secondary-500 dark:text-secondary-400 leading-snug">
+                {t(step.detailKey)}
+              </p>
+            )}
           </li>
         );
       })}

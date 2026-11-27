@@ -199,8 +199,6 @@ jest.mock('@/hooks/useSimpleEthers', () => ({
     getUserAddress: jest.fn().mockResolvedValue('0xuser'),
     transferToContract: jest.fn().mockResolvedValue('0xtransfertxhash'),
     approveUSDC: jest.fn().mockResolvedValue('0xapprovaltxhash'),
-    depositToContract: jest.fn().mockResolvedValue('0xdeposittxhash'),
-    depositFundsAsProxy: jest.fn().mockResolvedValue('0xproxytxhash'),
   })
 }))
 

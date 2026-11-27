@@ -1,11 +1,21 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { isPathSegment } from '@/lib/server/serviceProxy';
+import { requireAdmin } from '@/lib/server/requireAdmin';
+import { logBackendAnswer } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
 
-  if (!id || typeof id !== 'string') {
+  if (!isPathSegment(id)) {
     return res.status(400).json({ error: 'Contract ID is required' });
   }
+
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    res.setHeader('Allow', ['GET', 'POST']);
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
+  if (!(await requireAdmin(req, res))) return;
 
   try {
     if (req.method === 'GET') {
@@ -19,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Contract service error:', response.status, errorText);
+        logBackendAnswer('Contract service', response.status, errorText);
         return res.status(response.status).json({ 
           error: response.status === 404 ? 'Contract not found' : 'Failed to fetch contract notes' 
         });
@@ -41,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Contract service error:', response.status, errorText);
+        logBackendAnswer('Contract service', response.status, errorText);
         return res.status(response.status).json({ 
           error: response.status === 404 ? 'Contract not found' : 'Failed to add note' 
         });

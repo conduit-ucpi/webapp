@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuth } from '@/utils/api-auth';
+import { isPathSegment } from '@/lib/server/serviceProxy';
+import { requireAuth, logApiFailure } from '@/utils/api-auth';
 
 /**
  * The arbiter seat state of one escrow (MARKETPLACE_OPENSPEC §15.6c).
@@ -18,22 +19,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { contractAddress } = req.query;
 
-  if (!contractAddress || typeof contractAddress !== 'string') {
+  if (!isPathSegment(contractAddress)) {
     return res.status(400).json({ error: 'Contract address is required' });
   }
 
   try {
     const authToken = requireAuth(req);
 
+    // The user's own session, and no service key: chainservice accepts a Bearer token on this
+    // read, and a key the browser-facing app does not need is one fewer place for it to leak
+    // from. (Sending one it did not recognise also logged a rejection on every read.)
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${authToken}`,
       'Cookie': req.headers.cookie || '',
       'Accept': 'application/json'
     };
-
-    if (process.env.X_API_KEY) {
-      headers['X-API-Key'] = process.env.X_API_KEY;
-    }
 
     const response = await fetch(
       `${process.env.CHAIN_SERVICE_URL}/api/chain/contract/${contractAddress}/arbiter`,
@@ -43,7 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (error) {
-    console.error('Arbiter state API error:', error);
+    logApiFailure('Arbiter state API error:', error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {

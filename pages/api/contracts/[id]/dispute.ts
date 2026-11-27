@@ -1,11 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import { isPathSegment } from '@/lib/server/serviceProxy';
 import { SubmitDisputeEntryRequest } from '@/types';
-import { requireAuth } from '@/utils/api-auth';
+import { requireAuth, logApiFailure } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { id } = req.query;
 
-  if (!id || typeof id !== 'string') {
+  if (!isPathSegment(id)) {
     return res.status(400).json({ error: 'Contract ID is required' });
   }
 
@@ -30,11 +31,16 @@ async function handleSubmitDisputeEntry(req: NextApiRequest, res: NextApiRespons
       timestamp: req.body.timestamp || Date.now() // Add timestamp if not provided
     };
     
-    if (!disputeEntry.reason || disputeEntry.refundPercent === undefined) {
-      return res.status(400).json({ error: 'Missing required fields: reason, refundPercent' });
+    if (!disputeEntry.reason) {
+      return res.status(400).json({ error: 'Missing required field: reason' });
     }
 
-    if (disputeEntry.refundPercent < 0 || disputeEntry.refundPercent > 100) {
+    // A null figure is a note without a vote (contractservice renders it as "No figure
+    // submitted"): the Third Voter's resignation, for one. It must never be coerced to 0,
+    // which would read as a real vote of everything to the seller.
+    if (disputeEntry.refundPercent == null) {
+      disputeEntry.refundPercent = null;
+    } else if (disputeEntry.refundPercent < 0 || disputeEntry.refundPercent > 100) {
       return res.status(400).json({ error: 'refundPercent must be between 0 and 100' });
     }
 
@@ -61,12 +67,33 @@ async function handleSubmitDisputeEntry(req: NextApiRequest, res: NextApiRespons
       body: JSON.stringify(disputeEntry)
     });
 
-    const responseData = await response.json();
-    console.log('Contract Service response:', responseData);
-    
+    // contractservice answers its refusals (403 not a party, 404 no such contract) with an empty
+    // body, so the body is read as text and only parsed when there is one. Parsing it blindly
+    // turned every refusal into a 500.
+    const text = await response.text();
+    let responseData: unknown = null;
+    try {
+      responseData = text ? JSON.parse(text) : null;
+    } catch {
+      responseData = null;
+    }
+    console.log('Contract Service response:', response.status, responseData);
+
+    if (!response.ok) {
+      const message =
+        (responseData as { error?: string; message?: string } | null)?.error ??
+        (responseData as { message?: string } | null)?.message ??
+        (response.status === 403 ? 'Only the buyer, seller or Third Voter can add a dispute entry'
+          : response.status === 404 ? 'Contract not found'
+          : response.status === 409 ? 'This payment has not been funded, so there is nothing to dispute yet'
+          : response.status === 503 ? 'Could not confirm this payment’s funding right now. Try again shortly.'
+          : 'Dispute entry was refused');
+      return res.status(response.status).json({ error: message });
+    }
+
     res.status(response.status).json(responseData);
   } catch (error) {
-    console.error('Submit dispute entry API error:', error);
+    logApiFailure('Submit dispute entry API error:', error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {

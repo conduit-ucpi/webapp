@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { extractAuthToken, requireAuth } from '@/utils/api-auth';
+import { extractAuthToken, requireAuth, logApiFailure } from '@/utils/api-auth';
 
 /**
  * Forward an authenticated API call to one of the backend services.
@@ -14,15 +14,15 @@ import { extractAuthToken, requireAuth } from '@/utils/api-auth';
  *    wallet, funded by it) and you READ marketplace state from contractservice. The UI never
  *    reads the chain for marketplace data, and never asks chainservice for an offer book.
  */
-type Service = 'chain' | 'contract' | 'user' | 'ap2';
+type Service = 'chain' | 'contract' | 'user' | 'ap2' | 'dispute';
 
 interface ProxyOptions {
   /** Which backend answers this — chainservice does things, contractservice serves reads. */
   service: Service;
   /** Path on that service, including the leading slash. */
   path: string;
-  method?: 'GET' | 'POST' | 'PATCH';
-  /** Forwarded verbatim as the request body; omit for GETs. */
+  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  /** Forwarded verbatim as the request body; omit for GETs and DELETEs. */
   body?: unknown;
   /**
    * Defaults to true. Set false only for a route that is genuinely public — the
@@ -30,6 +30,12 @@ interface ProxyOptions {
    * has no session and never had one.
    */
   requiresAuth?: boolean;
+  /**
+   * The status to answer with, given the service's. Defaults to passing it through, which is
+   * almost always right; a route overrides it only to change what the browser does next (e.g. a
+   * 401 that makes authenticatedFetch sign the user in again).
+   */
+  statusFor?: (status: number, body: unknown) => number;
 }
 
 function baseUrlFor(service: Service): string | undefined {
@@ -42,7 +48,30 @@ function baseUrlFor(service: Service): string | undefined {
       return process.env.USER_SERVICE_URL;
     case 'ap2':
       return process.env.AP2_SERVICE_URL;
+    // The arbiter service's admin API. Internal only: the browser reaches it through these
+    // routes, never directly, and the service itself insists on an admin identity.
+    case 'dispute':
+      return process.env.DISPUTE_SERVICE_URL;
   }
+}
+
+/**
+ * The public host this request reached us on, as `X-Forwarded-Host` / `X-Forwarded-Proto`, for
+ * ap2service to build links a caller can follow (its 401s point at the API reference's section on
+ * access codes, its spec names the API host the reader used).
+ *
+ * ⚠️ ap2service ONLY. userservice refuses any service lookup that carries a forwarded header —
+ *    that is how it tells a proxied call from a direct one — so these must never reach it.
+ *
+ * Caddy passes the original Host through and sets X-Forwarded-Proto; when a further proxy in front
+ * set X-Forwarded-Host, that one is the public host and wins.
+ */
+export function publicOriginHeaders(req: NextApiRequest): Record<string, string> {
+  const first = (value: string | string[] | undefined) =>
+    (Array.isArray(value) ? value[0] : value)?.split(',')[0]?.trim() || '';
+  const host = first(req.headers['x-forwarded-host']) || first(req.headers.host);
+  if (!host) return {};
+  return { 'X-Forwarded-Host': host, 'X-Forwarded-Proto': first(req.headers['x-forwarded-proto']) || 'http' };
 }
 
 export async function proxyToService(
@@ -56,6 +85,11 @@ export async function proxyToService(
   if (!baseUrl) {
     console.error(`${options.service} service URL is not configured`);
     return void res.status(500).json({ error: 'Service not configured' });
+  }
+
+  if (pathEscapes(options.path)) {
+    console.warn(`Refused a proxied path that would resolve elsewhere on ${options.service}service`);
+    return void res.status(400).json({ error: 'Invalid request path' });
   }
 
   try {
@@ -79,10 +113,14 @@ export async function proxyToService(
       headers['X-API-Key'] = process.env.X_API_KEY;
     }
 
+    if (options.service === 'ap2') {
+      Object.assign(headers, publicOriginHeaders(req));
+    }
+
     const response = await fetch(`${baseUrl}${options.path}`, {
       method,
       headers,
-      body: method === 'GET' ? undefined : JSON.stringify(options.body ?? {})
+      body: method === 'GET' || method === 'DELETE' ? undefined : JSON.stringify(options.body ?? {})
     });
 
     const text = await response.text();
@@ -94,13 +132,15 @@ export async function proxyToService(
       return void res.status(response.status).end();
     }
 
+    let body: unknown;
     try {
-      res.status(response.status).json(JSON.parse(text));
+      body = JSON.parse(text);
     } catch {
-      res.status(response.status).json({ error: text.substring(0, 500) });
+      body = { error: text.substring(0, 500) };
     }
+    res.status(options.statusFor ? options.statusFor(response.status, body) : response.status).json(body);
   } catch (error) {
-    console.error(`Proxy to ${options.service}service ${options.path} failed:`, error);
+    logApiFailure(`Proxy to ${options.service}service ${options.path} failed:`, error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {
@@ -110,7 +150,7 @@ export async function proxyToService(
 }
 
 /** Reject anything but the one method a route supports. */
-export function methodGuard(req: NextApiRequest, res: NextApiResponse, allowed: 'GET' | 'POST' | 'PATCH'): boolean {
+export function methodGuard(req: NextApiRequest, res: NextApiResponse, allowed: 'GET' | 'POST' | 'PATCH' | 'DELETE'): boolean {
   if (req.method !== allowed) {
     res.status(405).json({ error: 'Method not allowed' });
     return false;
@@ -118,8 +158,37 @@ export function methodGuard(req: NextApiRequest, res: NextApiResponse, allowed: 
   return true;
 }
 
-/** Read a single dynamic route segment, rejecting arrays and blanks. */
+/**
+ * True when a caller-supplied value is safe to drop into an upstream URL as ONE path segment.
+ *
+ * ⚠️ Every id and address we route on is letters, digits, `-` and `_` (Mongo ids, UUIDs,
+ *    `mcp-…` ids, 0x addresses). Anything else is not an id, it is an attempt to steer the
+ *    request: on 2026-11-16 a "seller address" of `../../contracts#` turned the reserves route
+ *    into GET /api/contracts on contractservice, with our service key attached. Next decodes
+ *    `%2F`, `%23` and `%3F` before a handler sees the value, and fetch() then resolves the dots
+ *    and drops everything after the `#`.
+ */
+export function isPathSegment(value: unknown): value is string {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(value);
+}
+
+/**
+ * True when a finished upstream path would be rewritten by URL parsing into a different one: a
+ * `.` or `..` segment (however encoded), a backslash, or a `#` that cuts the rest off. The last
+ * line of defence for a route that built its path from something isPathSegment never saw.
+ */
+export function pathEscapes(path: string): boolean {
+  const queryAt = path.indexOf('?');
+  const pathPart = queryAt === -1 ? path : path.slice(0, queryAt);
+  if (path.includes('#') || pathPart.includes('\\')) return true;
+  return pathPart.split('/').some(segment => {
+    const plain = segment.replace(/%2e/gi, '.');
+    return plain === '.' || plain === '..';
+  });
+}
+
+/** Read a single dynamic route segment, rejecting arrays, blanks and anything that is not an id. */
 export function routeParam(req: NextApiRequest, name: string): string | null {
   const value = req.query[name];
-  return typeof value === 'string' && value.length > 0 ? value : null;
+  return isPathSegment(value) ? value : null;
 }

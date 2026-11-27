@@ -49,7 +49,7 @@ const AnimatedMoneyFlow = () => {
           animate={{ opacity: 1 }}
           transition={{ delay: 1.0 }}
         >
-          Escrow
+          Protected
         </motion.text>
         <motion.text
           x="300" y="90" textAnchor="middle"
@@ -206,14 +206,14 @@ export default function AnimatedHero() {
           className="text-xl text-secondary-700 dark:text-secondary-300 font-medium"
           variants={itemVariants}
         >
-          Escrow protection made simple - no lawyers, no banks, just security
+          Payment protection made simple - no lawyers, no banks, just security
         </motion.p>
 
         <motion.p
           className="text-lg text-secondary-600 dark:text-secondary-400 max-w-lg"
           variants={itemVariants}
         >
-          <span className="font-semibold text-secondary-900 dark:text-white">Smart escrow</span> that releases payments automatically when agreed time passes - with dispute protection if things go wrong.
+          <span className="font-semibold text-secondary-900 dark:text-white">Smart protected payments</span> that release automatically when agreed time passes - with dispute protection if things go wrong.
         </motion.p>
 
         <motion.div className="pt-6" variants={itemVariants}>

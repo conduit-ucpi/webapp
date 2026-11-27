@@ -1,4 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
+import type { GetStaticProps } from 'next';
+import { isr } from '@/utils/isr';
+import SEO from '@/components/SEO';
+import { rampFactsAtBuild, type RampFacts } from '@/lib/server/rampFacts';
 import { useAuth } from '@/components/auth';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
@@ -6,28 +10,23 @@ import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import ExpandableHash from '@/components/ui/ExpandableHash';
-import TokenGuide from '@/components/ui/TokenGuide';
-import CashOutPanel from '@/components/wallet/CashOutPanel';
+import FundingOptions from '@/components/funding/FundingOptions';
+import ExchangeDirectory from '@/components/funding/ExchangeDirectory';
+import WalletAddressBox from '@/components/funding/WalletAddressBox';
+import { useCoinbaseAvailability } from '@/hooks/useCoinbaseAvailability';
+import { useOnrampMinimum } from '@/hooks/useOnrampMinimum';
+import { getChainName } from '@/utils/chainNames';
+import { useT } from '@/i18n';
+import { CashOutPanel, ConvertPanel } from '@conduit-ucpi/whitelabel-sdk';
+import { SWAP_VENUES } from '@/lib/stablecoinSwap';
 import { ethers } from 'ethers';
-import { RpcClient } from '@/lib/rpc/RpcClient';
 import { useFarcaster } from '@/components/farcaster/FarcasterDetectionProvider';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
-import { ensureHexPrefix } from '@/utils/hexUtils';
-import { formatGweiAsEthForLogging } from '@/utils/logging';
 import { mLog } from '@/utils/mobileLogger';
 
 interface WalletBalances {
   native: string;
   tokens: Record<string, string>; // keyed by token symbol
-}
-
-interface ChainInfo {
-  chainId: number;
-  chainIdHex: string;
-  name: string;
-  blockNumber: number;
-  gasPrice: string | null;
 }
 
 interface SendFormData {
@@ -36,7 +35,18 @@ interface SendFormData {
   currency: string; // 'NATIVE' or token symbol
 }
 
-export default function Wallet() {
+const card = 'bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6 mb-8';
+const sectionHeading = 'text-lg font-semibold text-secondary-900 dark:text-white';
+const sectionBlurb = 'mt-1 text-sm text-secondary-600 dark:text-secondary-300';
+
+/**
+ * The wallet: what it holds, then the things done with it, in the order money moves: add it
+ * (FundingOptions, the same list /buy-token and the payment screen show), convert it into the
+ * stablecoin that can be cashed out (ConvertPanel, where this network has a pool for it), cash it
+ * out (Coinbase's sell order, or by hand through an exchange) and send it on.
+ */
+export default function Wallet({ ramps }: { ramps?: RampFacts }) {
+  const t = useT();
   const { user, state, isLoading: authLoading, getEthersProvider, showWalletUI, canExportWallet, exportWallet } = useAuth();
   // Embedded wallets only: the provider shows the key in its own isolated UI, never to this app.
   const showExport = typeof canExportWallet === 'function' && canExportWallet();
@@ -47,7 +57,8 @@ export default function Wallet() {
   // Using ethers directly instead of SDK
   const [balances, setBalances] = useState<WalletBalances>({ native: '0.0000', tokens: {} });
   const [isLoadingBalances, setIsLoadingBalances] = useState(false);
-  const defaultTokenSymbol = config?.defaultToken?.symbol || config?.defaultTokenSymbol || 'USDC';
+  // `ramps` is what the server knew when it wrote the page; the loaded config replaces it.
+  const defaultTokenSymbol = config?.defaultToken?.symbol || config?.defaultTokenSymbol || ramps?.tokenSymbols[0] || 'USDC';
   const [sendForm, setSendForm] = useState<SendFormData>({
     recipient: '',
     amount: '',
@@ -56,85 +67,26 @@ export default function Wallet() {
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [sendSuccess, setSendSuccess] = useState<string | null>(null);
-  const [chainInfo, setChainInfo] = useState<ChainInfo | null>(null);
-  const [isLoadingChainInfo, setIsLoadingChainInfo] = useState(false);
 
-  const loadChainInfo = async () => {
-    if (!user || !config) return;
-
-    setIsLoadingChainInfo(true);
-    try {
-      console.log('🔧 Loading chain info via READ-ONLY RPC (no wallet access!)');
-
-      // Read via the single read-RPC owner (RpcClient) — no wallet access needed.
-      const rpcClient = new RpcClient(config.rpcUrl);
-
-      // Get network info
-      const chainId = await rpcClient.getChainId();
-
-      // Get current block number
-      const blockNumber = await rpcClient.getBlockNumber();
-
-      // Get current gas price
-      let gasPrice: string | null = null;
-      try {
-        console.log('Loading chain info - fetching gas price via RPC...');
-        const feeData = await rpcClient.getFeeData();
-        if (feeData.gasPrice) {
-          gasPrice = ethers.formatUnits(feeData.gasPrice, 'gwei');
-          console.log(`Got gas price from RPC: ${formatGweiAsEthForLogging(parseFloat(gasPrice))}`);
-        }
-      } catch (error) {
-        console.warn('Failed to get gas price from RPC:', error);
-        gasPrice = null;
-      }
-
-      // Determine chain name based on chainId
-      const chainNames: Record<number, string> = {
-        // Ethereum
-        1: 'Ethereum Mainnet',
-        11155111: 'Sepolia Testnet',
-        
-        // Avalanche
-        43114: 'Avalanche C-Chain',
-        43113: 'Avalanche Fuji Testnet',
-        
-        // Polygon
-        137: 'Polygon Mainnet',
-        80001: 'Mumbai Testnet',
-        
-        // Base
-        8453: 'Base Mainnet',
-        84532: 'Base Sepolia',
-        
-        // Arbitrum
-        42161: 'Arbitrum One',
-        421614: 'Arbitrum Sepolia',
-        
-        // Optimism
-        10: 'Optimism Mainnet',
-        11155420: 'Optimism Sepolia',
-        
-        // BSC
-        56: 'BNB Smart Chain',
-        97: 'BSC Testnet',
-      };
-      
-      const name = chainNames[chainId] || `Chain ID: ${chainId}`;
-
-      setChainInfo({
-        chainId,
-        chainIdHex: ensureHexPrefix(chainId.toString(16)),
-        name,
-        blockNumber,
-        gasPrice
-      });
-    } catch (error) {
-      console.error('Error loading chain info:', error);
-    } finally {
-      setIsLoadingChainInfo(false);
-    }
-  };
+  // The token the "add" section is for. Cashing out names the default one: its panel has its own choice.
+  const [addSymbol, setAddSymbol] = useState<string | null>(null);
+  const addTokenSymbol = addSymbol ?? defaultTokenSymbol;
+  const addToken = config?.supportedTokens?.find((token) => token.symbol === addTokenSymbol);
+  // "Base", not "Base Mainnet": it is the word an exchange's deposit and withdrawal screens use.
+  const chainId = config?.chainId ?? ramps?.chainId;
+  const networkName = chainId === undefined ? '' : getChainName(chainId).replace(/ Mainnet$/, '');
+  // Whether this network converts between the stablecoins listed here: what ConvertPanel itself asks.
+  const listedSymbols = (config?.supportedTokens?.map((token) => token.symbol) ?? ramps?.tokenSymbols ?? []).map((symbol) => symbol.toUpperCase());
+  const canConvert = chainId !== undefined && (SWAP_VENUES[Number(chainId)]?.tokens.every((symbol) => listedSymbols.includes(symbol)) ?? false);
+  const jumps = [
+    ['#add', 'walletPage.jump.add'],
+    ...(canConvert ? ([['#convert', 'walletPage.jump.convert']] as const) : []),
+    ['#cash-out', 'walletPage.jump.cashOut'],
+    ['#send', 'walletPage.jump.send'],
+  ] as const;
+  const showCoinbase = !!config?.coinbaseProjectId;
+  const coinbase = useCoinbaseAvailability(showCoinbase);
+  const coinbaseMinimum = useOnrampMinimum(addTokenSymbol, showCoinbase)?.inTokens;
 
   const loadBalances = useCallback(async () => {
     if (!user || !config || !walletAddress) {
@@ -207,58 +159,17 @@ export default function Wallet() {
     // Dynamic embedded wallet users get the same balance display as everyone else
     if (user && config && state?.isConnected) {
       loadBalances();
-      loadChainInfo();
     }
-    // Note: loadBalances and loadChainInfo are omitted from deps because they're memoized with useCallback
+    // Note: loadBalances is omitted from deps because it is memoized with useCallback
     // Including them would cause a render loop as their dependencies (getNativeBalance, getUSDCBalance, etc.)
     // may change identity on each render even though they're functionally stable
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, config, state?.isConnected]);
 
-  // Note: We used to auto-popup the Dynamic modal for embedded wallet users,
-  // but now we show the full wallet UI to all users and provide a button to manually open the modal
-
-  const handleShowWalletServices = async () => {
-    console.log('🔧 Wallet Services Debug:', {
-      user: user ? {
-        authProvider: user.authProvider,
-        email: user.email,
-        walletAddress: user.walletAddress
-      } : null,
-      showWalletUI: !!showWalletUI
-    });
-
-    // Try the programmatic approach first
-    if (showWalletUI) {
-      try {
-        console.log('🔧 Trying programmatic showWalletUI...');
-        await showWalletUI();
-        return;
-      } catch (error) {
-        console.error('🔧 Programmatic wallet UI failed:', error);
-        // Fall through to alternative method
-      }
-    }
-
-    // Alternative: Open the Web3Auth wallet management URL directly
-    console.log('🔧 Opening Web3Auth wallet services URL directly...');
-    const walletUrl = 'https://wallet.web3auth.io';
-
-    // Open in a new tab/window
-    try {
-      console.log('🔧 Opening in new tab');
-      window.open(walletUrl, '_blank', 'noopener,noreferrer');
-    } catch (error) {
-      // Fallback: navigate in same window if popup blocked
-      console.log('🔧 Fallback: opening in same window (popup might be blocked)');
-      window.location.href = walletUrl;
-    }
-  };
-
   const handleSendSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !config) {
-      setSendError('User or config not available. Please reconnect your wallet.');
+      setSendError(t('walletPage.send.notReady'));
       return;
     }
 
@@ -276,7 +187,7 @@ export default function Wallet() {
           data: '0x',
           value: ethers.parseEther(sendForm.amount).toString()
         });
-        setSendSuccess(`Native token sent successfully! Transaction: ${txHash}`);
+        setSendSuccess(t('walletPage.send.sentNative', { hash: txHash }));
       } else {
         // Send ERC20 token via fundAndSendTransaction
         const token = config?.supportedTokens?.find(t => t.symbol === sendForm.currency);
@@ -302,7 +213,7 @@ export default function Wallet() {
           data: txData
         });
 
-        setSendSuccess(`${token.symbol} sent successfully! Transaction: ${txHash}`);
+        setSendSuccess(t('walletPage.send.sentToken', { token: token.symbol, hash: txHash }));
       }
 
       // Reset form and reload balances
@@ -310,7 +221,7 @@ export default function Wallet() {
       setTimeout(loadBalances, 2000); // Reload after 2 seconds
     } catch (error: any) {
       console.error('Send error:', error);
-      setSendError(error.message || 'Transaction failed');
+      setSendError(error.message || t('walletPage.send.failed'));
     } finally {
       setIsSending(false);
     }
@@ -333,6 +244,9 @@ export default function Wallet() {
     return !isNaN(num) && num > 0 && num <= maxBalance;
   };
 
+  // The native token is chosen as 'NATIVE'; that is a value, not a word to show.
+  const sendCurrencyLabel = sendForm.currency === 'NATIVE' ? t('walletPage.native') : sendForm.currency;
+
   const canSubmit = () => {
     return (
       isValidAddress(sendForm.recipient) &&
@@ -341,23 +255,99 @@ export default function Wallet() {
     );
   };
 
-  if (authLoading || isWalletAddressLoading) {
+  /*
+   * ⚠️ WITH NO WALLET, THE PAGE IS STILL A PAGE: every way to add money and to cash out, laid out
+   *    as it is for a signed-in user, with nothing to press. It is also what the SERVER writes,
+   *    since the server never has a user, so it is the HTML a search engine or an AI agent reads.
+   *    This used to be a spinner while sign-in resolved and a bare "connect your wallet" after,
+   *    and the page a bot was sent had no content at all (2026-11-20).
+   *
+   *    So it must not wait on anything the browser loads: `ramps` (getStaticProps) says which
+   *    chain, tokens and providers, and only the connect button waits for sign-in to settle.
+   */
+  if (authLoading || isWalletAddressLoading || !user || !walletAddress || isInFarcaster) {
+    const settling = authLoading || isWalletAddressLoading;
+    const catalogue = {
+      coinbase: !!config?.coinbaseProjectId || !!ramps?.coinbase,
+      card: !!ramps?.card,
+    };
     return (
-      <div className="flex justify-center items-center min-h-96">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
+      <div className="py-10 bg-white dark:bg-secondary-900 transition-colors">
+        <SEO
+          title={`Add and cash out ${defaultTokenSymbol} - Stabledrop wallet`}
+          description={`Every way to add ${defaultTokenSymbol} to a Stabledrop wallet and to cash it out: card, bank transfer, Coinbase, Kraken, Link, a transfer from another wallet, and exchanges by region.`}
+          canonical="/wallet"
+        />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">{t('walletPage.title')}</h1>
+            <p className="mt-2 text-secondary-600 dark:text-secondary-300">{t('walletPage.subtitle')}</p>
+            <nav className="mt-4 flex flex-wrap gap-2 text-sm font-medium">
+              {jumps.map(([href, label]) => (
+                <a
+                  key={href}
+                  href={href}
+                  className="rounded-full border border-secondary-300 dark:border-secondary-600 px-4 py-1.5 text-secondary-700 dark:text-secondary-200 hover:border-primary-500"
+                >
+                  {t(label)}
+                </a>
+              ))}
+            </nav>
+          </div>
 
-  // For now, wallet page is only available with Web3Auth
-  if (!user || !walletAddress || isInFarcaster) {
-    return (
-      <div className="max-w-md mx-auto text-center py-20">
-        <h1 className="text-2xl font-bold text-secondary-900 dark:text-white mb-4">Connect Your Wallet</h1>
-        <p className="text-secondary-600 dark:text-secondary-300 mb-6">
-          You need to connect your wallet to manage your funds.
-        </p>
-        <ConnectWalletEmbedded useSmartRouting={true} />
+          <section className={`${card} text-center`} aria-labelledby="connect-heading">
+            <h2 id="connect-heading" className={sectionHeading}>{t('walletPage.connect.title')}</h2>
+            <p className={`${sectionBlurb} mb-6`}>{t('walletPage.connect.blurb')}</p>
+            {settling ? (
+              <div className="flex justify-center"><LoadingSpinner size="lg" /></div>
+            ) : (
+              <ConnectWalletEmbedded useSmartRouting={true} />
+            )}
+          </section>
+
+          <section id="add" className={`${card} scroll-mt-4`} aria-labelledby="add-heading">
+            <h2 id="add-heading" className={sectionHeading}>{t('walletPage.add.title', { token: defaultTokenSymbol })}</h2>
+            <p className={`${sectionBlurb} mb-5`}>{t('walletPage.add.blurb')}</p>
+            <FundingOptions
+              walletAddress=""
+              tokenSymbol={defaultTokenSymbol}
+              chainId={chainId}
+              networkName={networkName}
+              purpose="guide"
+              lookOnly
+              catalogue={catalogue}
+            />
+          </section>
+
+          {canConvert && (
+            <section id="convert" className={`${card} scroll-mt-4`} aria-labelledby="convert-heading">
+              <h2 id="convert-heading" className={sectionHeading}>{t('walletPage.jump.convert')}</h2>
+              <p className={sectionBlurb}>{t('walletPage.convert.outline', { token: defaultTokenSymbol })}</p>
+            </section>
+          )}
+
+          <div id="cash-out" className="scroll-mt-4">
+            {catalogue.coinbase && (
+              <section className={card} aria-labelledby="cash-out-heading">
+                <h2 id="cash-out-heading" className={sectionHeading}>{t('cashOut.title')}</h2>
+                <p className={sectionBlurb}>{t('cashOut.blurb')}</p>
+              </section>
+            )}
+            <section className={card} aria-labelledby="cash-out-exchange-heading">
+              <h2 id="cash-out-exchange-heading" className={sectionHeading}>
+                {t('funding.sell.title', { token: defaultTokenSymbol })}
+              </h2>
+              <div className="mt-4">
+                <ExchangeDirectory mode="sell" tokenSymbol={defaultTokenSymbol} networkName={networkName} />
+              </div>
+            </section>
+          </div>
+
+          <section id="send" className={`${card} scroll-mt-4`} aria-labelledby="send-heading">
+            <h2 id="send-heading" className={sectionHeading}>{t('walletPage.send.title')}</h2>
+            <p className={sectionBlurb}>{t('walletPage.send.blurb', { network: networkName })}</p>
+          </section>
+        </div>
       </div>
     );
   }
@@ -370,28 +360,31 @@ export default function Wallet() {
     <div className="py-10 bg-white dark:bg-secondary-900 transition-colors">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">Wallet Management</h1>
-          <p className="mt-2 text-secondary-600 dark:text-secondary-300">
-            View your balances and send funds to other wallets
-          </p>
+          <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">{t('walletPage.title')}</h1>
+          <p className="mt-2 text-secondary-600 dark:text-secondary-300">{t('walletPage.subtitle')}</p>
+          <nav className="mt-4 flex flex-wrap gap-2 text-sm font-medium">
+            {jumps.map(([href, label]) => (
+              <a
+                key={href}
+                href={href}
+                className="rounded-full border border-secondary-300 dark:border-secondary-600 px-4 py-1.5 text-secondary-700 dark:text-secondary-200 hover:border-primary-500"
+              >
+                {t(label)}
+              </a>
+            ))}
+          </nav>
         </div>
 
         {/* Wallet Info */}
         <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6 mb-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Connected Wallet</h2>
-              <div className="text-sm text-secondary-600 dark:text-secondary-300 mt-1">
-                <ExpandableHash hash={walletAddress} />
-              </div>
-              {chainInfo && (
-                <div className="mt-2 flex items-center space-x-4 text-sm">
-                  <span className="flex items-center">
-                    <span className="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></span>
-                    <span className="font-medium text-secondary-700 dark:text-secondary-200">{chainInfo.name}</span>
-                  </span>
-                  <span className="text-secondary-500 dark:text-secondary-400">Block #{chainInfo.blockNumber.toLocaleString()}</span>
-                  <span className="text-secondary-500 dark:text-secondary-400">Gas: {chainInfo.gasPrice ? `${parseFloat(chainInfo.gasPrice).toFixed(2)} Gwei` : 'Unavailable'}</span>
+              <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">{t('walletPage.connected')}</h2>
+              <WalletAddressBox walletAddress={walletAddress} />
+              {networkName && (
+                <div className="mt-2 flex items-center text-sm">
+                  <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                  <span className="font-medium text-secondary-700 dark:text-secondary-200">{networkName}</span>
                 </div>
               )}
             </div>
@@ -408,7 +401,7 @@ export default function Wallet() {
                   variant="outline"
                   size="sm"
                 >
-                  Manage Wallet
+                  {t('walletPage.manage')}
                 </Button>
               )}
               {showExport && (
@@ -423,16 +416,16 @@ export default function Wallet() {
                   variant="outline"
                   size="sm"
                 >
-                  Export keys
+                  {t('walletPage.exportKeys')}
                 </Button>
               )}
               <Button
-                onClick={() => { loadBalances(); loadChainInfo(); }}
-                disabled={isLoadingBalances || isLoadingChainInfo}
+                onClick={() => loadBalances()}
+                disabled={isLoadingBalances}
                 variant="outline"
                 size="sm"
               >
-                {(isLoadingBalances || isLoadingChainInfo) ? 'Refreshing...' : 'Refresh'}
+                {isLoadingBalances ? t('walletPage.refreshing') : t('walletPage.refresh')}
               </Button>
             </div>
           </div>
@@ -443,14 +436,14 @@ export default function Wallet() {
             <div className="bg-gradient-to-r from-secondary-50 to-secondary-100 dark:from-secondary-800 dark:to-secondary-700 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-secondary-800 dark:text-secondary-100">Native Token Balance</p>
+                  <p className="text-sm font-medium text-secondary-800 dark:text-secondary-100">{t('walletPage.nativeBalance')}</p>
                   <div className="flex items-center">
                     {isLoadingBalances ? (
                       <div className="w-16 h-6 bg-secondary-200 dark:bg-secondary-700 animate-pulse rounded" />
                     ) : (
                       <p className="text-2xl font-bold text-secondary-900 dark:text-white">{balances.native}</p>
                     )}
-                    <span className="ml-2 text-sm text-secondary-700 dark:text-secondary-200">{chainInfo?.name ? chainInfo.name.split(' ')[0] : 'Native'}</span>
+                    <span className="ml-2 text-sm text-secondary-700 dark:text-secondary-200">{networkName || t('walletPage.native')}</span>
                   </div>
                 </div>
                 <div className="w-10 h-10 bg-secondary-200 dark:bg-secondary-700 rounded-full flex items-center justify-center">
@@ -464,7 +457,7 @@ export default function Wallet() {
               <div key={token.symbol} className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-800/30 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">{token.name} Balance</p>
+                    <p className="text-sm font-medium text-blue-800 dark:text-blue-200">{t('walletPage.tokenBalance', { name: token.name })}</p>
                     <div className="flex items-center">
                       {isLoadingBalances ? (
                         <div className="w-16 h-6 bg-blue-200 dark:bg-blue-700 animate-pulse rounded" />
@@ -483,26 +476,85 @@ export default function Wallet() {
           </div>
         </div>
 
-        {/* Funding Guide */}
-        <div className="mb-8">
-          <TokenGuide />
-        </div>
+        {/* Add: the same list /buy-token and the payment screen show, asking how much. */}
+        <section id="add" className={`${card} scroll-mt-4`} aria-labelledby="add-heading">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <h2 id="add-heading" className={sectionHeading}>{t('walletPage.add.title', { token: addTokenSymbol })}</h2>
+            {(config?.supportedTokens?.length ?? 0) > 1 && (
+              <select
+                aria-label={t('walletPage.add.token')}
+                value={addTokenSymbol}
+                onChange={(e) => setAddSymbol(e.target.value)}
+                className="rounded-md border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-700 text-secondary-900 dark:text-white px-2 py-1 text-sm"
+              >
+                {(config?.supportedTokens || []).map((token) => (
+                  <option key={token.symbol} value={token.symbol}>{token.symbol}</option>
+                ))}
+              </select>
+            )}
+          </div>
+          <p className={`${sectionBlurb} mb-5`}>{t('walletPage.add.blurb')}</p>
+          <FundingOptions
+            // A fresh one per token, so nothing chosen for one is carried to the other.
+            key={addTokenSymbol}
+            walletAddress={walletAddress}
+            tokenSymbol={addTokenSymbol}
+            tokenAddress={addToken?.address}
+            tokenDecimals={addToken?.decimals}
+            chainId={config?.chainId}
+            networkName={networkName}
+            minimumPurchase={coinbaseMinimum}
+            coinbaseUnavailable={
+              coinbase.unavailable
+                ? t('paymentActionPanel.whyNoCoinbase', { country: coinbase.countryName ?? '' })
+                : undefined
+            }
+            coinbaseOverrule={{
+              label: t('paymentActionPanel.notInCountry', { country: coinbase.countryName ?? '' }),
+              onClick: coinbase.overrule,
+            }}
+            returnPath="/wallet"
+            purpose="guide"
+            onFunded={loadBalances}
+          />
+        </section>
 
-        {/* Cash out (Coinbase offramp) — hides itself when Coinbase is unconfigured */}
-        <CashOutPanel
-          walletAddress={walletAddress}
+        {/* Convert: out of the stablecoin that cannot be cashed out here and into the one that can.
+            It shows itself only where this network has a pool for the pair. A conversion that
+            has been sent is not yet mined, so the balances are read again a moment later. */}
+        <ConvertPanel
           balances={balances.tokens}
-          onSent={loadBalances}
+          networkName={networkName}
+          onConverted={() => setTimeout(loadBalances, 4000)}
         />
 
+        {/* Cash out: Coinbase's sell order (it hides itself when Coinbase is unconfigured), then by
+            hand through any exchange, which ends in the send form below. */}
+        <div id="cash-out" className="scroll-mt-4">
+          <CashOutPanel
+            walletAddress={walletAddress}
+            balances={balances.tokens}
+            onSent={loadBalances}
+          />
+          <details className={card}>
+            <summary className={`cursor-pointer ${sectionHeading}`}>
+              {t('funding.sell.title', { token: defaultTokenSymbol })}
+            </summary>
+            <div className="mt-4">
+              <ExchangeDirectory mode="sell" tokenSymbol={defaultTokenSymbol} networkName={networkName} />
+            </div>
+          </details>
+        </div>
+
         {/* Send Funds */}
-        <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6">
-          <h2 className="text-lg font-semibold text-secondary-900 dark:text-white mb-6">Send Funds</h2>
+        <div id="send" className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6 scroll-mt-4">
+          <h2 className={sectionHeading}>{t('walletPage.send.title')}</h2>
+          <p className={`${sectionBlurb} mb-6`}>{t('walletPage.send.blurb', { network: networkName })}</p>
 
           <form onSubmit={handleSendSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2">
-                Currency
+                {t('walletPage.send.currency')}
               </label>
               <div className="flex flex-wrap gap-4">
                 <label className="flex items-center text-secondary-700 dark:text-secondary-200">
@@ -514,7 +566,7 @@ export default function Wallet() {
                     onChange={(e) => setSendForm(prev => ({ ...prev, currency: e.target.value }))}
                     className="mr-2"
                   />
-                  Native
+                  {t('walletPage.native')}
                 </label>
                 {(config?.supportedTokens || []).map((token) => (
                   <label key={token.symbol} className="flex items-center text-secondary-700 dark:text-secondary-200">
@@ -534,7 +586,7 @@ export default function Wallet() {
 
             <div>
               <label htmlFor="recipient" className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2">
-                Recipient Address
+                {t('walletPage.send.recipient')}
               </label>
               <Input
                 id="recipient"
@@ -545,13 +597,13 @@ export default function Wallet() {
                 className={sendForm.recipient && !isValidAddress(sendForm.recipient) ? 'border-red-300' : ''}
               />
               {sendForm.recipient && !isValidAddress(sendForm.recipient) && (
-                <p className="text-sm text-red-600 mt-1">Invalid address format</p>
+                <p className="text-sm text-red-600 mt-1">{t('walletPage.send.invalidAddress')}</p>
               )}
             </div>
 
             <div>
               <label htmlFor="amount" className="block text-sm font-medium text-secondary-700 dark:text-secondary-200 mb-2">
-                Amount
+                {t('walletPage.send.amount')}
               </label>
               <div className="relative">
                 <Input
@@ -564,16 +616,19 @@ export default function Wallet() {
                   className={sendForm.amount && !isValidAmount(sendForm.amount, sendForm.currency) ? 'border-red-300' : ''}
                 />
                 <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                  <span className="text-secondary-500 dark:text-secondary-400 text-sm">{sendForm.currency}</span>
+                  <span className="text-secondary-500 dark:text-secondary-400 text-sm">{sendCurrencyLabel}</span>
                 </div>
               </div>
               {sendForm.amount && !isValidAmount(sendForm.amount, sendForm.currency) && (
                 <p className="text-sm text-red-600 mt-1">
-                  Amount must be greater than 0 and not exceed your balance
+                  {t('walletPage.send.invalidAmount')}
                 </p>
               )}
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-1">
-                Available: {sendForm.currency === 'NATIVE' ? balances.native : (balances.tokens[sendForm.currency] || '0.0000')} {sendForm.currency === 'NATIVE' ? 'Native' : sendForm.currency}
+                {t('walletPage.send.available', {
+                  balance: sendForm.currency === 'NATIVE' ? balances.native : (balances.tokens[sendForm.currency] || '0.0000'),
+                  currency: sendCurrencyLabel,
+                })}
               </p>
             </div>
 
@@ -594,7 +649,7 @@ export default function Wallet() {
               disabled={!canSubmit()}
               className="w-full"
             >
-              {isSending ? 'Sending...' : `Send ${sendForm.currency}`}
+              {isSending ? t('walletPage.send.sending') : t('walletPage.send.submit', { currency: sendCurrencyLabel })}
             </Button>
           </form>
         </div>
@@ -602,3 +657,13 @@ export default function Wallet() {
     </div>
   );
 }
+
+/**
+ * Written at build time, not per request: the public site is a static export with no server
+ * behind its pages, so getServerSideProps cannot be used here (see rampFactsAtBuild). The box
+ * build refreshes it every few minutes from its own environment.
+ */
+export const getStaticProps: GetStaticProps<{ ramps: RampFacts }> = async () => ({
+  props: { ramps: await rampFactsAtBuild() },
+  ...isr(300),
+});

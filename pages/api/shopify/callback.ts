@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { shopifyApi, ApiVersion } from '@shopify/shopify-api';
 import { saveMerchantSettings } from '@/lib/mongodb';
+import { shopifyUser, signInToConnect, sitePage } from '@/lib/server/shopifyOwner';
 import '@shopify/shopify-api/adapters/node';
 
 const shopify = shopifyApi({
@@ -39,8 +40,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('Valid session received for shop:', session.shop);
 
+    // Whose shop this is. Shopify has just vouched that the person in this browser controls the
+    // shop, and the account they are signed in to here is the one it belongs to from now on.
+    //
+    // ⚠️ NO SESSION, NO RECORD. /api/shopify/auth already refuses to start without one, so
+    //    this is the session having ended (or been dropped) during the trip to Shopify. An
+    //    ownerless record is exactly what must not exist, so nothing is saved and they are
+    //    sent to sign in and connect again. Reconnecting replaces the record, owner included.
+    const owner = await shopifyUser(req);
+    if (!owner) {
+      console.warn('Shopify callback with no Stabledrop session; nothing saved for', session.shop);
+      return res.redirect(302, signInToConnect(session.shop));
+    }
+
     // Save initial merchant settings
     await saveMerchantSettings({
+      ownerUserId: owner.userId,
       shop: session.shop,
       walletAddress: '', // Will be set by merchant
       payoutDelayDays: 14, // Default 14 days
@@ -53,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.log('Merchant settings saved for shop:', session.shop);
 
     // Redirect to settings page
-    const settingsUrl = `/shopify/merchant-settings?shop=${encodeURIComponent(session.shop)}&success=true`;
+    const settingsUrl = sitePage(`/shopify/merchant-settings?shop=${encodeURIComponent(session.shop)}&success=true`);
     console.log('Redirecting to:', settingsUrl);
     res.redirect(settingsUrl);
   } catch (error) {

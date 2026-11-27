@@ -106,7 +106,7 @@ export default function LiquidityExplorer({ walletAddress }: LiquidityExplorerPr
         <StatsCard
           title="Collectible at maturity"
           value={`${displayCurrency(totals.locked.toString(), 'microUSDC')}`}
-          sub={`${tokenSymbol} across the listed escrows`}
+          sub={`${tokenSymbol} across the listed protected payments`}
         />
         <StatsCard
           title="Average maturity"
@@ -121,7 +121,7 @@ export default function LiquidityExplorer({ walletAddress }: LiquidityExplorerPr
       */}
       {!!data?.unreadable && (
         <div className="rounded-md border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 p-3 text-sm text-amber-800 dark:text-amber-200">
-          {data.unreadable} escrow{data.unreadable === 1 ? '' : 's'} could not be read from the
+          {data.unreadable} protected payment{data.unreadable === 1 ? '' : 's'} could not be read from the
           chain and {data.unreadable === 1 ? 'is' : 'are'} not shown. This list is incomplete, not
           empty.
         </div>
@@ -178,7 +178,7 @@ export default function LiquidityExplorer({ walletAddress }: LiquidityExplorerPr
           description={
             search
               ? 'Nothing matches that search. Clear it to see everything currently listed.'
-              : 'Escrows appear here once they are funded and still short of maturity. Check back, or widen the maturity filter.'
+              : 'Protected payments appear here once they are funded and still short of maturity. Check back, or widen the maturity filter.'
           }
         />
       ) : (
@@ -245,7 +245,7 @@ export default function LiquidityExplorer({ walletAddress }: LiquidityExplorerPr
                     disabled={own || !walletAddress}
                     onClick={() => setBidding(escrow)}
                   >
-                    {own ? 'Your escrow' : 'Make offer'}
+                    {own ? 'Your payment' : 'Make offer'}
                   </Button>
                 </div>
               </div>

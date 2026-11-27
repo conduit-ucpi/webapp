@@ -1,3 +1,14 @@
+// Colour families themed through CSS variables, and the steps each defines.
+const STOCK_STEPS = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
+const PALETTE_STEPS = {
+  gray: STOCK_STEPS, neutral: STOCK_STEPS, red: STOCK_STEPS, orange: STOCK_STEPS, amber: STOCK_STEPS,
+  yellow: STOCK_STEPS, green: STOCK_STEPS, emerald: STOCK_STEPS, blue: STOCK_STEPS, indigo: STOCK_STEPS,
+  purple: STOCK_STEPS, pink: STOCK_STEPS,
+  success: [50, 500, 600], warning: [50, 500, 600], error: [50, 500, 600],
+};
+const themed = (name, steps) =>
+  Object.fromEntries(steps.map((step) => [step, `rgb(var(--wl-${name}-${step}) / <alpha-value>)`]));
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -41,24 +52,32 @@ module.exports = {
           800: 'rgb(var(--wl-secondary-800) / <alpha-value>)',
           900: 'rgb(var(--wl-secondary-900) / <alpha-value>)',
         },
-        success: {
-          50: '#f0fdf4',
-          500: '#22c55e',
-          600: '#16a34a',
-        },
-        warning: {
-          50: '#fffbeb',
-          500: '#f59e0b',
-          600: '#d97706',
-        },
-        error: {
-          50: '#fef2f2',
-          500: '#ef4444',
-          600: '#dc2626',
-        },
+        // Every other colour family the components name, themed the same way. Defaults (Tailwind's
+        // stock values) are in styles/globals.css; a look overrides any of them. success / warning /
+        // error keep only the steps this config has always defined — see PaletteName in the SDK.
+        ...Object.fromEntries(
+          Object.entries(PALETTE_STEPS).map(([name, steps]) => [name, themed(name, steps)])
+        ),
+        white: 'rgb(var(--wl-white) / <alpha-value>)',
+        black: 'rgb(var(--wl-black) / <alpha-value>)',
       },
+      // The theme's fonts. Defaults (Inter, and Tailwind's stock mono stack) are in globals.css.
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        sans: ['var(--wl-font)'],
+        mono: ['var(--wl-font-mono)'],
+        heading: ['var(--wl-font-heading)'],
+      },
+      // Every rounding size follows the theme radius. The multipliers reproduce Tailwind's stock
+      // sizes at the default 0.5rem exactly (rounded-lg = 0.5rem, rounded-md = 0.375rem …), so the
+      // default look is unchanged and a look with a different radius rounds everything in proportion.
+      borderRadius: {
+        sm: 'calc(var(--wl-radius) * 0.25)',
+        DEFAULT: 'calc(var(--wl-radius) * 0.5)',
+        md: 'calc(var(--wl-radius) * 0.75)',
+        lg: 'var(--wl-radius)',
+        xl: 'calc(var(--wl-radius) * 1.5)',
+        '2xl': 'calc(var(--wl-radius) * 2)',
+        '3xl': 'calc(var(--wl-radius) * 3)',
       },
     },
   },

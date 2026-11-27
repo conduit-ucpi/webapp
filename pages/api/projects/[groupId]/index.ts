@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuth } from '@/utils/api-auth';
+import { isPathSegment } from '@/lib/server/serviceProxy';
+import { requireAuth, logApiFailure } from '@/utils/api-auth';
 import { buildTreeView, fanoutServiceUrl, serviceHeaders } from '@/utils/projectsServer';
 import { blockedByProjectsFlag } from '@/utils/featureFlags';
 
@@ -22,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     const authToken = requireAuth(req);
     const { groupId } = req.query;
-    if (typeof groupId !== 'string') {
+    if (!isPathSegment(groupId)) {
       return res.status(400).json({ error: 'groupId is required' });
     }
 
@@ -38,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const view = await buildTreeView(req, authToken, tree.groupId, tree.nodes, tree.descendants);
     res.status(200).json(view);
   } catch (error) {
-    console.error('projects detail API error:', error);
+    logApiFailure('projects detail API error:', error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {

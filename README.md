@@ -73,6 +73,8 @@ CONTRACT_FACTORY_ADDRESS=0x...    # Deployed factory contract
 USER_SERVICE_URL=http://localhost:8977      # Authentication service
 CHAIN_SERVICE_URL=http://localhost:8978     # Blockchain relay service
 CONTRACT_SERVICE_URL=http://localhost:8080  # Contract management service
+DISPUTE_SERVICE_URL=http://localhost:8981   # Arbiter service (admin routes under /api/admin/disputes)
+SANCTION_SERVICE_URL=http://localhost:8986  # Sanctions scoring (the /admin fee sweep's "Check Sanctions"); internal network only, no session sent
 X_API_KEY=your_chain_service_api_key_here   # Chain service API key
 ```
 
@@ -470,6 +472,45 @@ Frontend API routes proxy to backend services:
 - `/api/chain/*` → Chain Service (blockchain operations)
 - `/api/contracts/*` → Contract Service (contract management)
 - `/api/config` → Runtime configuration endpoint
+
+One route under `/api/contracts/` goes to no backend service: `POST /api/contracts/{id}/link-opened`.
+`/contract-pay` calls it on arrival, signed in or not, and it writes `PAYMENT LINK OPENED: contract <id>`
+to this app's log. It is public, has no cookies and no visitor identifier, and writes at most 120 lines
+per address per hour, so a line means the link was opened or the route was called, not that anyone tried
+to pay. The page reports each link once per browser tab, so a reload or a return from Coinbase in that
+tab adds no line. `POST /api/coinbase/onramp-returned` works the same way for a buyer Coinbase sends back,
+writing `COINBASE ONRAMP RETURNED: contract <id>`, and `/api/coinbase/session-token` writes
+`COINBASE ONRAMP STARTED` with the user, contract, button, currency and browser locale. Neither says
+whether anything was bought: that is Coinbase's transaction record, filed under the same user id
+(`partnerUserRef`), and the chain. `POST /api/funding-event` writes `FUNDING EVENT <event>` for steps only
+the browser sees: `privy-started`, `privy-completed`, `privy-cancelled`, `privy-failed` (with the provider's
+message), `transfer-opened` and `other-wallet-opened`. It is public, so a line is only what a browser reported.
+
+**Report a problem (screen recordings).** A button on every page lets someone send us a recording of
+their screen, which shows what our logs cannot: the inside of the Privy and Stripe windows. Where the
+browser can record its screen the page does it (up to 3 minutes, no audio); elsewhere, phones included,
+the person records with the phone's own recorder and uploads the file (up to 500 MB). The video goes
+straight from the browser to a private bucket and never through this app:
+
+| Route | What it does |
+|---|---|
+| `POST /api/recordings` | Takes the description and page context (never the video). Answers a recording id and a signed PUT URL, or a multipart plan for files over 16 MB. |
+| `POST /api/recordings/{id}/part-url` | Signs one part of a multipart upload, asked for as each part is sent. |
+| `POST /api/recordings/{id}/complete` | Confirms the file is in the bucket at the declared size, then emails our feedback inbox (through emailservice) with links that work for 7 days. |
+
+All three are public and rate-limited per address; upload URLs die after 15 minutes. The signed-in
+account is looked up from userservice, never taken from the browser. Each recording is two objects,
+`recordings/<id>/video.<ext>` and `recordings/<id>/record.json` (the context, including the last 50
+console errors and warnings). The bucket is configured with `RECORDINGS_S3_*` (see `.env.example`);
+without it the button is hidden. In Grafana: `{container="webapp-prod"} |= "PROBLEM RECORDING"`.
+
+`GET /api/coinbase/onramp-minimum?currency=USD` answers Coinbase's smallest card purchase, cached for an hour.
+The payment screen greys out paying by card into the contract below it, and says why.
+
+`GET /api/coinbase/onramp-support?country=VE` answers whether Coinbase can take card or bank payments in a
+country. The page reads the country from Cloudflare's `/cdn-cgi/trace` on its own domain, greys out Coinbase's
+routes where it cannot, and offers "Not in this country?" because that reading can be wrong. On localhost,
+where there is no Cloudflare, add `?testCountry=VE` to the page's address to try it. To look up a link in Grafana: `{container="webapp-prod"} |= "PAYMENT LINK OPENED" |= "<id>"`.
 
 See backend service repositories for detailed API documentation.
 

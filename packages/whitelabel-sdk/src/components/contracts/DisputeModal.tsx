@@ -24,16 +24,16 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
 
     // Validate reason
     if (!reason.trim()) {
-      newErrors.reason = 'Please provide a reason for the dispute';
+      newErrors.reason = t('disputeModal.errReasonRequired');
       console.log('Validation error: empty reason');
     } else if (reason.length > 160) {
-      newErrors.reason = 'Reason must be 160 characters or less';
+      newErrors.reason = t('disputeModal.errReasonTooLong');
       console.log('Validation error: reason too long');
     }
 
     // Validate split percentage
     if (refundPercent < 0 || refundPercent > 100) {
-      newErrors.split = 'Split percentage must be between 0 and 100';
+      newErrors.split = t('disputeModal.errSplitRange');
       console.log('Validation error: invalid split percentage');
     }
 
@@ -91,8 +91,10 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
                 <div className="space-y-4">
                   <div>
                     <label htmlFor="reason" className="block text-sm font-medium text-gray-700 dark:text-secondary-200 mb-1">{t('disputeModal.disputeReason')}</label>
+                    <p id="reason-privacy" className="text-xs text-gray-600 dark:text-secondary-300 mb-1">{t('dispute.noPersonalDetails')}</p>
                     <textarea
                       id="reason"
+                      aria-describedby="reason-privacy"
                       className="w-full px-3 py-2 border border-gray-300 dark:border-secondary-600 bg-white dark:bg-secondary-900 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-secondary-400 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                       rows={3}
                       maxLength={160}
@@ -108,7 +110,7 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
                     />
                     <div className="mt-1 flex justify-between">
                       <span className="text-xs text-gray-500 dark:text-secondary-400">
-                        {reason.length}/160 characters
+                        {t('disputeModal.charactersCount', { count: reason.length })}
                       </span>
                       {errors.reason && (
                         <span className="text-xs text-red-600 dark:text-red-400">{errors.reason}</span>
@@ -140,8 +142,9 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
                       <span className="text-sm text-gray-600 dark:text-secondary-300">%</span>
                     </div>
                     <div className="mt-1 text-xs text-gray-500 dark:text-secondary-400">
-                      Buyer gets {refundPercent}%, Seller gets {100 - refundPercent}%
+                      {t('disputeModal.buyerGetsPct', { buyer: refundPercent, seller: 100 - refundPercent })}
                     </div>
+                    <p className="mt-1 text-xs text-gray-600 dark:text-secondary-300">{t('disputeModal.figureIsYourVote')}</p>
                     {errors.split && (
                       <div className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.split}</div>
                     )}
@@ -160,7 +163,7 @@ export default function DisputeModal({ isOpen, onClose, onSubmit, isSubmitting =
                     disabled={isSubmitting}
                     className="flex-1 bg-red-600 hover:bg-red-700 text-white"
                   >
-                    {isSubmitting ? 'Raising Dispute...' : 'Raise Dispute'}
+                    {isSubmitting ? t('status.raisingDispute') : t('disputeModal.raiseDispute')}
                   </Button>
                 </div>
               </Dialog.Panel>

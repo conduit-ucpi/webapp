@@ -55,6 +55,13 @@ export interface ProviderDescriptor {
    */
   readonly legacy?: (config: AuthConfig) => boolean;
 
+  /**
+   * Whether signing in through this provider depends on Magic (tee.express.magiclabs.com), which
+   * some networks block. Only then does the sign-in card check Magic is reachable, and report and
+   * work around it when it is not. Omit for a provider that never touches Magic.
+   */
+  readonly usesMagic?: true;
+
   /** Imported only when it applies. */
   readonly load: (config: AuthConfig) => Promise<UnifiedProvider>;
 
@@ -88,10 +95,18 @@ export const PROVIDERS: readonly ProviderDescriptor[] = [
     //    be torn down — for a user who will only ever see Privy's modal. But people who signed
     //    up under Reown have funds in Reown embedded wallets that only Reown can open, so it
     //    stays loadable on request: the sign-in card's "old wallet" tick box.
-    applies: (config) => Boolean(config.walletConnectProjectId),
+    //
+    // ⚠️ AND ONLY WHEN SHOW_LEGACY_AUTH SAYS SO. With Privy configured and that flag off (the
+    //    default), Reown does not apply at all: no tick box, no on-request load, and no restore
+    //    of an old Reown session at boot. Without Privy it is the only way in and the flag is
+    //    not consulted.
+    applies: (config) =>
+      Boolean(config.walletConnectProjectId) && (!config.privyAppId || config.showLegacyAuth === true),
     legacy: (config) => Boolean(config.privyAppId),
     priority: 10,
     required: true,
+    // AppKit's email and social accounts sign through Magic's TEE.
+    usesMagic: true,
     load: async (config) => {
       const { WalletConnectProvider } = await import('@/lib/auth/providers/WalletConnectProvider');
       return new WalletConnectProvider(config) as unknown as UnifiedProvider;
@@ -122,12 +137,27 @@ export const PROVIDERS: readonly ProviderDescriptor[] = [
 export function isInFarcaster(): boolean {
   if (typeof window === 'undefined') return false;
 
-  // ⚠️ MOVED VERBATIM FROM ProviderRegistry, not rewritten. Frame detection decides which
-  //    wallet a user gets, and "tidying" it while relocating it would change who can sign in
-  //    without anything in the diff looking like a behaviour change.
-  return !!(
-    window.parent !== window &&
-    (window.navigator.userAgent.includes('farcaster') ||
-      window.location !== window.parent.location)
-  );
+  // ⚠️ BEING IN A FRAME IS NOT BEING IN FARCASTER. This used to also accept
+  //    `window.location !== window.parent.location`, which compares two Location objects and
+  //    so is true in every iframe. Every partner embed — escrow-me.com, the WordPress and
+  //    Shopify iframes — was handed the Farcaster provider, a stub that "connects" a
+  //    placeholder address and never opens Privy.
+  //
+  //    A frame counts only with a Farcaster signal of its own: the SDK global, a Farcaster
+  //    client's user agent, or the frame URL parameters. Same signals as
+  //    components/farcaster/FarcasterDetectionProvider.
+  if (window.parent === window) return false;
+
+  let sdkPresent = false;
+  try {
+    sdkPresent = Boolean((window as unknown as { __farcaster__?: unknown }).__farcaster__);
+  } catch {
+    // A hostile or odd global must not break wallet selection.
+  }
+
+  const farcasterClient = /farcaster|warpcast/i.test(window.navigator.userAgent);
+  const params = new URLSearchParams(window.location.search);
+  const farcasterParam = params.has('fc_frame') || params.has('farcaster');
+
+  return sdkPresent || farcasterClient || farcasterParam;
 }

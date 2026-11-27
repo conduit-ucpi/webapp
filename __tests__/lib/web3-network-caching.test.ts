@@ -45,7 +45,6 @@ describe('Web3Service - Network Verification Caching', () => {
       maxGasCostGwei: '0.01',
       gasPriceBuffer: '1.2',
       usdcGrantFoundryGas: '100000',
-      depositFundsFoundryGas: '150000',
     resolutionVoteFoundryGas: '80000',
     raiseDisputeFoundryGas: '150000',
     claimFundsFoundryGas: '150000',

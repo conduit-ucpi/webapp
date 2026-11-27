@@ -9,14 +9,17 @@ import Input from '@/components/ui/Input';
 import ContractCard from '@/components/contracts/ContractCard';
 import PendingContractCard from '@/components/contracts/PendingContractCard';
 import AdminDatabaseList from '@/components/admin/AdminDatabaseList';
+import DisputeQueue from '@/components/admin/DisputeQueue';
+import DisputeCasePanel from '@/components/admin/DisputeCasePanel';
 import { normalizeTimestamp } from '@/utils/validation';
 import DisputeResolutionModal from '@/components/admin/DisputeResolutionModal';
+import FeeSweepModal from '@/components/admin/FeeSweepModal';
 import { Contract, PendingContract } from '@/types';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 
 // Extended type for admin contracts that includes chain data
 type AdminContract = PendingContract & {
-  status?: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED';
+  status?: 'PENDING_ACCEPTANCE' | 'ACTIVE' | 'EXPIRED' | 'DISPUTED' | 'RESOLVED' | 'CLAIMED' | 'ERROR' | 'UNKNOWN' | 'AWAITING_FUNDING' | 'PENDING' | 'CREATED' | 'SANCTIONS_REFUSED' | 'REFUNDED';
   funded?: boolean;
   fundedAt?: string;
   disputedAt?: string;
@@ -40,6 +43,9 @@ export default function AdminPage() {
     chainservice: any;
   } | null>(null);
   const [isLoadingRawData, setIsLoadingRawData] = useState(false);
+  const [selectedDispute, setSelectedDispute] = useState<string | null>(null);
+  const [disputeRefreshKey, setDisputeRefreshKey] = useState(0);
+  const [isFeeSweepOpen, setIsFeeSweepOpen] = useState(false);
 
   const fetchDetailedContract = async (contractId: string) => {
     setIsLoadingDetails(true);
@@ -141,7 +147,7 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="py-10 bg-white dark:bg-secondary-900 transition-colors">
+    <div className="py-10 bg-white dark:bg-secondary-900 text-secondary-900 dark:text-secondary-100 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">Admin Dashboard</h1>
@@ -164,6 +170,40 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+
+        {/* Fee sweep: release an escrow's retained platform fee */}
+        <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6 mb-8 flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Platform Fees</h2>
+            <p className="text-sm text-secondary-600 dark:text-secondary-300">Release the fee an escrow is holding with sweepFees.</p>
+          </div>
+          <Button onClick={() => setIsFeeSweepOpen(true)} size="sm">
+            Fee Sweep
+          </Button>
+        </div>
+
+        {/* Bulk emailer: one email per address through emailservice */}
+        <div className="bg-white dark:bg-secondary-900 rounded-lg shadow-sm dark:shadow-none border border-secondary-200 dark:border-secondary-700 p-6 mb-8 flex justify-between items-center">
+          <div>
+            <h2 className="text-lg font-semibold text-secondary-900 dark:text-white">Email Users</h2>
+            <p className="text-sm text-secondary-600 dark:text-secondary-300">Send one email to each address in a list, one every 5 seconds.</p>
+          </div>
+          <Button size="sm" onClick={() => router.push('/admin/email')}>
+            Email Users
+          </Button>
+        </div>
+
+        {/* Dispute management: the queue, and the selected case */}
+        <div className="mb-8">
+          <DisputeQueue onSelect={setSelectedDispute} refreshKey={disputeRefreshKey} />
+        </div>
+        {selectedDispute && (
+          <DisputeCasePanel
+            contractId={selectedDispute}
+            onClose={() => setSelectedDispute(null)}
+            onChanged={() => setDisputeRefreshKey((k) => k + 1)}
+          />
+        )}
 
         {/* Contract List */}
         <div className="mb-8">
@@ -344,6 +384,8 @@ export default function AdminPage() {
           </p>
         </div>
       </div>
+
+      <FeeSweepModal isOpen={isFeeSweepOpen} onClose={() => setIsFeeSweepOpen(false)} />
 
       {/* Dispute Resolution Modal */}
       {selectedContract && (

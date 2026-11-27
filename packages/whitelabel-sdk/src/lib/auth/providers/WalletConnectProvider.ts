@@ -26,6 +26,8 @@ export class WalletConnectProvider implements UnifiedProvider {
       chainId: config.chainId,
       rpcUrl: config.rpcUrl,
       walletConnectProjectId: config.walletConnectProjectId,
+      serviceLink: config.serviceLink,
+      termsVersion: config.termsVersion,
     });
   }
 

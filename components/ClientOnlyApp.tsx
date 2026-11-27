@@ -7,13 +7,22 @@ import { ToastProvider } from '@/components/ui/Toast';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { TourProvider } from '@/components/onboarding/TourProvider';
 import FarcasterReady from '@/components/farcaster/FarcasterReady';
+import CookieConsent from '@/components/consent/CookieConsent';
+import FeedbackButton from '@/components/feedback/FeedbackButton';
+import ZipchatWidget from '@/components/feedback/ZipchatWidget';
+import { watchConsoleProblems } from '@/lib/consoleProblems';
+import { RECORDER_WINDOW_PATH } from '@/lib/problemReport';
 import { FarcasterDetectionProvider } from '@/components/farcaster/FarcasterDetectionProvider';
 import { NavigationProvider } from '@/components/navigation/NavigationProvider';
 import { EthersProvider } from '@/components/providers/EthersProvider';
 import { captureConsoleForMobile } from '@/utils/mobileLogger';
-import { BrandProvider, BrandI18nProvider } from '@conduit-ucpi/whitelabel-sdk';
-import { BRANDS, DEFAULT_BRAND_ID, WHITE_LABEL_ROUTES } from '@/config/brands';
+import { BrandProvider, BrandI18nProvider, setAnalyticsClientIdSource } from '@conduit-ucpi/whitelabel-sdk';
+import { analyticsClientId } from '@/lib/consent';
+import { BRANDS, DEFAULT_BRAND_ID, HOST_BRANDS, WHITE_LABEL_ROUTES } from '@/config/brands';
 import { useRouter } from 'next/router';
+import Head from 'next/head';
+
+const DEFAULT_FONTS_HREF = BRANDS[DEFAULT_BRAND_ID]?.fonts?.stylesheetHref;
 
 interface ClientOnlyAppProps {
   Component: any;
@@ -33,6 +42,11 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
        runs, so a dependency's own console.error (notably AppKit's SIWX
        failures) is visible from a phone. No-op off mobile. */
     captureConsoleForMobile();
+    // The last 50 console errors and warnings, held in memory for a problem report to carry.
+    watchConsoleProblems();
+    // Our GA client id for the payment pages' purchase attribution. Only our app registers one:
+    // on a partner's site the SDK sends none. Answers null without analytics consent.
+    setAnalyticsClientIdSource(() => analyticsClientId());
     setMounted(true);
   }, []);
 
@@ -41,11 +55,22 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
   
   return (
     <ErrorBoundary children={
-      <BrandProvider brands={BRANDS} defaultBrandId={DEFAULT_BRAND_ID} routeBrandId={routeBrandId} children={
+      <BrandProvider brands={BRANDS} defaultBrandId={DEFAULT_BRAND_ID} routeBrandId={routeBrandId} hostBrands={HOST_BRANDS} remote children={
       <BrandI18nProvider children={
       <ThemeProvider children={
         <>
+          {/* Our own brand's faces, in the pre-rendered HTML so the first paint is already in
+              them. Any brand's faces, ours included, are also applied by BrandProvider once the
+              brand is resolved — that is what loads a partner's. */}
+          {DEFAULT_FONTS_HREF && (
+            <Head>
+              {/* eslint-disable-next-line @next/next/no-page-custom-font -- the default brand's faces */}
+              <link href={DEFAULT_FONTS_HREF} rel="stylesheet" />
+            </Head>
+          )}
           <FarcasterReady />
+          {/* Not inside Shopify's admin iframe: no banner there, so no analytics either. */}
+          {router.pathname !== '/shopify/embedded' && router.pathname !== RECORDER_WINDOW_PATH && <CookieConsent />}
           <FarcasterDetectionProvider children={
             <ConfigProvider children={
               <EthersProvider children={
@@ -53,9 +78,16 @@ export default function ClientOnlyApp({ Component, pageProps }: ClientOnlyAppPro
                     <NavigationProvider children={
                       <ToastProvider children={
                         <TourProvider children={
-                          <Layout children={
-                            <Component {...pageProps} />
-                          } />
+                          <>
+                            <Layout children={
+                              <Component {...pageProps} />
+                            } />
+                            {/* Outside Layout on purpose: every page has it, whichever layout branch it takes. */}
+                            {/* Not in the recorder window, which is itself part of reporting a problem. */}
+                            {router.pathname !== RECORDER_WINDOW_PATH && <FeedbackButton />}
+                            {/* Nor in Shopify's admin iframe. */}
+                            {router.pathname !== RECORDER_WINDOW_PATH && router.pathname !== '/shopify/embedded' && <ZipchatWidget />}
+                          </>
                         } />
                       } />
                     } />

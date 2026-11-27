@@ -21,34 +21,10 @@ jest.mock('@/hooks/useSimpleEthers', () => ({
   }),
 }));
 
-// Simplify BuyerInput so we can drive the form with fireEvent
-jest.mock('@/components/ui/BuyerInput', () => {
-  return function MockBuyerInput({ value, onChange, placeholder, label, error }: any) {
-    return (
-      <div>
-        <label>{label}</label>
-        <input
-          type="text"
-          placeholder={placeholder}
-          value={value}
-          onChange={(e) => onChange(e.target.value, 'email')}
-        />
-        {error && <p data-testid="buyer-email-error">{error}</p>}
-      </div>
-    );
-  };
-});
-
 // Simplify Toast — the real one renders a portal and we don't care about it here
 jest.mock('@/components/ui/Toast', () => ({
   useToast: () => ({ showToast: jest.fn() }),
   ToastProvider: ({ children }: any) => <>{children}</>,
-}));
-
-// WalletInfo hits lots of hooks — not relevant to this validation test
-jest.mock('@/components/ui/WalletInfo', () => ({
-  __esModule: true,
-  default: () => <div data-testid="wallet-info-stub" />,
 }));
 
 import { useRouter } from 'next/router';
@@ -115,21 +91,19 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
 
   // Helpers ---------------------------------------------------------------
 
-  const fillStepZero = (arbiter?: string) => {
-    // Buyer email (mocked BuyerInput)
-    fireEvent.change(screen.getByPlaceholderText('Search Farcaster user or enter email'), {
-      target: { value: 'buyer@test.com' },
-    });
-    // Description
-    fireEvent.change(screen.getByPlaceholderText(/brief description/i), {
+  /**
+   * The single form screen: description, amount (the token field — the fiat one converts via a
+   * live rate that does not resolve under jsdom) and, optionally, the arbiter under Advanced.
+   */
+  const fillForm = (arbiter?: string) => {
+    fireEvent.change(screen.getByPlaceholderText("What's this payment for?"), {
       target: { value: 'Test payment description' },
     });
+    fireEvent.change(screen.getByPlaceholderText('0.0000'), { target: { value: '10.00' } });
 
     if (typeof arbiter === 'string') {
-      // Open the Advanced Options disclosure
       fireEvent.click(screen.getByRole('button', { name: /advanced options/i }));
-      const arbiterInput = screen.getByPlaceholderText('0x...') as HTMLInputElement;
-      fireEvent.change(arbiterInput, { target: { value: arbiter } });
+      fireEvent.change(screen.getByPlaceholderText('0x... or name@example.com'), { target: { value: arbiter } });
     }
   };
 
@@ -137,14 +111,30 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
     fireEvent.click(screen.getByRole('button', { name: /continue/i }));
   };
 
+  /** The review screen's submit button, once the form has been accepted. */
+  const submitButton = () => screen.findByRole('button', { name: /create payment request/i });
+
+  const postedBody = async (authenticatedFetch: jest.Mock) => {
+    fireEvent.click(await submitButton());
+    await waitFor(() => expect(authenticatedFetch).toHaveBeenCalled());
+    const [url, options] = authenticatedFetch.mock.calls[0];
+    expect(url).toBe('/api/ap2/request');
+    return JSON.parse(options.body);
+  };
+
+  const okFetch = () =>
+    jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ request_id: 'abc-123' }),
+    });
+
   // Tests -----------------------------------------------------------------
 
   it('does not show the arbiter field by default (advanced section collapsed)', () => {
     mockUseAuth.mockReturnValue(buildAuth(jest.fn()) as any);
     render(<CreateContractWizard />);
 
-    expect(screen.queryByPlaceholderText('0x...')).not.toBeInTheDocument();
-    // But the toggle button exists
+    expect(screen.queryByPlaceholderText('0x... or name@example.com')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: /advanced options/i })).toBeInTheDocument();
   });
 
@@ -153,118 +143,71 @@ describe('CreateContractWizard - arbiterAddress (advanced option)', () => {
     render(<CreateContractWizard />);
 
     fireEvent.click(screen.getByRole('button', { name: /advanced options/i }));
-    expect(screen.getByPlaceholderText('0x...')).toBeInTheDocument();
-    expect(screen.getByText(/arbiter wallet address/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('0x... or name@example.com')).toBeInTheDocument();
+    expect(screen.getByText(/^Third Voter$/i)).toBeInTheDocument();
   });
 
-  it('advances past step 0 when arbiter address is blank (optional)', async () => {
+  it('accepts the form with no arbiter (it is optional)', async () => {
     mockUseAuth.mockReturnValue(buildAuth(jest.fn()) as any);
     render(<CreateContractWizard />);
 
-    fillStepZero(); // No arbiter touched
+    fillForm();
     clickContinue();
 
-    // Step 1 heading is "Payment terms"
-    // Step 1 shows the amount input
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('0.00')).toBeInTheDocument();
-    });
+    expect(await submitButton()).toBeInTheDocument();
   });
 
-  it('advances past step 0 when arbiter address is a valid checksummed address', async () => {
+  it('accepts the form with a valid arbiter address', async () => {
     mockUseAuth.mockReturnValue(buildAuth(jest.fn()) as any);
     render(<CreateContractWizard />);
 
-    fillStepZero(VALID_ARBITER);
+    fillForm(VALID_ARBITER);
     clickContinue();
 
-    // Step 1 shows the amount input
-    await waitFor(() => {
-      expect(screen.getByPlaceholderText('0.00')).toBeInTheDocument();
-    });
+    expect(await submitButton()).toBeInTheDocument();
   });
 
-  it('blocks step 0 and shows an error when arbiter address is invalid', () => {
+  it('stays on the form and says why when the arbiter is neither a wallet nor an email', () => {
     mockUseAuth.mockReturnValue(buildAuth(jest.fn()) as any);
     render(<CreateContractWizard />);
 
-    fillStepZero('not-a-real-address');
+    fillForm('not-a-real-address');
     clickContinue();
 
-    // Still on step 0 — amount input from step 1 has not appeared
-    expect(screen.queryByPlaceholderText('0.00')).not.toBeInTheDocument();
-    expect(screen.getByText(/invalid arbiter wallet address/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /create payment request/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/enter a wallet address or an email address/i)).toBeInTheDocument();
   });
 
-  it('omits arbiterAddress from POST body entirely when blank', async () => {
-    const authenticatedFetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: jest.fn().mockResolvedValue({ contractId: 'abc-123' }),
-    });
+  it('accepts an email as the Third Voter and sends it as typed, lower-cased, for contractservice to resolve', async () => {
+    const authenticatedFetch = okFetch();
     mockUseAuth.mockReturnValue(buildAuth(authenticatedFetch) as any);
-
     render(<CreateContractWizard />);
 
-    // Step 0
-    fillStepZero();
+    fillForm('  Mediator@Example.com ');
     clickContinue();
 
-    // Step 1
-    // Step 1 shows the amount input
-    await waitFor(() =>
-      expect(screen.getByPlaceholderText('0.00')).toBeInTheDocument()
-    );
-    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '10.00' } });
-    clickContinue();
-
-    // Step 2 — submit
-    // Step 2 shows the final "Create Payment Request" button
-    let submitButton: HTMLElement;
-    await waitFor(() => {
-      submitButton = screen.getByRole('button', { name: /create payment request/i });
-      expect(submitButton).toBeInTheDocument();
-    });
-    fireEvent.click(submitButton!);
-
-    await waitFor(() => expect(authenticatedFetch).toHaveBeenCalled());
-    const [, options] = authenticatedFetch.mock.calls[0];
-    const body = JSON.parse(options.body);
-
-    expect(body).not.toHaveProperty('arbiterAddress');
+    expect((await postedBody(authenticatedFetch)).arbiter).toBe('mediator@example.com');
   });
 
-  it('includes a checksummed arbiterAddress in the POST body when provided', async () => {
-    const authenticatedFetch = jest.fn().mockResolvedValue({
-      ok: true,
-      json: jest.fn().mockResolvedValue({ contractId: 'abc-123' }),
-    });
+  it('sends no arbiter when none was given', async () => {
+    const authenticatedFetch = okFetch();
     mockUseAuth.mockReturnValue(buildAuth(authenticatedFetch) as any);
-
     render(<CreateContractWizard />);
 
-    // Supply the arbiter in lowercase to prove we checksum on submit
-    fillStepZero(VALID_ARBITER.toLowerCase());
+    fillForm();
     clickContinue();
 
-    // Step 1 shows the amount input
-    await waitFor(() =>
-      expect(screen.getByPlaceholderText('0.00')).toBeInTheDocument()
-    );
-    fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '10.00' } });
+    expect(await postedBody(authenticatedFetch)).not.toHaveProperty('arbiter');
+  });
+
+  it('sends the arbiter checksummed, however it was typed', async () => {
+    const authenticatedFetch = okFetch();
+    mockUseAuth.mockReturnValue(buildAuth(authenticatedFetch) as any);
+    render(<CreateContractWizard />);
+
+    fillForm(VALID_ARBITER.toLowerCase());
     clickContinue();
 
-    // Step 2 shows the final "Create Payment Request" button
-    let submitButton: HTMLElement;
-    await waitFor(() => {
-      submitButton = screen.getByRole('button', { name: /create payment request/i });
-      expect(submitButton).toBeInTheDocument();
-    });
-    fireEvent.click(submitButton!);
-
-    await waitFor(() => expect(authenticatedFetch).toHaveBeenCalled());
-    const [, options] = authenticatedFetch.mock.calls[0];
-    const body = JSON.parse(options.body);
-
-    expect(body.arbiterAddress).toBe(VALID_ARBITER);
+    expect((await postedBody(authenticatedFetch)).arbiter).toBe(VALID_ARBITER);
   });
 });

@@ -16,6 +16,8 @@
  */
 
 import { ethers } from 'ethers';
+import { mLog } from '@/utils/mobileLogger';
+import { RpcRateLimitedError, hostOf, isRateLimited } from './rateLimit';
 import { ERC20_ABI, ESCROW_CONTRACT_ABI, NO_VOTE_SENTINEL, OFFER_VAULT_ABI, OFFER_VAULT_STATUS } from '@/lib/web3';
 
 export interface TokenMetadata {
@@ -106,17 +108,141 @@ const ERC20_METADATA_ABI = [
   'function name() view returns (string)',
 ];
 
+/**
+ * The read-only provider. With a known chain it is pinned (`staticNetwork`): otherwise ethers
+ * sends `eth_chainId` ahead of its requests to discover what it was already told — seven of
+ * them on one pay-page load, each one more request against the endpoint's rate limit.
+ */
+/** Decimals by `rpcUrl|token`. Module-wide: the fact belongs to the token, not to a client. */
+const decimalsCache = new Map<string, Promise<bigint>>();
+
+/** For tests, which reuse one token address with different decimals — no real token can. */
+export function clearDecimalsCache(): void {
+  decimalsCache.clear();
+}
+
+export function readProviderFor(rpcUrl: string, chainId?: number): ethers.JsonRpcProvider {
+  // Number(): a string would be taken as a network NAME ("8453" is not one) and throw.
+  const id = Number(chainId);
+  const provider =
+    Number.isInteger(id) && id > 0
+      ? new ethers.JsonRpcProvider(rpcUrl, id, { staticNetwork: true })
+      : new ethers.JsonRpcProvider(rpcUrl);
+  return reportingRateLimits(provider, rpcUrl);
+}
+
+/** When a rate limit was last logged, by endpoint host: one line per burst, not one per read. */
+const lastRateLimitLog = new Map<string, number>();
+const RATE_LIMIT_LOG_EVERY_MS = 5000;
+
+/**
+ * Every read on a provider goes through `send`. A rate-limited one is logged in plain words and
+ * rethrown as RpcRateLimitedError; anything else passes through untouched. See rateLimit.ts.
+ */
+function reportingRateLimits(provider: ethers.JsonRpcProvider, rpcUrl: string): ethers.JsonRpcProvider {
+  // Nothing to wrap on a stand-in that has no `send` (tests replace the provider wholesale).
+  if (typeof provider?.send !== 'function') return provider;
+  const send = provider.send.bind(provider);
+  provider.send = async (method: string, params: Array<any> | Record<string, any>) => {
+    try {
+      return await send(method, params);
+    } catch (e) {
+      if (!isRateLimited(e)) throw e;
+      const host = hostOf(rpcUrl);
+      const now = Date.now();
+      if (now - (lastRateLimitLog.get(host) ?? 0) >= RATE_LIMIT_LOG_EVERY_MS) {
+        lastRateLimitLog.set(host, now);
+        const detail = { host, method, error: e instanceof Error ? e.message.slice(0, 200) : String(e).slice(0, 200) };
+        console.warn(`[rpc] RATE LIMITED by ${host} on ${method}`, detail);
+        mLog.warn('RpcRateLimit', `RATE LIMITED by ${host} on ${method}`, detail);
+      }
+      throw new RpcRateLimitedError(method, e);
+    }
+  };
+  return provider;
+}
+
+// ── one client per endpoint ────────────────────────────────────────────────────────────────
+//
+// ⚠️ THE READ ENDPOINT IS RATE-LIMITED, AND IT IS A PUBLIC ONE. Every request the page makes
+//    counts against the visitor's allowance, and a page that runs out stops being able to read
+//    balances or estimate gas at all. Two habits waste that allowance, and both came from
+//    building a new client wherever a read was wanted:
+//
+//    1. A client that is not told its chain asks the node for it (`eth_chainId`) before it
+//       reads anything. A fresh client per read pays that on every read.
+//    2. ethers folds requests made together on ONE client into a single HTTP request. Requests
+//       spread over several clients are never folded.
+//
+//    So: the chain an endpoint is on is remembered when the configuration loads, and every
+//    reader takes the SAME pinned client for that endpoint.
+
+const chainOf = new Map<string, number>();
+const sharedClients = new Map<string, RpcClient>();
+
+/** Record which chain an endpoint is on, so its shared client need never ask. */
+export function rememberChain(rpcUrl: string | undefined, chainId: number | string | undefined): void {
+  const id = Number(chainId);
+  if (!rpcUrl || !Number.isInteger(id) || id <= 0) return;
+  if (chainOf.get(rpcUrl) === id) return;
+  chainOf.set(rpcUrl, id);
+  // A client built before the chain was known is unpinned: the next caller gets a pinned one.
+  for (const key of Array.from(sharedClients.keys())) {
+    if (key.startsWith(`${rpcUrl}|`)) sharedClients.delete(key);
+  }
+}
+
+/**
+ * THE client for an endpoint: one instance, pinned to its chain when that is known. Use this
+ * wherever a read is wanted; `new RpcClient(...)` is for the one caller that must not share
+ * (verification, which reads through an endpoint the API does not choose).
+ */
+export function sharedRpcClient(rpcUrl: string, chainId?: number | string): RpcClient {
+  const given = Number(chainId);
+  const id = Number.isInteger(given) && given > 0 ? given : chainOf.get(rpcUrl);
+  const key = `${rpcUrl}|${id ?? ''}`;
+  let client = sharedClients.get(key);
+  if (!client) {
+    client = new RpcClient(rpcUrl, id);
+    sharedClients.set(key, client);
+  }
+  return client;
+}
+
+/** For tests. */
+export function forgetSharedRpcClients(): void {
+  sharedClients.clear();
+  chainOf.clear();
+}
+
 export class RpcClient {
   private readonly provider: ethers.JsonRpcProvider;
   private readonly rpcUrl: string;
 
-  constructor(rpcUrl: string) {
+  constructor(rpcUrl: string, chainId?: number) {
     // Mirror the prior Web3Service.readProvider behavior exactly: pass the
     // configured rpcUrl straight to ethers (which tolerates an absent URL,
     // e.g. during provider-switching teardown with an empty config). We do not
     // throw here, so constructing Web3Service never regresses on empty config.
     this.rpcUrl = rpcUrl;
-    this.provider = new ethers.JsonRpcProvider(rpcUrl);
+    this.provider = readProviderFor(rpcUrl, chainId);
+  }
+
+  /**
+   * Token decimals never change, so each token is asked once per endpoint — across every client,
+   * since a page builds several — and remembered. Asking on every balance read doubled the calls
+   * behind every balance on screen.
+   */
+  private decimalsOf(tokenAddress: string, token: ethers.Contract): Promise<bigint> {
+    const key = this.rpcUrl + '|' + tokenAddress.toLowerCase();
+    let cached = decimalsCache.get(key);
+    if (!cached) {
+      cached = token.decimals().then((d: bigint | number) => BigInt(d));
+      // A failed read is not a fact about the token; let the next caller ask again.
+      cached.catch(() => decimalsCache.delete(key));
+      decimalsCache.set(key, cached);
+    }
+    return cached;
   }
 
   /** Underlying read-only provider, for the few low-level reads that need it. */
@@ -196,8 +322,7 @@ export class RpcClient {
   /** ERC-20 balance, formatted with the token's own decimals. */
   async getTokenBalance(userAddress: string, tokenAddress: string): Promise<string> {
     const token = new ethers.Contract(tokenAddress, ERC20_ABI, this.provider);
-    const balance = await token.balanceOf(userAddress);
-    const decimals = await token.decimals();
+    const [balance, decimals] = await Promise.all([token.balanceOf(userAddress), this.decimalsOf(tokenAddress, token)]);
     return ethers.formatUnits(balance, decimals);
   }
 
@@ -227,8 +352,7 @@ export class RpcClient {
     tokenAddress: string
   ): Promise<string> {
     const token = new ethers.Contract(tokenAddress, ERC20_ABI, this.provider);
-    const allowance = await token.allowance(userAddress, spenderAddress);
-    const decimals = await token.decimals();
+    const [allowance, decimals] = await Promise.all([token.allowance(userAddress, spenderAddress), this.decimalsOf(tokenAddress, token)]);
     return ethers.formatUnits(allowance, decimals);
   }
 
@@ -246,6 +370,54 @@ export class RpcClient {
    */
   async getCode(address: string): Promise<string> {
     return this.provider.getCode(address);
+  }
+
+  /**
+   * Where the factory at `factory` says an escrow with these terms lives — its own
+   * getContractAddress view, read with an eth_call (no gas). The browser asks this of the
+   * factory IT pins, through the RPC IT pins, to check an address the API quoted; nothing here
+   * repeats the factory's arithmetic. See lib/escrow/verifyQuotedEscrow.ts.
+   */
+  async predictEscrowAddress(
+    factory: string,
+    terms: {
+      token: string;
+      buyer: string;
+      seller: string;
+      amount: bigint;
+      expiryTimestamp: bigint;
+      arbiter: string;
+      externalId: string;
+    }
+  ): Promise<string> {
+    const contract = new ethers.Contract(
+      factory,
+      [
+        'function getContractAddress(address tokenAddress, address buyer, address seller, uint256 amount, uint256 expiryTimestamp, address arbiter, bytes32 externalId) view returns (address)',
+      ],
+      this.provider
+    );
+    return await contract.getContractAddress(
+      terms.token,
+      terms.buyer,
+      terms.seller,
+      terms.amount,
+      terms.expiryTimestamp,
+      terms.arbiter,
+      terms.externalId
+    );
+  }
+
+  /**
+   * The factory that initialized an escrow: its `FACTORY()`, set to whoever called
+   * initialize() first. Our factory clones and initializes in one transaction, so for an
+   * escrow it created this is our factory; anything else was made by someone else's
+   * contract, which can initialize a genuine clone with any partner or fee it likes.
+   * See lib/escrow/verifyEscrowFactory.ts.
+   */
+  async getEscrowFactory(contractAddress: string): Promise<string> {
+    const contract = new ethers.Contract(contractAddress, ESCROW_CONTRACT_ABI, this.provider);
+    return await contract.FACTORY();
   }
 
   /**
@@ -308,6 +480,17 @@ export class RpcClient {
    *    every escrow that has not been paid for yet. Callers have to be able to tell "no escrow
    *    here" from "the chain would not answer", and an exception says neither.
    */
+  /**
+   * Just `isFunded()`, for a screen that needs to know whether a payment has landed and nothing
+   * else. Null when nothing is deployed there yet — the ordinary state of an unpaid escrow.
+   * One call where [getContractState] makes seven.
+   */
+  async isEscrowFunded(contractAddress: string): Promise<boolean | null> {
+    if (!(await this.isDeployed(contractAddress))) return null;
+    const contract = new ethers.Contract(contractAddress, ESCROW_CONTRACT_ABI, this.provider);
+    return await contract.isFunded();
+  }
+
   async getContractState(contractAddress: string): Promise<EscrowContractState | null> {
     if (!(await this.isDeployed(contractAddress))) return null;
 

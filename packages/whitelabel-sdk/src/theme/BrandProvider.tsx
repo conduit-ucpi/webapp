@@ -1,9 +1,12 @@
-import React, { createContext, useContext, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { BrandConfig, ResolvedBrand } from '../config/types';
 import { BrandRegistry, BrandSource } from '../config/registry';
 import { resolveBrand } from '../config/resolveBrand';
+import { fetchBrand, BrandFetchResult } from '../config/remoteBrand';
 import { brandToVars, applyVars } from './cssVars';
+import { applyBrandHead } from './brandHead';
 import { useBrandResolution } from './useBrandResolution';
+import { setTermsPartnerName } from '../lib/auth/siwe-statement';
 
 /**
  * Holds the active brand and puts its theme variables on the document.
@@ -21,6 +24,15 @@ import { useBrandResolution } from './useBrandResolution';
  * which is outside React's tree. The defaults are already present from
  * globals.css, so the pre-hydration paint is correct and this only applies the
  * active brand's deltas.
+ *
+ * With `remote`, the registry is the bundled snapshot of the white-label
+ * service, and the active brand's live record is fetched on top of it:
+ *
+ *   - in the snapshot  → rendered at once, then replaced by the live record;
+ *   - not in it        → the page is hidden (not unmounted) until the record
+ *                        arrives, so a partner's payer never sees our brand;
+ *   - service says 404 → our brand, unless the snapshot holds the id;
+ *   - service down     → the snapshot, or our brand if the id is not in it.
  */
 
 interface BrandContextValue {
@@ -30,6 +42,9 @@ interface BrandContextValue {
 }
 
 const BrandContext = createContext<BrandContextValue | null>(null);
+
+/** Lets a page below report the partner recorded on the contract it shows. See useContractBrand. */
+const ContractBrandContext = createContext<((brandId: string | null) => void) | null>(null);
 
 type BrandProviderProps = {
   children: React.ReactNode;
@@ -49,8 +64,17 @@ type BrandProviderProps = {
       contractBrandId?: string | null;
       /** Partner this route is dedicated to, when it is one. */
       routeBrandId?: string | null;
+      /** Our own other domains, each worn as its own brand. See ResolveBrandInput.hostBrands. */
+      hostBrands?: Record<string, string>;
+      /** Fetch the live record from the white-label service. `brands` is then the bundled snapshot. */
+      remote?: boolean;
+      /** Test seam for the fetch. */
+      fetchBrandImpl?: typeof fetchBrand;
     }
 );
+
+/** What the service said about an id this session. */
+type LiveEntry = Exclude<BrandFetchResult, { status: 'found' }> | { status: 'found'; config: BrandConfig };
 
 export function BrandProvider(props: BrandProviderProps) {
   const { children } = props;
@@ -62,25 +86,94 @@ export function BrandProvider(props: BrandProviderProps) {
     [props.brand, props.brands]
   );
   const fallbackId = props.brand ? props.brand.id : props.defaultBrandId;
+  const remote = !props.brand && !!props.remote;
+  const fetchImpl = (!props.brand && props.fetchBrandImpl) || fetchBrand;
 
-  const { id, source } = useBrandResolution({
+  // The partner on the contract in view, as reported by the page showing it (useContractBrand).
+  // A contractBrandId passed as a prop wins: it was decided above the page.
+  const [reportedContractBrand, setReportedContractBrand] = useState<string | null>(null);
+
+  const { id, source, settled } = useBrandResolution({
     registry,
     fallbackId,
-    contractBrandId: props.brand ? undefined : props.contractBrandId,
+    contractBrandId: props.brand ? undefined : props.contractBrandId ?? reportedContractBrand,
     routeBrandId: props.brand ? undefined : props.routeBrandId,
+    allowUnlisted: remote,
+    hostBrands: props.brand ? undefined : props.hostBrands,
   });
 
+  const [live, setLive] = useState<Record<string, LiveEntry>>({});
+
+  // Each id is asked about once per page load. The fallback is fetched only when
+  // it is the brand in view, so a partner's page makes one request, not two.
+  useEffect(() => {
+    if (!remote || !settled || live[id]) return;
+    let cancelled = false;
+    fetchImpl(id).then((result) => {
+      if (cancelled) return;
+      const entry: LiveEntry =
+        result.status === 'found' ? { status: 'found', config: result.config } : result;
+      setLive((prev) => ({ ...prev, [id]: entry }));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [remote, settled, id, live, fetchImpl]);
+
+  const entry = live[id];
+  // Hidden while an id the snapshot does not hold is being fetched. Our own
+  // brand is never waited on — it is always in the bundle.
+  const loading = remote && !entry && !registry[id];
+
   const value = useMemo<BrandContextValue>(() => {
-    const config = registry[id] ?? registry[fallbackId];
-    return { brand: resolveBrand(config), source };
-  }, [registry, id, fallbackId, source]);
+    const fallbackConfig = (() => {
+      const f = live[fallbackId];
+      return f?.status === 'found' ? f.config : registry[fallbackId];
+    })();
+    if (entry?.status === 'found') return { brand: resolveBrand(entry.config), source };
+    // A 404 only overrules an id the snapshot does not hold. A brand we shipped
+    // keeps its bundled copy until the snapshot is next refreshed, so a 404 from
+    // a service that is not deployed yet (or a mis-route) cannot strip a live
+    // partner of their branding.
+    if (entry?.status === 'missing' && !registry[id]) {
+      return { brand: resolveBrand(fallbackConfig), source: 'default' };
+    }
+    const config = registry[id];
+    return config
+      ? { brand: resolveBrand(config), source }
+      : { brand: resolveBrand(fallbackConfig), source: 'default' };
+  }, [registry, live, entry, id, fallbackId, source]);
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
     applyVars(brandToVars(value.brand), document.documentElement);
+    applyBrandHead(value.brand, document);
   }, [value.brand]);
 
-  return <BrandContext.Provider value={value}>{children}</BrandContext.Provider>;
+  // The sign-in message names whose terms are being accepted. A partner's page names the partner;
+  // our own sites (the default, or a domain of ours) name us, as usePartnerBrand decides it.
+  useEffect(() => {
+    const partner = value.source !== 'default' && value.source !== 'host';
+    setTermsPartnerName(partner ? value.brand.name : null);
+    return () => setTermsPartnerName(null);
+  }, [value.brand.name, value.source]);
+
+  // Always the same wrapper, so toggling `loading` changes a style rather than
+  // the tree: auth and wallet providers below must not remount. `display:
+  // contents` keeps it out of layout; `visibility` is inherited through it.
+  return (
+    <BrandContext.Provider value={value}>
+     <ContractBrandContext.Provider value={setReportedContractBrand}>
+      <div
+        data-wl-brand={value.brand.id}
+        aria-busy={loading || undefined}
+        style={{ display: 'contents', visibility: loading ? 'hidden' : undefined }}
+      >
+        {children}
+      </div>
+     </ContractBrandContext.Provider>
+    </BrandContext.Provider>
+  );
 }
 
 /**
@@ -106,7 +199,36 @@ export function useOptionalBrand(): ResolvedBrand | null {
   return useContext(BrandContext)?.brand ?? null;
 }
 
-/** Where the active brand came from — route, contract, query or default. */
+/**
+ * Show the partner recorded on the contract in view, whatever the URL says.
+ *
+ * For payment pages: a payer arrives days later from a link that may have lost its `?b=`, and the
+ * contract is the one signal they cannot edit (see resolveBrandId). Pass the record's `brandId`
+ * once it has loaded; null or undefined leaves the brand to the URL. Cleared when the page goes.
+ */
+export function useContractBrand(brandId: string | null | undefined): void {
+  const report = useContext(ContractBrandContext);
+  const id = brandId?.trim().toLowerCase() || null;
+  useEffect(() => {
+    if (!report) return;
+    report(id);
+    return () => report(null);
+  }, [report, id]);
+}
+
+/** Where the active brand came from — route, contract, query, host or default. */
 export function useBrandSource(): BrandSource | null {
   return useContext(BrandContext)?.source ?? null;
+}
+
+/**
+ * The active brand when it is a partner's — chosen by a link, a pinned route or
+ * the contract — rather than one of our own sites (the default, or a domain of
+ * ours). For the few things only a partner changes, such as swapping our
+ * wordmark for their logo.
+ */
+export function usePartnerBrand(): ResolvedBrand | null {
+  const ctx = useContext(BrandContext);
+  if (!ctx || ctx.source === 'default' || ctx.source === 'host') return null;
+  return ctx.brand;
 }

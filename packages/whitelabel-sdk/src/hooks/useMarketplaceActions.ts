@@ -1,30 +1,98 @@
 import { apiFetch } from '@/lib/apiFetch';
 import { useCallback } from 'react';
 import { ethers } from 'ethers';
-import { ERC20_ABI, ESCROW_CONTRACT_ABI, OFFER_VAULT_ABI } from '@/lib/web3';
+import { ERC20_ABI, ESCROW_CONTRACT_ABI, OFFER_VAULT_ABI, EstimationRevertedError } from '@/lib/web3';
 import { useSimpleEthers } from '@/hooks/useSimpleEthers';
 import type { CreateOfferResponse } from '@/types/marketplace';
+import { isSignedAction, sendSignedAction } from '@/lib/signedActions';
 
 /**
  * Every on-chain action the dispute, arbiter and marketplace screens take
  * (MARKETPLACE_OPENSPEC §15.6b–d).
  *
- * ⚠️ ALMOST NOTHING HERE IS RELAYED, AND THAT IS NOT A CHOICE. Embedded wallet providers
- *    (Farcaster, Dynamic, WalletConnect) do not expose raw transaction signing, and calling
- *    `getSigner()` after connection is forbidden on them — so there is no signed transaction to
- *    hand to a backend. Gas sponsorship works the other way round: the UI encodes the call,
- *    `fundAndSendTransaction` estimates it and asks chainservice to move ETH into the user's own
- *    wallet, and the user's provider broadcasts. Any endpoint asking for a `signedTransaction` is
- *    the wrong shape and should not exist.
+ * ⚠️ TWO ROUTES FOR A PARTY'S OWN ACTION, AND THE CONTRACT DECIDES WHICH.
  *
- * The two exceptions both go through chainservice, and both are safe to: `seatDefaultArbiter` is
- * permissionless on-chain and seats the DEFAULT_ARBITER Safe rather than the caller, and
- * `createOffer` deploys an empty vault that only the named LP can fund.
+ *    A contract that takes SIGNED MESSAGES (lib/signedActions.ts): the wallet signs a typed
+ *    message, chainservice delivers it and pays the gas. No ETH reaches the wallet. This is for
+ *    the escrow's party actions (votes, the arbiter and recipient actions) and the offer vault's
+ *    (the seller accepting or rejecting an offer).
+ *
+ *    Every other call — an escrow from before the signed route, and token transfers:
+ *    fund-then-send. A seller's accept or reject has NO such
+ *    fallback: vaults from before the signed route are not supported, so a vault that cannot be
+ *    confirmed to take signed calls is refused, with nothing sent. The UI encodes
+ *    the call, `fundAndSendTransaction` estimates it and asks chainservice to move ETH into the
+ *    user's own wallet, and the user's provider broadcasts. This exists because most wallet
+ *    providers (MetaMask, Farcaster, anything over WalletConnect) will not sign a TRANSACTION
+ *    without also sending it, so there is no signed transaction to hand to a backend. They will
+ *    all sign a message, which is why the first route works.
+ *
+ * Calls that need no signature at all go through chainservice, which sends and pays, because each
+ * is permissionless on-chain and lets the caller choose nothing: `seatDefaultArbiter` seats the
+ * DEFAULT_ARBITER Safe rather than the caller; `createOffer` deploys an empty vault that only the
+ * named LP can fund; `fund`, `withdraw` and `releaseHoldback` on a vault move money only to
+ * addresses fixed in the vault or read off the escrow.
  */
 
 const escrowInterface = new ethers.Interface(ESCROW_CONTRACT_ABI);
 const vaultInterface = new ethers.Interface(OFFER_VAULT_ABI);
 const erc20Interface = new ethers.Interface(ERC20_ABI);
+
+/** Which signed actions, if any, a call through [abi] may be. */
+const signedContractOf = (abi: ethers.Interface) =>
+  abi === escrowInterface ? 'escrow' : abi === vaultInterface ? 'vault' : null;
+
+/**
+ * The refusals a party can actually cause from these screens: the escrow's, and the offer vault's
+ * (with the escrow's own that surface through `accept`). The ABIs above carry functions only, so
+ * without these a refusal reaches the user as "execution reverted".
+ */
+const contractErrors = new ethers.Interface([
+  'error InvalidArbiterCandidate(address candidate)',
+  'error NotDisputeParty(address caller)',
+  'error NotFundedOrAlreadyProcessed()',
+  'error NotAuthorizedToVote()',
+  'error ContractMustBeDisputed()',
+  'error ConsensusAlreadyReached()',
+  'error InvalidPercentage()',
+  'error OfferNotOpen()',
+  'error OfferExpiredError()',
+  'error OfferStale()',
+  'error NotEscrowRecipient(address caller)',
+  'error EscrowNotSellable()',
+  'error OffersPaused()',
+  'error NotApprovedOperator()',
+  'error ApprovedTargetMismatch()',
+  'error RecipientApprovalExpired()'
+]);
+
+/**
+ * A transaction the chain refused, with the escrow's own reason when it gave one we know.
+ * `from` is the wallet it would have been sent from, which is the whole story for NotDisputeParty
+ * and NotAuthorizedToVote (neither of which says who asked).
+ */
+export class ContractRefusedError extends Error {
+  constructor(
+    message: string,
+    readonly reason: { name: string; args: string[] } | null,
+    readonly from?: string
+  ) {
+    super(message);
+    this.name = 'ContractRefusedError';
+  }
+}
+
+function decodeRefusal(error: unknown): ContractRefusedError | null {
+  if (!(error instanceof EstimationRevertedError)) return null;
+  let reason: { name: string; args: string[] } | null = null;
+  try {
+    const parsed = error.data ? contractErrors.parseError(error.data) : null;
+    if (parsed) reason = { name: parsed.name, args: parsed.args.map(String) };
+  } catch {
+    // Not one of ours: keep the RPC's own words.
+  }
+  return new ContractRefusedError(error.message, reason, error.from);
+}
 
 export interface RelayedResult {
   success: boolean;
@@ -45,16 +113,58 @@ export function useMarketplaceActions() {
    * the money (§15.6b).
    */
   const send = useCallback(
-    async (to: string, abi: ethers.Interface, fn: string, args: unknown[] = []): Promise<string> => {
+    async (
+      to: string,
+      abi: ethers.Interface,
+      fn: string,
+      args: unknown[] = [],
+      /** What the wallet's own screen says, and whether anything moves (walletPromptChannel). */
+      prompt?: { walletDescription?: string; movesFunds?: boolean }
+    ): Promise<string> => {
       const web3Service = await getWeb3Service();
-      return web3Service.fundAndSendTransaction({
-        to,
-        data: abi.encodeFunctionData(fn, args),
-        value: '0'
-      });
+      const data = abi.encodeFunctionData(fn, args);
+      try {
+        // A party action on a contract that takes signed messages: the wallet signs, chainservice
+        // delivers and pays, and no ETH is handed to the wallet (lib/signedActions.ts). Null
+        // means this contract does not, and the older route below is the only one it has.
+        const contract = signedContractOf(abi);
+        if (contract && isSignedAction(fn, contract) && fn !== 'raiseDispute') {
+          const delivered = await sendSignedAction(
+            { fetcher: apiFetch, wallet: web3Service },
+            { contractAddress: to, action: fn, args, data, prompt }
+          );
+          if (delivered) return delivered;
+          // An offer vault is only ever acted on by signature; there is no older route to fall to.
+          if (contract === 'vault') {
+            throw new Error('This offer could not be confirmed on the marketplace, so nothing was sent. Try again.');
+          }
+        }
+        return await web3Service.fundAndSendTransaction({ to, data, value: '0', ...prompt });
+      } catch (error) {
+        throw decodeRefusal(error) ?? error;
+      }
     },
     [getWeb3Service]
   );
+
+  /**
+   * Have chainservice send a permissionless vault call (`withdraw`, `releaseHoldback`) and pay
+   * for it. No wallet is involved: nothing is signed and no ETH is handed out. Resolves with the
+   * transaction hash once mined; throws with chainservice's reason when it refused (it checks
+   * before sending, so a refusal costs nothing) or the transaction failed.
+   */
+  const relay = useCallback(async (endpoint: 'withdraw-offer' | 'release-holdback', vaultAddress: string): Promise<string> => {
+    const response = await apiFetch(`/api/chain/marketplace/${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vaultAddress })
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok || data.success === false || !data.transactionHash) {
+      throw new Error(data.error || 'That could not be sent. Nothing was changed; try again.');
+    }
+    return data.transactionHash as string;
+  }, []);
 
   // ── Dispute settlement (§15.6b) ────────────────────────────────────────────
 
@@ -67,15 +177,16 @@ export function useMarketplaceActions() {
    *    transaction. Callers must present it that way before asking for the signature.
    */
   const submitSettlementVote = useCallback(
-    (escrowAddress: string, buyerPercentage: number) =>
-      send(escrowAddress, escrowInterface, 'submitResolutionVote', [Math.round(buyerPercentage)]),
+    (escrowAddress: string, buyerPercentage: number, prompt?: { walletDescription?: string; movesFunds?: boolean }) =>
+      send(escrowAddress, escrowInterface, 'submitResolutionVote', [Math.round(buyerPercentage)], prompt),
     [send]
   );
 
   // ── Arbiter seat (§15.6c) ──────────────────────────────────────────────────
 
   /**
-   * Name a candidate for the empty arbiter seat.
+   * Name a candidate for the arbiter seat — empty or occupied. A match replaces the incumbent
+   * (§3.3A1b); the only address the contract refuses is the one already seated.
    *
    * ⚠️ A MATCH SEATS THEM IMMEDIATELY, in this transaction, irreversibly. Nominating the address
    *    the other party already named is not a step towards agreement — it is the agreement.
@@ -86,9 +197,44 @@ export function useMarketplaceActions() {
     [send]
   );
 
+  /**
+   * The wallet a Third Voter given by email will be nominated as. userservice owns the mapping, so
+   * the same email always names the same wallet: two parties who type the same address nominate
+   * the same person, and that person reaches the seat by signing in with it.
+   *
+   * `create: false` is the live preview while the party types: it only looks up, and answers null
+   * for an email nobody has signed in with, so a half-typed address never gets a wallet made for
+   * it. `create: true` is Nominate, and makes the wallet if there is none yet.
+   */
+  const resolveArbiterEmail = useCallback(
+    async (email: string, { create }: { create: boolean }): Promise<string | null> => {
+      const response = await apiFetch('/api/users/wallet-for-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, create })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (response.status === 404 && !create) return null;
+      if (!response.ok || !data?.walletAddress) {
+        throw new Error(data?.error || `Could not find a wallet for ${email} (${response.status})`);
+      }
+      return data.walletAddress as string;
+    },
+    []
+  );
+
   /** Clear a seat whose arbiter has been silent 30 days. Moves no funds and closes nothing. */
   const evictArbiter = useCallback(
     (escrowAddress: string) => send(escrowAddress, escrowInterface, 'evictArbiter'),
+    [send]
+  );
+
+  /**
+   * The seated arbiter steps down (§3.3A1c). Only the arbiter's own wallet can send it; the seat
+   * is empty afterwards exactly as after an eviction, and their standing vote stops counting.
+   */
+  const resignArbiter = useCallback(
+    (escrowAddress: string) => send(escrowAddress, escrowInterface, 'resignArbiter'),
     [send]
   );
 
@@ -248,6 +394,9 @@ export function useMarketplaceActions() {
   /**
    * Accept an offer: the atomic swap. Must land within five minutes of the approval above.
    *
+   * The seller signs `AcceptOffer` and chainservice delivers it, as the approval before it; each
+   * returns only once mined, so the second is never early. There is no wallet-sent fallback.
+   *
    * If the window lapses, just re-prompt for the approval. An expired approval is inert and
    * nothing is at risk — treat expiry as a retry, never as an error state needing recovery.
    */
@@ -269,27 +418,24 @@ export function useMarketplaceActions() {
    *    after someone else's acceptance, and dispute-triggered withdrawability are all lazy
    *    conditions the UI must detect and prompt — an LP who is never told simply never withdraws.
    */
-  const withdrawOffer = useCallback(
-    (vaultAddress: string) => send(vaultAddress, vaultInterface, 'withdraw'),
-    [send]
-  );
+  const withdrawOffer = useCallback((vaultAddress: string) => relay('withdraw-offer', vaultAddress), [relay]);
 
   /**
-   * Return a settled escrow's reserve to its funder and beneficiary.
+   * Return a settled escrow's reserve to its funder and beneficiary, sent by chainservice.
    *
-   * ⚠️ NOT KEEPER-FIRABLE. In the per-offer model this answers only to the reserve's funder or
-   *    the live beneficiary, so nobody can sweep up on the parties' behalf. If the UI does not
-   *    detect a settled escrow with a live reserve and tell them, the reserve simply sits there.
+   * Permissionless on-chain (§6.7): the funder is fixed in the vault, the beneficiary read live
+   * off the escrow, and the split falls out of the escrow's final state, so the platform sending
+   * it changes nothing about who is paid what. Nothing announces that an escrow settled, so if
+   * the UI does not detect a settled escrow with a live reserve and offer this, it simply sits.
    */
-  const releaseHoldback = useCallback(
-    (vaultAddress: string) => send(vaultAddress, vaultInterface, 'releaseHoldback'),
-    [send]
-  );
+  const releaseHoldback = useCallback((vaultAddress: string) => relay('release-holdback', vaultAddress), [relay]);
 
   return {
     submitSettlementVote,
     nominateArbiter,
+    resolveArbiterEmail,
     evictArbiter,
+    resignArbiter,
     seatDefaultArbiter,
     createOfferVault,
     fundOffer,

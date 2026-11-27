@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuth } from '@/utils/api-auth';
+import { requireAuth, logApiFailure } from '@/utils/api-auth';
 
 const REPORT_SERVICE_URL = process.env.REPORT_SERVICE_URL || 'https://stabledrop.me';
 
@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(response.status).json(responseData);
   } catch (error) {
-    console.error('Report results API error:', error);
+    logApiFailure('Report results API error:', error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {

@@ -14,7 +14,7 @@ export function getSiteNameFromDomain(): string {
   }
 
   if (hostname.includes('instantescrow')) {
-    return 'Instant Escrow';
+    return 'Stabledrop.me';
   }
 
   if (hostname.includes('conduit-ucpi')) {

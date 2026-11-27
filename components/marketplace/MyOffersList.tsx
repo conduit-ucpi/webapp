@@ -5,7 +5,7 @@ import EmptyState from '@/components/ui/EmptyState';
 import { useLpOffers, useRefreshFromChain } from '@/hooks/useMarketplaceData';
 import { useMarketplaceActions } from '@/hooks/useMarketplaceActions';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { RpcClient } from '@/lib/rpc/RpcClient';
+import { sharedRpcClient } from '@/lib/rpc/RpcClient';
 import { displayCurrency } from '@/utils/currency';
 import { formatTimestamp } from '@/utils/datetime';
 import { formatDateTimeWithTZ } from '@/utils/validation';
@@ -115,7 +115,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
     if (!config?.rpcUrl || !residualEscrowKey) return;
     let cancelled = false;
     (async () => {
-      const client = new RpcClient(config.rpcUrl);
+      const client = sharedRpcClient(config.rpcUrl, config.chainId);
       const entries = await Promise.all(
         residualEscrowKey.split(',').map(async (escrow) => {
           try {
@@ -145,7 +145,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
     if (!config?.rpcUrl || !pendingKey) return;
     let cancelled = false;
     (async () => {
-      const client = new RpcClient(config.rpcUrl);
+      const client = sharedRpcClient(config.rpcUrl, config.chainId);
       const entries = await Promise.all(
         pendingKey.split(',').map(async (pair) => {
           const [vault, token] = pair.split(':');
@@ -196,7 +196,7 @@ export default function MyOffersList({ lpAddress }: MyOffersListProps) {
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Your offers</h2>
           <p className="text-sm text-gray-500 dark:text-secondary-400">
             {lastResult
-              ? `Checked against the chain — ${lastResult.eventsFound} event${lastResult.eventsFound === 1 ? '' : 's'} found across ${lastResult.escrowsReconciled} escrow${lastResult.escrowsReconciled === 1 ? '' : 's'}.`
+              ? `Checked against the chain — ${lastResult.eventsFound} event${lastResult.eventsFound === 1 ? '' : 's'} found across ${lastResult.escrowsReconciled} protected payment${lastResult.escrowsReconciled === 1 ? '' : 's'}.`
               : 'An offer can become withdrawable without anything telling you. Check for updates if one looks stale.'}
           </p>
         </div>
@@ -323,7 +323,7 @@ function OfferRow({
             {offer.status === 'ACCEPTED' ? 'paid' : 'offered'}
           </div>
           <div className="text-xs font-mono text-gray-400 dark:text-secondary-500 mt-0.5 truncate">
-            escrow {offer.escrowContract}
+            payment {offer.escrowContract}
           </div>
           <div className="text-xs text-gray-500 dark:text-secondary-400 mt-1">
             {offer.status === 'OPEN' && !offer.expired && offer.offerExpiry ? (
@@ -426,17 +426,17 @@ function OfferRow({
           You are holding {displayCurrency(offer.holdback!, 'microUSDC')} {tokenSymbol} as a residual.{' '}
           {releasable ? (
             <>
-              The escrow has paid out, so releasing now returns the residual to the seller and any
+              The payment has paid out, so releasing now returns the residual to the seller and any
               balance to you. Nobody can do this on your behalf.
             </>
           ) : escrowSettled === false ? (
             <>
-              It cannot be released until the escrow pays out — the contract refuses before then,
+              It cannot be released until the payment pays out — the contract refuses before then,
               so the button stays disabled rather than spending your gas to be turned down.
             </>
           ) : (
             <>
-              Checking whether the escrow has paid out. Until that is known the release stays
+              Checking whether the payment has paid out. Until that is known the release stays
               disabled, because the contract refuses it before settlement.
             </>
           )}

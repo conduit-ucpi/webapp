@@ -13,3 +13,6 @@ export {
 export type { Locale, LocaleSource, LocaleResolution, ResolveLocaleInput } from './resolveLocale';
 export { CATALOGUES } from './messages';
 export type { MessageKey, Catalogue } from './messages';
+export { sanitizeOverrides, placeholderSet } from './messageOverrides';
+export type { SanitizedOverrides } from './messageOverrides';
+export { withNodes } from './withNodes';

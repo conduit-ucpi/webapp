@@ -49,14 +49,14 @@ export default function WalletRegistrationPrereq() {
         <p className="text-xs tracking-[0.2em] uppercase text-secondary-400 dark:text-secondary-500 mb-6">{t('walletRegistrationPrereq.prerequisites')}</p>
         <h2
           className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-4"
-          style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+          style={{ fontFamily: 'var(--wl-font-accent)' }}
         >
           {registered
-            ? 'This wallet is going to receive your payments:'
-            : 'Set up your wallet to receive payments.'}
+            ? t('walletRegistrationPrereq.receivingWallet')
+            : t('walletRegistrationPrereq.setUpWallet')}
         </h2>
         <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-8 max-w-md">
-          One-time setup. Your wallet address establishes the settlement endpoint for all {currencyList} transactions.
+          {t('walletRegistrationPrereq.oneTimeSetup', { currencies: currencyList })}
         </p>
 
         {registered ? (
@@ -68,7 +68,7 @@ export default function WalletRegistrationPrereq() {
               <button
                 onClick={copyAddress}
                 className="text-secondary-400 hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors flex-shrink-0"
-                title={copied ? 'Copied!' : 'Copy address'}
+                title={copied ? t('contractDetailsModal.copied') : t('walletRegistrationPrereq.copyAddress')}
               >
                 {copied ? (
                   <svg className="w-5 h-5 text-primary-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -85,20 +85,6 @@ export default function WalletRegistrationPrereq() {
               onClick={() => disconnect()}
               className={`${btnOutline} mt-4`}
             >{t('walletRegistrationPrereq.registerADifferentAddress')}</button>
-
-            <div className="mt-6 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800 rounded-md px-4 py-3">
-              <p className="text-sm font-medium text-primary-700 dark:text-primary-300 mb-1">{t('walletRegistrationPrereq.firstTransactionsFree')}</p>
-              <p className="text-sm text-primary-600 dark:text-primary-400">
-                Email{' '}
-                <a
-                  href={`mailto:free-offer@conduit-ucpi.com?subject=Free%20100%20transactions&body=Wallet%20address%3A%20${address}`}
-                  className="underline hover:text-primary-800 dark:hover:text-primary-300 transition-colors"
-                >
-                  free-offer@conduit-ucpi.com
-                </a>
-                {' '}with this wallet address to claim. We&apos;ll refund fees on your first 100 transactions.
-              </p>
-            </div>
           </div>
         ) : (
           <button onClick={handleRegister} className={btnPrimary}>{t('walletRegistrationPrereq.registerMyWallet')}</button>

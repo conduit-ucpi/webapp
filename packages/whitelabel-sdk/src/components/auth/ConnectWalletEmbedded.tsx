@@ -4,7 +4,7 @@ import Button from '@/components/ui/Button';
 import { mLog } from '@/utils/mobileLogger';
 import { isMagicReachable } from '@/lib/auth/magicReachability';
 import { reportAuthFailure } from '@/lib/auth/reportAuthFailure';
-import { useT } from '../../i18n';
+import { useT, withNodes } from '../../i18n';
 
 interface ConnectWalletEmbeddedProps {
   buttonText?: string;
@@ -26,7 +26,7 @@ interface ConnectWalletEmbeddedProps {
 }
 
 export default function ConnectWalletEmbedded({
-  buttonText = "Get Started",
+  buttonText,
   useSmartRouting = true,
   showTwoOptionLayout = false,
   className = "",
@@ -39,7 +39,9 @@ export default function ConnectWalletEmbedded({
   legacyWallet = false
 }: ConnectWalletEmbeddedProps) {
   const t = useT();
-  const { user, isLoading, connect, isConnected, address, requestAuthentication, setConnectionMode } = useAuth();
+  // The default label is translated here rather than in the prop default, which cannot call a hook.
+  const label = buttonText ?? t('connectWalletEmbedded.getStarted');
+  const { user, isLoading, connect, isConnected, address, requestAuthentication, setConnectionMode, signInUsesMagic } = useAuth();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   // Pre-flight: is magiclabs.com reachable? Reown's social-login embedded
@@ -47,8 +49,19 @@ export default function ConnectWalletEmbedded({
   // NextDNS, ad-blockers, corporate firewalls), social/email login fails
   // silently. Probe on mount and, if blocked, hide social options upfront
   // and show the user a banner explaining what's happening.
+  //
+  // ⚠️ ONLY WHEN THIS SIGN-IN GOES THROUGH MAGIC. Privy never touches it. Probing regardless
+  //    reported Magic outages for Privy users and, worse, cut their sign-in to wallet-only:
+  //    hiding Privy's email and Google login, which would have worked, behind a banner about a
+  //    service they were never going to use. With Privy live, only the "old wallet" tick (Reown)
+  //    needs Magic.
+  const usesMagic = signInUsesMagic?.(legacyWallet) === true;
   const [magicBlocked, setMagicBlocked] = useState(false);
   useEffect(() => {
+    if (!usesMagic) {
+      setMagicBlocked(false);
+      return;
+    }
     let cancelled = false;
     isMagicReachable().then((ok) => {
       if (cancelled) return;
@@ -69,7 +82,7 @@ export default function ConnectWalletEmbedded({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [usesMagic]);
 
   // Effective connection mode: if magic is blocked, force wallet-only so
   // the user isn't shown a Google/Apple/email button that will silently fail.
@@ -242,7 +255,7 @@ export default function ConnectWalletEmbedded({
   if (user) {
     return (
       <div className="p-4 text-center">
-        <p className="text-green-600">✓ Wallet connected: {user.email || user.walletAddress}</p>
+        <p className="text-green-600">{t('connectWalletEmbedded.walletConnected', { account: user.email || user.walletAddress })}</p>
       </div>
     );
   }
@@ -365,7 +378,7 @@ export default function ConnectWalletEmbedded({
           className={buttonClassName}
           disabled={isBusy || !connect}
         >
-          {isBusy ? 'Connecting...' : buttonText}
+          {isBusy ? t('connectWalletEmbedded.connecting') : label}
         </button>
       ) : (
         <Button
@@ -373,14 +386,14 @@ export default function ConnectWalletEmbedded({
           className="px-6 py-2"
           disabled={isBusy || !connect}
         >
-          {isBusy ? 'Connecting...' : buttonText}
+          {isBusy ? t('connectWalletEmbedded.connecting') : label}
         </Button>
       )}
       {!compact && (
         <p className="mt-2 text-sm text-secondary-600 dark:text-secondary-400">
           {magicBlocked
-            ? 'Connect your wallet to continue'
-            : 'Sign up with email or use your existing wallet'}
+            ? t('connectWalletEmbedded.connectToContinue')
+            : t('connectWalletEmbedded.signUpOrWallet')}
         </p>
       )}
       {magicBlocked && !compact && (
@@ -390,11 +403,14 @@ export default function ConnectWalletEmbedded({
         >
           <p className="font-semibold">{t('connectWalletEmbedded.emailSocialSignIn')}</p>
           <p className="mt-1">
-            Your network appears to be blocking{' '}
-            <span className="font-mono">magiclabs.com</span>{t('connectWalletEmbedded.whichOurEmailSocial')}</p>
+            {withNodes(t('connectWalletEmbedded.networkBlocking'), {
+              domain: <span className="font-mono">magiclabs.com</span>,
+            })}
+          </p>
           <p className="mt-1">
-            To restore email/social sign-in, try a different network, disable
-            ad blockers, or switch your DNS to <span className="font-mono">1.1.1.1</span>.
+            {withNodes(t('connectWalletEmbedded.restoreHint'), {
+              dns: <span className="font-mono">1.1.1.1</span>,
+            })}
           </p>
         </div>
       )}

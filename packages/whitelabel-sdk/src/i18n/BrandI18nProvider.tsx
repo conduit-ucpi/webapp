@@ -10,5 +10,9 @@ import { I18nProvider } from './I18nProvider';
  */
 export function BrandI18nProvider({ children }: { children: React.ReactNode }) {
   const brand = useOptionalBrand();
-  return <I18nProvider brandLocale={brand?.locale}>{children}</I18nProvider>;
+  return (
+    <I18nProvider brandLocale={brand?.locale} messageOverrides={brand?.messages}>
+      {children}
+    </I18nProvider>
+  );
 }

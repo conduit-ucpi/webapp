@@ -43,6 +43,7 @@ export function transformCombinedContractItem(item: any): UnifiedContract | null
       ctaType: item.ctaType,
       ctaLabel: item.ctaLabel,
       ctaVariant: item.ctaVariant,
+      payLink: item.payLink,
     } as PendingContract;
     return pendingContract;
   }
@@ -51,10 +52,14 @@ export function transformCombinedContractItem(item: any): UnifiedContract | null
   const regularContract: Contract = {
     id: contract.id,
     contractAddress: contract.chainAddress || '',
+    arbiterAddress: contract.arbiterAddress || undefined,
     buyerAddress: item.blockchainBuyerAddress || contract.buyerAddress || '',
     sellerAddress: item.blockchainSellerAddress || contract.sellerAddress || '',
     amount: parseFloat(item.blockchainAmount || contract.amount || '0'), // microUSDC
     expiryTimestamp: item.blockchainExpiryTimestamp || contract.expiryTimestamp || 0,
+    // Which token it holds: what any figure put in front of the user has to be stated in.
+    tokenAddress: item.blockchainTokenAddress || contract.tokenAddress || undefined,
+    currencySymbol: contract.currencySymbol || undefined,
     description: contract.description || '',
     status: item.status || 'UNKNOWN',
     blockchainStatus: item.blockchainStatus,
@@ -73,6 +78,7 @@ export function transformCombinedContractItem(item: any): UnifiedContract | null
     ctaType: item.ctaType,
     ctaLabel: item.ctaLabel,
     ctaVariant: item.ctaVariant,
+    payLink: item.payLink,
   };
   return regularContract;
 }
@@ -105,6 +111,11 @@ interface UseCombinedContractsOptions {
    */
   enabled?: boolean;
   /**
+   * Which of the viewer's roles to list for. Default: the escrows they are buyer or seller on.
+   * `'arbiter'`: the escrows naming their wallet as Third Voter, for the /disputes screen.
+   */
+  role?: 'arbiter';
+  /**
    * The fetch implementation. Defaults to the global `fetch`. The dashboard
    * passes its `authenticatedFetch` (which handles lazy SIWX auth + retry).
    */
@@ -133,7 +144,7 @@ interface UseCombinedContractsResult {
 export function useCombinedContracts(
   options: UseCombinedContractsOptions = {}
 ): UseCombinedContractsResult {
-  const { enabled = true, fetcher } = options;
+  const { enabled = true, fetcher, role } = options;
   const [contracts, setContracts] = useState<UnifiedContract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -144,7 +155,7 @@ export function useCombinedContracts(
     // authenticatedFetch, so this default is the path that would fail quietly.
     const doFetch: Fetcher = fetcher ?? ((url) => apiFetch(url));
     try {
-      const response = await doFetch('/api/combined-contracts');
+      const response = await doFetch(role ? `/api/combined-contracts?role=${role}` : '/api/combined-contracts');
 
       if (!response.ok) {
         throw new Error('Failed to fetch contracts');
@@ -165,7 +176,7 @@ export function useCombinedContracts(
     } finally {
       setIsLoading(false);
     }
-  }, [fetcher]);
+  }, [fetcher, role]);
 
   useEffect(() => {
     if (enabled) {

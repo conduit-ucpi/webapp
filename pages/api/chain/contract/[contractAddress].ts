@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuth } from '@/utils/api-auth';
+import { isPathSegment } from '@/lib/server/serviceProxy';
+import { requireAuth, logApiFailure, logBackendAnswer } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -8,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { contractAddress } = req.query;
 
-  if (!contractAddress || typeof contractAddress !== 'string') {
+  if (!isPathSegment(contractAddress)) {
     return res.status(400).json({ error: 'Contract address is required' });
   }
 
@@ -31,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Chain service error:', errorText);
+      logBackendAnswer('Chain service', response.status, errorText);
       return res.status(response.status).json({ 
         error: `Chain service error: ${response.status}`,
         details: errorText
@@ -64,7 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
   } catch (error) {
-    console.error('Chain contract API error:', error);
+    logApiFailure('Chain contract API error:', error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {

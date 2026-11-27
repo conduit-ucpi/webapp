@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { requireAuth } from '@/utils/api-auth';
+import { isPathSegment } from '@/lib/server/serviceProxy';
+import { requireAuth, logApiFailure } from '@/utils/api-auth';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -8,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const { contractId } = req.query;
 
-  if (!contractId) {
+  if (!isPathSegment(contractId)) {
     return res.status(400).json({ error: 'Contract ID is required' });
   }
 
@@ -91,7 +92,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     res.status(200).json(result);
   } catch (error) {
-    console.error('Raw contracts fetch error:', error);
+    logApiFailure('Raw contracts fetch error:', error);
     if (error instanceof Error && error.message === 'Authentication required') {
       res.status(401).json({ error: 'Authentication required' });
     } else {

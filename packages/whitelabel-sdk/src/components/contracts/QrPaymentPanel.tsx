@@ -1,13 +1,14 @@
 import { QRCodeSVG } from 'qrcode.react';
 import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import QrPlaceholder from '@/components/contracts/QrPlaceholder';
 import { useT } from '../../i18n';
 
 /** The subset of useQrPayment's return that this panel renders. */
 interface QrController {
   qrContractAddress: string | null;
   qrPaymentDetected: boolean;
-  qrActivationStatus: 'idle' | 'checking' | 'success' | 'waiting';
+  qrActivationStatus: 'idle' | 'checking' | 'success' | 'waiting' | 'refunded';
   isCreatingContract: boolean;
   hasCheckedBalance: boolean;
   createContract: () => void;
@@ -36,6 +37,16 @@ interface QrPaymentPanelProps {
    */
   onCancel?: () => void;
   successMessage: string;
+  /** A seller's preview of their own request: a picture in place of the code, which would pay nothing. */
+  preview?: boolean;
+  /**
+   * 'send' (the default): for someone sending from a wallet, so the code to scan, the wallet link
+   * and what to send. 'check': for someone who has just bought by card and had it sent here, who
+   * scans nothing and sends nothing: only the address, to check against, and "I have paid".
+   * 'address': the code and what to send, WITHOUT "I have paid", for a screen that shows sending
+   * and confirming as two steps and has the button in the second.
+   */
+  variant?: 'send' | 'check' | 'address';
 }
 
 /**
@@ -57,7 +68,11 @@ export default function QrPaymentPanel({
   createNote,
   onCancel,
   successMessage,
+  preview = false,
+  variant = 'send',
 }: QrPaymentPanelProps) {
+  const sending = variant !== 'check';
+  const confirming = variant !== 'address';
   const t = useT();
   /**
    * Hold everything back until the escrow has been read.
@@ -88,7 +103,7 @@ export default function QrPaymentPanel({
       {!qr.qrContractAddress && (
         <div className="text-center">
           <p className="text-sm text-secondary-600 dark:text-secondary-300 mb-4">
-            First, we need to create a secure escrow contract on the blockchain. Then you will get a payment link to send your payment.
+            {t('qrPaymentPanel.createFirst')}
           </p>
           <Button
             onClick={qr.createContract}
@@ -108,8 +123,15 @@ export default function QrPaymentPanel({
         </div>
       )}
 
+      {/* Paid after the payout date: returned to the buyer. Final, so no QR and no "I have paid". */}
+      {qr.qrContractAddress && qr.qrActivationStatus === 'refunded' && (
+        <div role="status" className="bg-secondary-50 dark:bg-secondary-800 border border-secondary-200 dark:border-secondary-700 rounded-md p-3">
+          <p className="text-sm text-secondary-700 dark:text-secondary-200">{t('qrPaymentPanel.refunded')}</p>
+        </div>
+      )}
+
       {/* Step 2: Show QR code and payment instructions */}
-      {qr.qrContractAddress && qr.qrActivationStatus !== 'success' && (
+      {qr.qrContractAddress && qr.qrActivationStatus !== 'success' && qr.qrActivationStatus !== 'refunded' && (
         <div>
           {/* Payment detected banner */}
           {qr.qrPaymentDetected && (
@@ -121,7 +143,7 @@ export default function QrPaymentPanel({
           )}
 
           {/* QR Code (desktop) or Deep Link button (mobile) */}
-          {isMobileDevice ? (
+          {!sending ? null : isMobileDevice ? (
             <div className="mb-4 space-y-3">
               <Button
                 onClick={() => { window.location.href = qr.buildEip681Uri(); }}
@@ -130,15 +152,25 @@ export default function QrPaymentPanel({
               <p className="text-xs text-center text-secondary-500 dark:text-secondary-400">{t('qrPaymentPanel.tapToOpenYour')}</p>
             </div>
           ) : (
-            <div className="flex justify-center mb-4">
+            <div className="flex flex-col items-center gap-2 mb-4">
               <div className="bg-white p-4 rounded-lg border-2 border-secondary-200 shadow-sm">
-                <QRCodeSVG
-                  value={qr.buildEip681Uri()}
-                  size={200}
-                  level="M"
-                  includeMargin={true}
-                />
+                {preview ? (
+                  <QrPlaceholder />
+                ) : (
+                  <QRCodeSVG
+                    value={qr.buildEip681Uri()}
+                    size={200}
+                    level="M"
+                    includeMargin={true}
+                  />
+                )}
               </div>
+              {/* The same request as the code, for a wallet installed on this computer. */}
+              {!preview && (
+                <a href={qr.buildEip681Uri()} className="text-sm underline text-secondary-600 dark:text-secondary-300 hover:text-secondary-900 dark:hover:text-white">
+                  {t('qrPaymentPanel.openInWalletApp')}
+                </a>
+              )}
             </div>
           )}
 
@@ -163,26 +195,21 @@ export default function QrPaymentPanel({
             </div>
           </div>
 
-          {/* Payment instructions */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4 mb-4">
-            <h4 className="font-medium text-blue-900 dark:text-blue-200 text-sm mb-2">{t('qrPaymentPanel.paymentInstructions')}</h4>
-            <ul className="text-xs text-blue-800 dark:text-blue-300 space-y-1.5">
-              <li>{t('qrPaymentPanel.network')} <span className="font-medium">{networkName}</span></li>
-              <li>{t('qrPaymentPanel.token')} <span className="font-medium">{tokenSymbol}</span></li>
-              <li>{t('qrPaymentPanel.amount')} <span className="font-medium">{amountInTokens.toFixed(4)} {tokenSymbol}</span></li>
-            </ul>
-          </div>
-
-          {/* Warning */}
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 mb-4">
-            <p className="text-xs text-yellow-800 dark:text-yellow-300 font-medium">
-              {t('qrPaymentPanel.sendExactly', { amount: amountInTokens.toFixed(4), token: tokenSymbol })}
-            </p>
-          </div>
+          {/* ⚠️ ONE WARNING, SAYING ALL OF IT ONCE: the amount, the token and the network. It was a
+              box of instructions (network, token, amount), then a warning repeating the amount,
+              under a third on the screen above repeating the network. */}
+          {sending && (
+            <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md p-3 mb-4">
+              <p className="text-xs text-yellow-800 dark:text-yellow-300 font-medium">
+                {t('qrPaymentPanel.sendExactlyOn', { amount: amountInTokens.toFixed(4), token: tokenSymbol, network: networkName })}
+              </p>
+            </div>
+          )}
 
           {/* Activation controls. The check runs when the user presses the
               button — there is no live status to report before that, so the
               panel does not claim to be checking. */}
+          {confirming && (
           <div className="space-y-3">
             <Button
               onClick={qr.checkAndActivate}
@@ -211,6 +238,7 @@ export default function QrPaymentPanel({
               >{t('disputeManagementModal.cancel')}</Button>
             )}
           </div>
+          )}
         </div>
       )}
 

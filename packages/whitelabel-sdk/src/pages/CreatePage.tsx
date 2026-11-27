@@ -6,7 +6,7 @@ import Skeleton from '@/components/ui/Skeleton';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import CreateProgressSteps from '@/components/contracts/CreateProgressSteps';
 import { useT } from '../i18n';
-import { useOptionalBrand, useBrandSource } from '../theme/BrandProvider';
+import { useOptionalBrand } from '../theme/BrandProvider';
 
 // Keys rather than sentences: the catalogue owns the wording.
 const HOW_IT_WORKS = [
@@ -21,10 +21,9 @@ export default function CreatePage() {
   const autoConnect = router.query.autoConnect === 'true';
   const t = useT();
 
-  // A selected partner names itself; otherwise the hostname decides, so
-  // instantescrow.nz and usdcbay.com keep their own names.
+  // Every site is a brand now — a partner's, or one of our own domains' — so the
+  // brand names the page. The hostname helper is only for use outside a provider.
   const brand = useOptionalBrand();
-  const brandSource = useBrandSource();
 
   if (isLoading) {
     return (
@@ -54,7 +53,7 @@ export default function CreatePage() {
   if (!isConnected || !address) {
     const siteName = getSiteNameFromDomain();
     const displayName =
-      brand && brandSource && brandSource !== 'default' ? brand.name : siteName;
+      brand?.name ?? siteName;
 
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12 sm:py-16">

@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { shopifyApi, ApiVersion } from '@shopify/shopify-api';
 import '@shopify/shopify-api/adapters/node';
+import { shopifyUser, signInToConnect } from '@/lib/server/shopifyOwner';
 
 const shopify = shopifyApi({
   apiKey: process.env.SHOPIFY_CLIENT_ID!,
@@ -29,6 +30,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Ensure shop has proper format
   const shopDomain = shop.includes('.') ? shop : `${shop}.myshopify.com`;
   console.log('Processing shop domain:', shopDomain);
+
+  // Signed in before Shopify is asked anything: the shop will belong to this account, so
+  // there has to be one. A browser arriving without a session (Shopify's own "install" link
+  // does) is sent to sign in and start again, rather than through an OAuth round trip whose
+  // result we would then have to throw away.
+  if (!(await shopifyUser(req))) {
+    return res.redirect(302, signInToConnect(shopDomain));
+  }
 
   try {
     // Generate auth URL using the new API

@@ -37,14 +37,22 @@ export function initRedditPixel(pixelId: string): void {
   // Check if already initialized
   if (window.rdt) return;
 
-  // Create Reddit Pixel script
+  // Reddit's snippet, without an inline <script>: the Content-Security-Policy does not allow one.
+  // Calls made before pixel.js arrives wait in callQueue, which it replays.
+  const rdt: any = function (...args: unknown[]) {
+    if (rdt.sendEvent) rdt.sendEvent(...args);
+    else rdt.callQueue.push(args);
+  };
+  rdt.callQueue = [];
+  window.rdt = rdt;
+
   const script = document.createElement('script');
-  script.innerHTML = `
-    !function(w,d){if(!w.rdt){var p=w.rdt=function(){p.sendEvent?p.sendEvent.apply(p,arguments):p.callQueue.push(arguments)};p.callQueue=[];var t=d.createElement("script");t.src="https://www.redditstatic.com/ads/pixel.js",t.async=!0;var s=d.getElementsByTagName("script")[0];s.parentNode.insertBefore(t,s)}}(window,document);
-    rdt('init','${pixelId}', {"optOut":false,"useDecimalCurrencyValues":true});
-    rdt('track', 'PageVisit');
-  `;
+  script.async = true;
+  script.src = 'https://www.redditstatic.com/ads/pixel.js';
   document.head.appendChild(script);
+
+  rdt('init', pixelId, { optOut: false, useDecimalCurrencyValues: true });
+  rdt('track', 'PageVisit');
 }
 
 /**

@@ -16,7 +16,7 @@ export default function ShopifyEmbedded() {
   return (
     <>
       <Head>
-        <title>InstantEscrow USDC Payments</title>
+        <title>Stabledrop USDC Payments</title>
         <meta name="shopify-api-key" content="3d76e8d2767514c1a7775ff91432a995" />
         <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js" />
       </Head>
@@ -37,7 +37,7 @@ export default function ShopifyEmbedded() {
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         }}>
           <h1 style={{ color: '#202223', marginBottom: '8px' }}>
-            InstantEscrow Payment Gateway
+            Stabledrop Payment Gateway
           </h1>
           <p style={{ color: '#6d7175', marginBottom: '24px' }}>
             Accept USDC payments with automatic buyer protection
@@ -57,7 +57,7 @@ export default function ShopifyEmbedded() {
           <h2 style={{ color: '#202223' }}>Features</h2>
           <ul style={{ color: '#6d7175', lineHeight: '1.8' }}>
             <li>Accept USDC payments on Base blockchain</li>
-            <li>Automatic escrow protection for buyers (14-day default)</li>
+            <li>Automatic payment protection for buyers (14-day default)</li>
             <li>1% transaction fee, no monthly fees</li>
             <li>Built-in dispute resolution</li>
             <li>Works on any Shopify theme</li>

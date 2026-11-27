@@ -120,7 +120,6 @@ describe('Web3Service - Double 0x Prefix Bug', () => {
     maxGasCostGwei: '5000000',
     gasPriceBuffer: '1.2',
     usdcGrantFoundryGas: '54810',
-    depositFundsFoundryGas: '61896',
     resolutionVoteFoundryGas: '80000',
     raiseDisputeFoundryGas: '150000',
     claimFundsFoundryGas: '150000',

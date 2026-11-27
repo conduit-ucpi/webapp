@@ -1,0 +1,70 @@
+import type { FundWalletRequest, FundWalletResult } from '@/lib/auth/types/unified-provider';
+
+/**
+ * Our funding request in the shape of Privy's depositFunds, and its answer in ours. Kept apart from
+ * PrivyHost so it can be tested without Privy.
+ *
+ * Fiat only, for now. Privy's crypto deposits need a Privy wallet (depositFunds throws for an
+ * external one) and cost the app gas, and FundingOptions already offers a transfer from another wallet.
+ *
+ * ⚠️ THE AMOUNT IS ONLY A STARTING POINT. It is in tokens, and Privy takes it as a fiat amount in
+ *    whichever currency is selected. Starting in USD makes it about right for a dollar stablecoin,
+ *    but Privy keeps the number when the buyer changes currency: 32.39 USDC became 32.39 MXN when
+ *    tried on 2026-11-06, under $2. Short purchases stay in the buyer's wallet, and they can edit it.
+ *
+ * ⚠️ AND IT IS MONEY SPENT, NOT TOKENS RECEIVED. The seller of the tokens takes its fee out of
+ *    what is paid: $100.00 was quoted 95.876733 USDC on 2026-11-23 (Blockchain.com, through
+ *    Privy), which leaves a buyer who needed 100 still short. The fee differs by seller and is
+ *    not ours to guess, so the amount is NOT raised here: the buyer is told, where this is
+ *    opened, to check what they will receive and raise the amount there (addFunds.cardFeeNote).
+ */
+export function depositFundsOptions(address: string, request: FundWalletRequest, chainId: number) {
+  // Privy takes "a token symbol or address". A symbol, lower-case like its own 'usdc', is what its
+  // provider matching understands; a bare address got a USDT buyer offered Stripe, which cannot
+  // deliver USDT on Base (seen 2026-11-10). The address stays as the fallback for a token with no
+  // symbol to give.
+  const asset =
+    request.asset === 'USDC' ? 'usdc' : request.asset.symbol ? request.asset.symbol.toLowerCase() : request.asset.erc20;
+  return {
+    destination: {
+      wallet: address,
+      chain: `eip155:${chainId}`,
+      asset,
+    },
+    fiat: { source: { defaultAsset: 'usd' as const }, defaultAmount: request.amount },
+  };
+}
+
+/** How Privy says the buyer closed its window. It rejects, where the old hook resolved. */
+const USER_EXIT = /cancel|exited/i;
+/**
+ * Privy gave up waiting to hear how the purchase ended ("Could not confirm payment status yet.").
+ * It rejects with this, but it is not a failure: the purchase was made and nobody knows yet whether
+ * it went through. On 26 Nov 2026 a buyer waited 25 minutes in Privy's window for it, was shown it
+ * as an error, and bought again.
+ */
+const UNCONFIRMED = /could not confirm/i;
+
+/**
+ * Closing the window is a choice, not a failure. Anything else is still thrown, to be shown.
+ *
+ * Privy resolves with "confirmed" when the card provider says the purchase succeeded, and with
+ * "submitted" when the provider was still processing it as the window closed. "submitted" is not
+ * money: on 24 Nov 2026 a $5,000 purchase came back "submitted", nothing arrived, and the buyer,
+ * told nothing, started another 35 seconds later. So it is 'processing', never 'completed'.
+ */
+export async function fundWalletResult(deposit: Promise<unknown>): Promise<FundWalletResult> {
+  try {
+    const result = (await deposit) as { status?: string } | undefined;
+    if (result?.status === 'submitted') return { status: 'processing', detail: result.status };
+    return { status: 'completed', detail: result?.status };
+  } catch (error) {
+    if (error instanceof Error && USER_EXIT.test(error.message)) {
+      return { status: 'cancelled', detail: error.message };
+    }
+    if (error instanceof Error && UNCONFIRMED.test(error.message)) {
+      return { status: 'processing', detail: error.message };
+    }
+    throw error;
+  }
+}

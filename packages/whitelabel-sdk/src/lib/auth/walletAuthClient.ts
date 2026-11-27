@@ -1,5 +1,5 @@
 import { apiFetch } from '@/lib/apiFetch';
-import { siweStatement } from '@/lib/auth/siwe-statement';
+import { siweStatement, termsUrl } from '@/lib/auth/siwe-statement';
 
 /**
  * Proving wallet ownership to our backend: nonce → message → (the provider signs) → verify.
@@ -41,11 +41,17 @@ export async function requestAuthNonce(): Promise<string> {
  *
  * `chainId` is the app's configured chain, never the wallet's current network: the session is
  * for the chain the app runs on, whatever the wallet happens to be pointed at.
+ *
+ * `serviceLink` is the site from /api/config; its `/terms-of-service/` is what signing accepts,
+ * and user-service refuses a message naming any other site's. `termsVersion`, also from
+ * /api/config, names which version of those terms the signature accepts.
  */
 export function buildSiweMessage(params: {
   address: string;
   chainId: number;
   nonce: string;
+  serviceLink?: string | null;
+  termsVersion?: string | null;
   issuedAt?: string;
 }): string {
   const domain = window.location.host;
@@ -55,7 +61,7 @@ export function buildSiweMessage(params: {
   return `${domain} wants you to sign in with your Ethereum account:
 ${params.address}
 
-${siweStatement(params.chainId)}
+${siweStatement(termsUrl(params.serviceLink), params.termsVersion)}
 
 URI: ${uri}
 Version: 1

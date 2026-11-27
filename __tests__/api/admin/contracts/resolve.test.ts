@@ -1,6 +1,11 @@
 import { createMocks } from 'node-mocks-http';
 import handler from '@/pages/api/admin/contracts/[id]/resolve';
 
+
+// These tests are about what the route does once an admin is through the door; who gets through
+// it is __tests__/api/admin/admin-routes-need-an-admin.test.ts.
+jest.mock('@/lib/server/requireAdmin', () => ({ requireAdmin: async () => 'a-token' }));
+
 // Mock fetch
 global.fetch = jest.fn();
 const mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;

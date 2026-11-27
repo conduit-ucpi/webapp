@@ -47,7 +47,6 @@ export interface SimpleAuthContextType {
   showWalletUI?: () => Promise<void>;
 
   // Deprecated methods - throw errors directing to useSimpleEthers
-  fundContract?: (...args: any[]) => Promise<any>;
   claimFunds?: (...args: any[]) => Promise<any>;
   raiseDispute?: (...args: any[]) => Promise<any>;
 }

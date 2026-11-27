@@ -1,0 +1,177 @@
+import { useState } from 'react';
+import Link from 'next/link';
+import Fade from '@/components/ui/Fade';
+import { useApiDocsUrl } from '@/lib/apiDocs';
+import EscrowEstimator from './EscrowEstimator';
+import EscrowTimeline from './EscrowTimeline';
+import AudienceTabs from './AudienceTabs';
+import EmbedExamples from './EmbedExamples';
+import DemoButtons from './DemoButtons';
+import PricingTabs from './PricingTabs';
+import { lt } from './theme';
+import { Chapter, CheckoutMock, HoverChapter, ScrollyHero, card, section } from './scrolly';
+import {
+  AGENT_INTRO,
+  AGENT_POINTS,
+  BENEFITS,
+  BOTH_SIDES_POINTS,
+  BUYER_POINTS,
+  HOW_IT_WORKS,
+  MERCHANT_POINTS,
+  PRICING_TABS,
+  PricingKey,
+} from './content';
+
+/** The homepage's hero. headingLevel 2 where it sits under another page's h1 (/landing_simple). */
+export function HomeHero({ brand, headingLevel = 1 }: { brand: string; headingLevel?: 1 | 2 }) {
+  return (
+    <ScrollyHero
+      brand={brand}
+      headline={<>Pay anyone, <span className={lt.accentText}>stay protected</span></>}
+      sub="Make and receive protected payments in seconds, add a checkout to your site in minutes."
+      primary={{ href: '/create', label: 'Request payment' }}
+      secondary={{ href: '#demo', label: 'See the checkout' }}
+      right={<EscrowTimeline />}
+      showDashboard={false}
+      headingLevel={headingLevel}
+    />
+  );
+}
+
+/*
+ * Everything on the homepage below the hero, from "Protected on both sides" to the plugins
+ * card. One component so the homepage and /landing_simple (which carries it collapsed, for
+ * search engines and for visitors who open "Learn more") cannot drift apart.
+ */
+export default function HomeSections() {
+  const apiDocsUrl = useApiDocsUrl();
+  const [pricing, setPricing] = useState<PricingKey>('card');
+  const pricingTab = PRICING_TABS.find((t) => t.key === pricing)!;
+
+  return (
+    <>
+      <HoverChapter
+        label="Protection"
+        title="Protected on both sides."
+        ariaLabel="Protection on both sides"
+        fallback="Buyers, sellers, and what happens when it goes wrong. Point at one."
+        items={BOTH_SIDES_POINTS}
+        columns={1}
+        titlesOnly
+      />
+
+      <HoverChapter
+        label="How it works"
+        title="Three steps. Point at one for the detail."
+        ariaLabel="How it works"
+        fallback="Create, fund, payout. Point at a step."
+        items={HOW_IT_WORKS.map((s) => ({ label: s.title, text: s.desc }))}
+        columns={1}
+        titlesOnly
+        actions={<Link href="/how-it-works" className={lt.btnSecondary}>Watch a payment happen</Link>}
+      />
+
+      <Chapter
+        id="demo"
+        label="Live demo"
+        title="Merchants: see what your customers see when using Stabledrop's checkout"
+        ariaLabel="Try the checkout"
+        aside={
+          <>
+            <CheckoutMock />
+            <EscrowEstimator />
+          </>
+        }
+      >
+        <p className={lt.muted}>This opens the actual checkout — the same experience your customers get when they click &ldquo;Pay&rdquo; on your site. Under it, the estimator.</p>
+        <DemoButtons className="mt-6" />
+      </Chapter>
+
+      <HoverChapter
+        label="For merchants"
+        title="Everything a processor takes, you keep."
+        ariaLabel="For merchants"
+        fallback="Six things a card processor charges for. Hover any of them for what happens here instead."
+        items={MERCHANT_POINTS}
+        titlesOnly
+        actions={
+          <>
+            <Link href="/plugins" className={lt.btnPrimary}>View integrations</Link>
+            <Link href="/merchant-savings-calculator" className={lt.btnSecondary}>Calculate savings</Link>
+          </>
+        }
+      />
+
+      <HoverChapter
+        label="For buyers"
+        title="Pay, and actually be protected."
+        ariaLabel="For buyers"
+        fallback="No wallet to set up, no gas to buy, no network to choose. Sign in with Google or email and pay."
+        items={BUYER_POINTS}
+        titlesOnly
+        actions={<Link href="/p2p" className={lt.btnSecondary}>Buying from a stranger?</Link>}
+      />
+
+      <HoverChapter
+        label="For AI agents"
+        title="Let an agent pay for you. Keep the veto."
+        ariaLabel="For AI agents"
+        fallback={AGENT_INTRO}
+        items={AGENT_POINTS}
+        titlesOnly
+        actions={
+          <>
+            <Link href="/plugins#mcp" className={lt.btnPrimary}>Connect your agent</Link>
+            <a href={apiDocsUrl} target="_blank" rel="noopener noreferrer" className={lt.btnSecondary}>API reference</a>
+          </>
+        }
+      />
+
+      <Chapter label="Developers" title="Put it on your site in 10 mins." ariaLabel="Embed in your platform" aside={<EmbedExamples layout="side" />}>
+        <p className={lt.muted}>A plugin for WordPress and Shopify, one script tag for everything else, and one URL for any AI agent.</p>
+        <div className="mt-6">
+          <Link href="/integrate" className={lt.btnSecondary}>Read the SDK guide</Link>
+        </div>
+      </Chapter>
+
+      <Chapter label="Who it's for" title="Personal, business, platform." ariaLabel="Who it is for" aside={<AudienceTabs columns={2} />}>
+        <p className={lt.muted}>Pick who you are and see how people like you use it.</p>
+      </Chapter>
+
+      <Chapter
+        id="pricing"
+        label="Pricing"
+        title={pricingTab.title}
+        ariaLabel="Pricing"
+        aside={<PricingTabs active={pricing} onChange={setPricing} />}
+      >
+        <p className={`text-[7rem] leading-none font-medium tracking-tighter ${lt.accentText}`}>1%</p>
+        <p className={`mt-2 ${lt.muted}`}>{pricingTab.summary}</p>
+      </Chapter>
+
+      <section className={`border-t ${lt.border}`} aria-label="Why switch">
+        <div className={`${section} py-20`}>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {BENEFITS.map((b, i) => (
+              <Fade key={b.title} delay={i * 0.06}>
+                <div className={`${card} p-5 h-full hover:border-[color:var(--lt-accent)] transition-colors`}>
+                  <h3 className={`text-lg font-semibold leading-snug ${lt.fg}`}>{b.title}</h3>
+                  <p className={`mt-2 text-sm leading-relaxed ${lt.muted}`}>{b.text}</p>
+                </div>
+              </Fade>
+            ))}
+          </div>
+          <Fade delay={0.2}>
+            <div className={`${card} mt-4 p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6`}>
+              <div>
+                <h2 className={`text-3xl font-medium tracking-tight ${lt.fg}`}>Add a protected checkout to your store.</h2>
+                <p className={`mt-2 text-sm max-w-md ${lt.muted}`}>Ready-made plugins for the platforms you already sell on.</p>
+              </div>
+              <Link href="/plugins" className={lt.btnPrimary}>Explore plugins</Link>
+            </div>
+          </Fade>
+        </div>
+      </section>
+    </>
+  );
+}

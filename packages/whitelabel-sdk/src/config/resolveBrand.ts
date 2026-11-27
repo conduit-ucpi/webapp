@@ -1,5 +1,6 @@
-import { BrandConfig, ResolvedBrand, BrandTheme, PartialBrandTheme } from './types';
+import { BrandAssets, BrandConfig, ResolvedBrand, BrandTheme, PartialBrandTheme, PaletteName } from './types';
 import { DEFAULT_THEME } from './defaults';
+import { brandAssetUrl } from './remoteBrand';
 
 /**
  * Fill a partial tenant config out to something the components can read without
@@ -14,11 +15,11 @@ const DEFAULT_COPY = {
   productName: '',
   createTitle: 'Create a payment request',
   createSubtitle:
-    'Set an amount and a release date. The buyer pays into escrow, and the funds move to you automatically on that date.',
+    'Set an amount and a release date. The buyer pays into a protected payment, and the funds move to you automatically on that date.',
   dashboardTitle: 'Your payments',
-  dashboardSubtitle: 'Everything you have sent, received, or have waiting in escrow.',
+  dashboardSubtitle: 'Everything you have sent, received, or have waiting in protected payments.',
   payTitle: 'Complete your payment',
-  paySubtitle: 'Your money is held in escrow until the release date you can see below.',
+  paySubtitle: 'Your money is held in the payment contract until the release date you can see below.',
   operatorNote: '',
 } as const;
 
@@ -36,6 +37,26 @@ function mergeTheme(theme: PartialBrandTheme | undefined): BrandTheme {
     // usable ramp either side of it.
     primary: { ...DEFAULT_THEME.primary, ...(theme?.primary ?? {}) },
     secondary: { ...DEFAULT_THEME.secondary, ...(theme?.secondary ?? {}) },
+    palettes: Object.fromEntries(
+      (Object.keys(DEFAULT_THEME.palettes) as PaletteName[]).map((name) => [
+        name,
+        { ...DEFAULT_THEME.palettes[name], ...(theme?.palettes?.[name] ?? {}) },
+      ])
+    ) as BrandTheme['palettes'],
+    button: { ...DEFAULT_THEME.button, ...(theme?.button ?? {}) },
+  };
+}
+
+/** Asset ids from the white-label service become URLs; site paths pass through. */
+function resolveAssets(config: BrandConfig): BrandAssets {
+  const assets = config.assets ?? {};
+  const url = (ref?: string) => (ref ? brandAssetUrl(config.id, ref) : undefined);
+  return {
+    ...assets,
+    logo: url(assets.logo),
+    logoDark: url(assets.logoDark),
+    favicon: url(assets.favicon),
+    ogImage: url(assets.ogImage),
   };
 }
 
@@ -44,7 +65,11 @@ export function resolveBrand(config: BrandConfig): ResolvedBrand {
   return {
     ...config,
     theme,
-    assets: config.assets ?? {},
+    assets: resolveAssets(config),
+    fonts: config.fonts && {
+      ...config.fonts,
+      faces: config.fonts.faces?.map((face) => ({ ...face, asset: brandAssetUrl(config.id, face.asset) })),
+    },
     copy: {
       ...DEFAULT_COPY,
       // An unset productName means "use the brand name" — saying it twice in

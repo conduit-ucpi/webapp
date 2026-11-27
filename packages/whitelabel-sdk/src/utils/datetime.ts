@@ -4,6 +4,21 @@
  */
 
 /**
+ * The locale dates are written in.
+ *
+ * Read from <html lang>, which I18nProvider sets when it resolves the language, rather than
+ * from navigator: a partner serving Venezuela sets locale 'es' and their visitor with an
+ * English laptop should see Spanish dates next to Spanish copy, not a mix. Outside a browser
+ * (tests, SSR) it is English, which is what the pre-rendered HTML shows anyway.
+ */
+export function displayLocale(): string {
+  if (typeof document === 'undefined') return 'en-US';
+  const lang = document.documentElement.lang;
+  if (!lang || lang === 'en') return 'en-US';
+  return lang;
+}
+
+/**
  * Normalize timestamp to milliseconds (handles both seconds and milliseconds)
  */
 export function normalizeTimestamp(timestamp: number | string): number {
@@ -66,13 +81,13 @@ export function formatDateTime(timestamp: number | string, options?: {
       timeOptions.timeZoneName = 'short';
     }
 
-    const datePart = date.toLocaleDateString('en-US', dateOptions);
+    const datePart = date.toLocaleDateString(displayLocale(), dateOptions);
 
     if (!includeTime) {
       return datePart;
     }
 
-    const timePart = date.toLocaleTimeString('en-US', timeOptions);
+    const timePart = date.toLocaleTimeString(displayLocale(), timeOptions);
 
     return `${datePart}${separator}${timePart}`;
   } catch (error) {
@@ -137,11 +152,9 @@ export function formatTimestamp(timestamp: number | string): { date: string; tim
       return { date: 'Invalid date', time: '' };
     }
 
-    // Format date as "Jan 1, 2024"
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const day = date.getDate();
-    const year = date.getFullYear();
-    const formattedDate = `${month} ${day}, ${year}`;
+    // Format date as "Jan 1, 2024" in English, "1 ene 2024" in Spanish: the locale orders it.
+    const locale = displayLocale();
+    const formattedDate = date.toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
 
     // Format time as "19:00 EST" (with timezone abbreviation)
     const hours = date.getHours().toString().padStart(2, '0');
@@ -149,7 +162,7 @@ export function formatTimestamp(timestamp: number | string): { date: string; tim
 
     // Get timezone abbreviation
     const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    const timeZoneName = date.toLocaleDateString('en-US', {
+    const timeZoneName = date.toLocaleDateString(locale, {
       timeZoneName: 'short'
     }).split(', ')[1] || 'GMT';
 
@@ -210,7 +223,7 @@ export function formatExpiryDate(expiryTimestamp: number | string): string {
 
     // Format to match expected test pattern: "15 Jan 2025, 14:30"
     const day = date.getDate();
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
+    const month = date.toLocaleDateString(displayLocale(), { month: 'short' });
     const year = date.getFullYear();
     const hours = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
@@ -239,26 +252,29 @@ export function getMaxLocalDatetime(): string {
   return timestampToDatetimeLocal(Math.floor(oneYearFromNow.getTime() / 1000));
 }
 
-// Calculate relative time from now using Unix timestamp
+// Calculate relative time from now using Unix timestamp: "in 3 days" / "dentro de 3 días".
+// Intl.RelativeTimeFormat knows each language's plurals and word order, so no catalogue key.
 export function getRelativeTime(timestamp: number): string {
   const now = Math.floor(Date.now() / 1000);
   const diffSeconds = timestamp - now;
+  const locale = displayLocale();
 
-  if (diffSeconds <= 0) return 'in the past';
+  if (diffSeconds <= 0) return locale.startsWith('es') ? 'en el pasado' : 'in the past';
 
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'always' });
   const diffMins = Math.floor(diffSeconds / 60);
   const diffHours = Math.floor(diffSeconds / 3600);
   const diffDays = Math.floor(diffSeconds / 86400);
 
-  if (diffMins < 60) return `in ${diffMins} minute${diffMins !== 1 ? 's' : ''}`;
-  if (diffHours < 24) return `in ${diffHours} hour${diffHours !== 1 ? 's' : ''}`;
-  if (diffDays < 7) return `in ${diffDays} day${diffDays !== 1 ? 's' : ''}`;
+  if (diffMins < 60) return rtf.format(diffMins, 'minute');
+  if (diffHours < 24) return rtf.format(diffHours, 'hour');
+  if (diffDays < 7) return rtf.format(diffDays, 'day');
 
   const diffWeeks = Math.floor(diffDays / 7);
-  if (diffWeeks < 4) return `in ${diffWeeks} week${diffWeeks !== 1 ? 's' : ''}`;
+  if (diffWeeks < 4) return rtf.format(diffWeeks, 'week');
 
   const diffMonths = Math.floor(diffDays / 30);
-  return `in ${diffMonths} month${diffMonths !== 1 ? 's' : ''}`;
+  return rtf.format(diffMonths, 'month');
 }
 
 /**

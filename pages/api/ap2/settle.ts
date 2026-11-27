@@ -7,9 +7,14 @@ import { methodGuard, proxyToService } from '@/lib/server/serviceProxy';
  * A PURE PROXY. Every decision lives in ap2service; re-checking anything here would be a
  * second implementation of the thing that decides whether money moves.
  *
- * ⚠️ requiresAuth: false, and no credential of any kind is required — deliberately.
+ * ⚠️ requiresAuth: false, BECAUSE THE CREDENTIAL IS ap2service's TO JUDGE, NOT BECAUSE THERE IS
+ *    NONE. Every call needs one: a signed-in session, the caller's free access code
+ *    (`Authorization: Bearer sd_access_…`) or a merchant key. The last two mean nothing to this
+ *    app's session check, so whatever the caller sent is passed through untouched and ap2service
+ *    admits the call or answers 401 with where to get a code (its `_require_access`). The same
+ *    holds for every /api/ap2 route that says "for the reason /settle is".
  *
- *    The terms a caller sends ARE the escrow's address: token, buyer, seller, amount, maturity,
+ *    What keeps the money safe is not the credential. The terms a caller sends ARE the escrow's address: token, buyer, seller, amount, maturity,
  *    arbiter and externalId are the CREATE2 salt. The payer's EIP-3009 signature names that
  *    address as the destination of their own tokens, and ap2service refuses any request whose
  *    terms derive to somewhere else. So a caller who alters any field moves the address and

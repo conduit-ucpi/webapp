@@ -1,5 +1,6 @@
 import { Html, Head, Main, NextScript, DocumentContext } from 'next/document';
 import Document from 'next/document';
+import { THEME_INIT_SCRIPT } from '../config/csp';
 
 interface DocumentProps {
   farcasterBaseUrl: string;
@@ -11,7 +12,8 @@ export default class CustomDocument extends Document<DocumentProps> {
 
     // Auto-detect the base URL from the request (SSR), fallback to env for SSG
     const { req } = ctx;
-    let farcasterBaseUrl = 'https://conduit-ucpi.com'; // Default fallback for static generation
+    // The static export (Cloudflare Pages) has no request, so this is what ships there.
+    let farcasterBaseUrl = 'https://stabledrop.me';
 
     if (req && req.headers.host) {
       const protocol = req.headers['x-forwarded-proto'] || ((req.connection as any)?.encrypted ? 'https' : 'http');
@@ -30,15 +32,7 @@ export default class CustomDocument extends Document<DocumentProps> {
   return (
     <Html lang="en" translate="no">
       <Head>
-        {/* Google Analytics 4 */}
-        <script async src="https://www.googletagmanager.com/gtag/js?id=G-C5RP49B2R8"></script>
-        <script dangerouslySetInnerHTML={{
-          __html: `window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-C5RP49B2R8');`
-        }} />
-        {/* End Google Analytics 4 */}
+        {/* Google Analytics loads only after cookie consent — see components/consent/CookieConsent.tsx */}
 
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
@@ -54,22 +48,18 @@ gtag('config', 'G-C5RP49B2R8');`
         <link rel="apple-touch-icon" href="/icon-512.png" />
 
         {/* Farcaster mini-app configuration */}
-        <meta name="fc:miniapp" content={`{"version": "next", "imageUrl": "${farcasterBaseUrl}/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Instant Escrow", "url": "${farcasterBaseUrl}"}}}`} />
+        <meta name="fc:miniapp" content={`{"version": "next", "imageUrl": "${farcasterBaseUrl}/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Stabledrop", "url": "${farcasterBaseUrl}"}}}`} />
         {/* For backward compatibility */}
-        <meta name="fc:frame" content={`{"version": "next", "imageUrl": "${farcasterBaseUrl}/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Instant Escrow", "url": "${farcasterBaseUrl}"}}}`} />
+        <meta name="fc:frame" content={`{"version": "next", "imageUrl": "${farcasterBaseUrl}/preview.png", "button": {"title": "🚩 Start", "action": {"type": "launch_frame", "name": "Stabledrop", "url": "${farcasterBaseUrl}"}}}`} />
         <meta property="og:image" content={`${farcasterBaseUrl}/preview.png`} />
-        <meta property="og:title" content="Conduit Escrow" />
-        <meta property="og:description" content="Time-delayed escrow contracts on blockchain" />
-        
-        {/* Farcaster domain verification */}
-        <link rel="canonical" href="/.well-known/farcaster.json" />
+        <meta property="og:title" content="Stabledrop" />
+        <meta property="og:description" content="Protected payments with a dispute window, settled on-chain" />
+
         {/* MetaMask compatibility script removed - Web3Auth Modal handles MetaMask coexistence automatically */}
       </Head>
       <body>
         {/* Apply theme before React hydrates to prevent flash */}
-        <script dangerouslySetInnerHTML={{
-          __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='dark'||((!t)&&window.matchMedia('(prefers-color-scheme:dark)').matches)){document.documentElement.classList.add('dark')}}catch(e){}})();`
-        }} />
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
         <Main />
         <NextScript />
       </body>

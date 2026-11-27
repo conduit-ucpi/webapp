@@ -4,14 +4,16 @@
 
 The `/contract-create` page accepts URL parameters to pre-fill payment information and integrate with external systems like WordPress and Shopify.
 
+Since 30 Sep 2026 the payment itself is the `/pay` flow (the SDK's `PayPage` in checkout mode), which goes through ap2service's `prepare_escrow_payment` / `settle_escrow_payment`: the same path AI agents use. This page translates the merchant's parameters into `/pay`'s terms, and `/pay`'s receipt back into the events, webhook, Shopify order and redirects described here.
+
 ## URL Parameters
 
 | Parameter | Type | Description | Example |
 |-----------|------|-------------|---------|
-| `seller` | string | Seller's wallet address (0x...) | `0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb` |
+| `seller` | string | Seller's wallet address (0x...), or an email address (resolved to that person's wallet) | `0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb` |
 | `amount` | string | Payment amount in USDC/USDT | `100.00` |
 | `description` | string | Description of the purchase (max 160 chars) | `Order for blue t-shirt` |
-| `email` | string | Buyer's email address | `buyer@example.com` |
+| `email` | string | Buyer's email address, passed on to the Shopify order | `buyer@example.com` |
 | `return` | string | Return URL after payment completion | `https://shop.com/order-received/123/?key=wc_order_abc` |
 | `order_id` | string | Order ID for tracking | `456` |
 | `epoch_expiry` | string | Unix timestamp for payout date (use `0` for instant) | `1735689600` or `0` |
@@ -26,8 +28,10 @@ The `/contract-create` page accepts URL parameters to pre-fill payment informati
 
 ## Parameter Behavior
 
-- **Pre-filled and Disabled**: If `seller`, `amount`, or `description` are provided via URL, those form fields will be pre-filled and disabled (user cannot edit).
+- **Required and locked**: `seller`, `amount` and `description` are all required, and the buyer cannot change them. A link without all three is redirected to `/pay`, where the buyer fills the form themselves.
+- **WordPress links**: with `wordpress_source=true`, `webhook_url` and `order_id` are also required; without them the page shows a configuration error and takes no payment.
 - **Authentication**: If `email` is provided but user is authenticated, the authenticated user's email takes precedence.
+- **`resume` is reserved**: the page adds it to its own URL when the buyer leaves to add funds or pay by card, so it can pick up the same escrow on return. Merchants should not set it.
 - **Default Values**:
   - `epoch_expiry`: Defaults to 7 days from now if not provided
   - `quantity`: Defaults to `1` if not provided
@@ -158,7 +162,7 @@ The webapp sends the following data to `/api/payment/verify-and-webhook`, which 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `transaction_hash` | string | Blockchain transaction hash of the deposit |
+| `transaction_hash` | string | The funding transfer's transaction hash (the relayed EIP-3009 transfer into the escrow address) |
 | `contract_address` | string | Deployed escrow contract address on blockchain |
 | `contract_hash` | string | Same as `contract_address` (for compatibility) |
 | `contract_id` | string | MongoDB contract ID from contractservice |
@@ -174,6 +178,8 @@ Your webhook endpoint should respond with:
 
 - **Success**: HTTP 200-299 status code
 - **Failure**: HTTP 4xx or 5xx status code
+
+**When it is sent:** only when the buyer pays from their signed-in wallet, which gives a funding transaction to verify. A payment sent from another wallet (address or QR) arrives before the escrow is settled and has no transaction hash here, so no webhook is sent for it; the escrow still exists and can be checked by `contract_id` or `contract_address`. This is unchanged from before.
 
 **Note:** The payment flow does NOT fail if the webhook fails. The payment is considered successful as long as the blockchain transaction succeeds. Webhook failures are logged but do not affect the payment status.
 
@@ -288,12 +294,12 @@ If the buyer's wallet balance is less than the requested amount:
 If `seller` parameter is not a valid Ethereum address:
 - Validation error displayed: "Please enter a valid wallet address"
 
-### Contract Creation Failure
+### Payment Setup Failure
 
-If contract creation fails:
-- Error alert displayed to user
-- `payment_error` postMessage sent to parent (if in iframe)
-- User remains on create step to retry
+If the payment cannot be set up (for example the amount is below the minimum, or the seller cannot be resolved):
+- The reason is shown, with **Try again** and **Cancel**
+- `payment_error` postMessage sent to parent (if in iframe or popup)
+- No redirect: the buyer stays on the page
 
 ### Payment Failure
 
@@ -317,6 +323,8 @@ type PostMessageEvent = {
 ```
 
 ### Events
+
+The escrow only exists once it is funded, so `contract_created` is sent immediately before `payment_completed`, in that order, rather than before payment as it used to be. conduit-checkout.js only logs it.
 
 **contract_created:**
 ```json
@@ -342,10 +350,13 @@ type PostMessageEvent = {
     "description": "Order 456",
     "seller": "0x742d35Cc...",
     "orderId": "456",
-    "transactionHash": "0xabc123..."
+    "transactionHash": "0xabc123...",
+    "contractAddress": "0xdef456..."
   }
 }
 ```
+
+`contractId` is contractservice's id, taken from the settlement receipt; conduit-checkout.js verifies the payment by it. `transactionHash` is absent when the buyer paid from another wallet (see the webhook note).
 
 **payment_cancelled:**
 ```json
@@ -372,11 +383,11 @@ type PostMessageEvent = {
 ## Security Notes
 
 1. **Wallet Validation**: All wallet addresses are validated before processing
-2. **Amount Validation**: Minimum amount is $1.001 (includes $1 fee)
+2. **Amount Validation**: $1 or more, or exactly 0.001 for a free test payment (the landing page demo uses this)
 3. **Balance Check**: User balance is verified before allowing payment
-4. **Transaction Signing**: All transactions are signed client-side by the user
+4. **Transaction Signing**: The buyer signs a transfer authorization (EIP-3009) naming the escrow address, client-side; it is relayed gas-free. The escrow address is derived from the terms, so altering any term moves the address and invalidates the signature
 5. **Webhook Verification**: Payment verification is separate from webhook delivery (payment succeeds even if webhook fails)
-6. **Authentication**: User must authenticate via Web3Auth before creating contracts
+6. **Authentication**: The buyer signs in (wallet, or email/social) before paying; that account is the only one that can dispute
 7. **Cookie-based Sessions**: HTTP-only cookies used for authenticated API requests
 
 ## Testing

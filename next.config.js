@@ -1,14 +1,17 @@
 /** @type {import('next').NextConfig} */
 
+const { gitFileVersion, TERMS_FILE, TERMS_VERSION_LENGTH } = require('./lib/server/gitFileVersion');
+const { CSP_HEADER, boxCsp } = require('./config/csp');
+
 
 // Static-export mode, used only by the GitHub Pages build. Unset everywhere else,
 // so the production box keeps building exactly as before while both deployments
 // run in parallel (STATIC_FRONTEND_MIGRATION_PLAN.md, Phase 2 step 8).
 //
 // rewrites/redirects/headers are all server features: Next cannot apply them to a
-// static export, and GitHub Pages cannot set response headers at all. They are
-// omitted rather than left in place so the build fails loudly if that changes,
-// instead of silently dropping the frame-ancestors CSP.
+// static export. They are omitted rather than left in place so the build fails
+// loudly if that changes. Cloudflare Pages reads its headers from public/_headers
+// instead (config/csp.js).
 const isStaticExport = process.env.STATIC_EXPORT === 'true';
 
 function normaliseBasePath(value) {
@@ -63,6 +66,13 @@ const serverOnlyConfig = {
         source: '/whats-wrong-with-payments',
         destination: 'https://medium.com/@charliepank/whats-wrong-with-payments-e2ea2bbeec87',
         permanent: true, // 301 permanent redirect
+      },
+      // The policy page was renamed. Old links, search results and white-label brand records still
+      // point here. The static export has no redirects; pages/arbitration-policy.tsx covers it there.
+      {
+        source: '/arbitration-policy',
+        destination: '/dispute-policy',
+        permanent: true,
       }
     ]
   },
@@ -102,6 +112,10 @@ const serverOnlyConfig = {
           {
             key: 'Content-Security-Policy',
             value: `frame-ancestors ${frameAncestorsValue}`
+          },
+          {
+            key: CSP_HEADER,
+            value: boxCsp()
           }
         ]
       }
@@ -159,6 +173,14 @@ const nextConfig = {
   // bundle as NEXT_PUBLIC_GIT_SHA and reported by /api/config, so nothing new
   // is disclosed.
   generateBuildId: () => process.env.NEXT_PUBLIC_GIT_SHA || null,
+
+  // The Terms of Service version: the commit that last changed the terms page, from the same
+  // lookup the page itself shows. /api/config serves it, and every SIWE sign-in names it, so
+  // user-service can record which terms each wallet accepted. Inlined at build because the
+  // running container has no git history. Empty without git; the statement then names no version.
+  env: {
+    TERMS_VERSION: gitFileVersion(TERMS_FILE)?.sha.slice(0, TERMS_VERSION_LENGTH) ?? '',
+  },
 
   ...(isStaticExport ? staticExportConfig : serverOnlyConfig),
 };

@@ -8,6 +8,7 @@ import { GetStaticProps } from 'next';
 import { getSiteNameFromDomain } from '@/utils/siteName';
 import { motion } from 'framer-motion';
 import { isr } from '@/utils/isr';
+import { VIDEO_URL } from '@/components/landing-test/content';
 
 // ---------------------------------------------------------------------------
 // Page
@@ -31,8 +32,8 @@ export default function Merchant() {
   return (
     <>
       <SEO
-        title="Conduit Escrow - Stablecoin Payments with Buyer Protection | First 100 Free"
-        description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. First 100 transactions free, then 1% flat fee. 10-minute setup. Gas-free transactions. Open source escrow on Base."
+        title="Stabledrop - Stablecoin Payments with Buyer Protection"
+        description="Stablecoin checkout with buyer protection. No chargebacks, no floats, no freezes, no vetting. 1% flat fee. 10-minute setup. Gas-free transactions. Open source protected payments on Base."
         keywords="open source escrow, crypto escrow, blockchain escrow, USDC escrow, secure crypto payments, buyer protection, smart contract escrow, Base network escrow"
         canonical="/merchant"
         structuredData={structuredData}
@@ -63,22 +64,10 @@ export default function Merchant() {
               <motion.p
                 variants={heroChild}
                 className="mt-6 text-base text-secondary-500 dark:text-secondary-400 max-w-xl leading-relaxed"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 A wallet address on your site won&apos;t convert&nbsp;&mdash; buyers don&apos;t trust it. We give them buyer protection, a familiar checkout with wallet, network and currency selected automatically, and zero gas fees. No vetting, 1&nbsp;% flat fee, 10-minute setup.
               </motion.p>
-
-              <motion.div
-                variants={heroChild}
-                className="mt-8 inline-flex items-center gap-2 bg-primary-50 dark:bg-primary-900/30 border border-primary-200 dark:border-primary-800 rounded-md px-4 py-2.5"
-              >
-                <span className="text-sm font-medium text-primary-700 dark:text-primary-300">
-                  First 100 transactions free
-                </span>
-                <span className="text-xs text-primary-500 dark:text-primary-400">
-                  &mdash; no fee until you&apos;re convinced
-                </span>
-              </motion.div>
 
               <motion.div variants={heroChild} className="mt-8">
                 <Link href="/plugins">
@@ -99,8 +88,7 @@ export default function Merchant() {
                 variants={heroChild}
                 className="mt-14 flex flex-wrap gap-x-8 gap-y-2 text-xs text-secondary-400 dark:text-secondary-500"
               >
-                <span>First 100 free</span>
-                <span>Then 1% flat fee</span>
+                <span>1% flat fee</span>
                 <span>10-minute setup</span>
                 <span>No vetting</span>
                 <a href="https://github.com/conduit-ucpi/contracts" target="_blank" rel="noopener noreferrer" className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors underline">Open source</a>
@@ -173,29 +161,22 @@ export default function Merchant() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-3"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 See what your customers see.
               </h2>
               <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-10 max-w-md">
-                This opens the actual Stabledrop checkout — the same experience your customers get when they click &ldquo;Pay&rdquo; on your site.
+                This opens a demo shop. Add a pair of sneakers to the cart and pay through the actual Stabledrop checkout — the same experience your customers get when they click &ldquo;Pay&rdquo; on your site.
               </p>
               <div className="flex flex-wrap gap-3">
                 <button
                   className={btnPrimary}
-                  onClick={() => {
-                    const origin = window.location.origin;
-                    const returnUrl = encodeURIComponent(`${origin}/checkout-example.html`);
-                    window.open(
-                      `${origin}/contract-create?seller=0x4f118f99a4e8bb384061bcfe081e3bbdec28482d&amount=0.001&description=Basic+Product+-+One-time+Payment&tokenSymbol=USDC&order_id=BASIC-1772027291139&epoch_expiry=1772632091&return=${returnUrl}`,
-                      '_blank'
-                    );
-                  }}
+                  onClick={() => window.open('/checkout-example.html', '_blank', 'noopener')}
                 >
                   See what your customers see
                 </button>
                 <a
-                  href="https://youtu.be/uUSlf3FmazQ"
+                  href={VIDEO_URL}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={btnOutline}
@@ -227,7 +208,7 @@ export default function Merchant() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-16"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Everything traditional processors take from you, we don&apos;t.
               </h2>
@@ -241,7 +222,7 @@ export default function Merchant() {
                 },
                 {
                   label: 'No floats',
-                  text: 'Your money is never held by a payment processor. Funds go straight from escrow to your wallet on the payout date.',
+                  text: 'Your money is never held by a payment processor. Funds go straight from the payment contract to your wallet on the payout date.',
                 },
                 {
                   label: 'No freezes',
@@ -249,7 +230,7 @@ export default function Merchant() {
                 },
                 {
                   label: 'No vetting',
-                  text: 'No KYC, no KYB, no applications, no approval process. Install and start accepting payments immediately.',
+                  text: 'No vetting or approval process to start accepting stablecoin payments immediately. Exchanges and banks require KYC and KYB to cash out to FIAT',
                 },
                 {
                   label: '10-minute setup',
@@ -300,7 +281,7 @@ export default function Merchant() {
               </p>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug max-w-2xl mb-16"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Pay with stablecoins and actually be protected.
               </h2>
@@ -310,7 +291,7 @@ export default function Merchant() {
               {[
                 {
                   label: 'Buyer protection on every payment',
-                  text: 'Funds are held in escrow until a pre-agreed date. If something goes wrong, raise a dispute before payout to freeze the funds. Works on P2P payments too.',
+                  text: 'Funds are held in the payment contract until a pre-agreed date. If something goes wrong, raise a dispute before payout to freeze the funds. Works on P2P payments too.',
                 },
                 {
                   label: 'Gas-free transactions',
@@ -356,9 +337,6 @@ export default function Merchant() {
                   </span>
                   <p className="text-sm text-secondary-500 dark:text-secondary-400 mt-2">
                     per transaction. Nothing else.
-                  </p>
-                  <p className="text-sm text-primary-600 dark:text-primary-400 mt-3 font-medium">
-                    First 100 transactions free &mdash; claim yours during integration.
                   </p>
                 </div>
               </Fade>
@@ -416,7 +394,7 @@ export default function Merchant() {
             <Fade>
               <h2
                 className="text-3xl sm:text-4xl font-light text-secondary-900 dark:text-white leading-snug mb-3"
-                style={{ fontFamily: "'Newsreader', Georgia, serif" }}
+                style={{ fontFamily: 'var(--wl-font-accent)' }}
               >
                 Add stablecoin checkout to your store.
               </h2>
@@ -449,10 +427,10 @@ export default function Merchant() {
                   Integrations
                 </Link>
                 <a
-                  href="mailto:info@conduit-ucpi.com"
+                  href="mailto:info@stabledrop.me"
                   className="hover:text-secondary-600 dark:hover:text-secondary-300 transition-colors"
                 >
-                  info@conduit-ucpi.com
+                  info@stabledrop.me
                 </a>
               </div>
             </Fade>

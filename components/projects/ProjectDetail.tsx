@@ -303,7 +303,7 @@ function DeploymentPanel({ tree, onRefresh }: { tree: ProjectTreeView; onRefresh
       // Services answer {error: <category>, message: <detail>}; the detail is
       // what names the contract that is blocking, so prefer it.
       if (!res.ok) throw new Error(data.message || data.error || 'Deploy failed');
-      showToast({ type: 'success', title: 'Deployed', message: 'The escrow contracts are live on-chain.' });
+      showToast({ type: 'success', title: 'Deployed', message: 'The payment contracts are live on-chain.' });
       setTimeout(onRefresh, 2500);
     } catch (e) {
       showToast({ type: 'error', title: 'Deploy failed', message: e instanceof Error ? e.message : 'Unknown error' });
@@ -322,7 +322,7 @@ function DeploymentPanel({ tree, onRefresh }: { tree: ProjectTreeView; onRefresh
           <p className="text-sm text-secondary-600 dark:text-secondary-400 mt-1">
             {deployment.partiallyDeployed
               ? 'Some contracts deployed before the run stopped. Retrying continues where it left off; contracts already live are left alone.'
-              : 'This project is saved but no escrow exists yet. Deploying creates the contracts on-chain — every subcontract below it too, deepest first — with gas covered for you. Funding is a separate step afterwards.'}
+              : 'This project is saved but no payment contract exists yet. Deploying creates the contracts on-chain — every subcontract below it too, deepest first — with gas covered for you. Funding is a separate step afterwards.'}
           </p>
         </div>
         {deployment.ready && (

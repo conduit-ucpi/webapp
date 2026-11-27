@@ -14,6 +14,7 @@ import { classifyAuthError, type AuthFailure } from '@/lib/auth/classifyAuthErro
 import { reportAuthFailure } from '@/lib/auth/reportAuthFailure';
 import { buildSiweMessage, requestAuthNonce, verifyAuthSignature } from '@/lib/auth/walletAuthClient';
 import { mLog } from '@/utils/mobileLogger';
+import { isInIframe } from '@/utils/deviceDetection';
 import { privyBridge, type PrivyLoginMethod, type PrivySnapshot } from './privy/privyBridge';
 
 /**
@@ -36,6 +37,19 @@ const METHODS_FOR_MODE: Record<ConnectionMode, readonly PrivyLoginMethod[]> = {
   'wallet-only': ['wallet'],
   'social-only': ['email', 'google', 'apple']
 };
+
+/**
+ * Google and Apple sign in by navigating the current window to their own pages, and both
+ * refuse to render inside a frame (Google answers 403). Privy has no popup mode for OAuth, so
+ * inside a partner's iframe those tiles can only fail. Email codes and wallets never leave
+ * the frame and work there; WalletChoiceCards offers a new tab for anyone who wants Google.
+ */
+const FRAME_UNSAFE: readonly PrivyLoginMethod[] = ['google', 'apple'];
+
+export function loginMethodsFor(mode: ConnectionMode, framed: boolean = isInIframe()): PrivyLoginMethod[] {
+  const methods = METHODS_FOR_MODE[mode];
+  return framed ? methods.filter((m) => !FRAME_UNSAFE.includes(m)) : [...methods];
+}
 
 export class PrivyProvider implements UnifiedProvider {
   private readonly config: AuthConfig;
@@ -85,7 +99,7 @@ export class PrivyProvider implements UnifiedProvider {
 
       // Outcome first, modal second, so the callback cannot fire before anyone is listening.
       const outcome = privyBridge.nextLoginOutcome();
-      api.login({ loginMethods: METHODS_FOR_MODE[this.connectionMode] });
+      api.login({ loginMethods: loginMethodsFor(this.connectionMode) });
       const result = await outcome;
 
       if (!result.ok) {
@@ -176,6 +190,10 @@ export class PrivyProvider implements UnifiedProvider {
     const eip1193 = await privyBridge.getApi()?.getEthereumProvider();
     if (!eip1193) throw new Error('No provider available - not connected');
 
+    // The page can ask for the backend signature the moment a new wallet exists, which is
+    // before Privy has closed its login modal. See whenModalIdle.
+    await privyBridge.whenModalIdle();
+
     const hexMessage = '0x' + Buffer.from(message, 'utf8').toString('hex');
     const signature = await eip1193.request({ method: 'personal_sign', params: [hexMessage, address] });
     return signature as string;
@@ -219,8 +237,8 @@ export class PrivyProvider implements UnifiedProvider {
   }
 
   /**
-   * Privy's funding modal — card (Stripe / MoonPay), exchange (Coinbase), or a transfer from
-   * another wallet, whichever the dashboard has enabled. The app's chain is fixed by config; a
+   * Privy's funding modal, offering whichever fiat providers the dashboard has enabled and can
+   * serve this buyer. The app's chain is fixed by config; a
    * request for another chain is a programming error and is refused rather than quietly
    * funding the wrong network.
    */
@@ -265,7 +283,13 @@ export class PrivyProvider implements UnifiedProvider {
       }
       const address = await this.getAddress();
       const nonce = await requestAuthNonce();
-      const message = buildSiweMessage({ address, chainId: this.config.chainId, nonce });
+      const message = buildSiweMessage({
+        address,
+        chainId: this.config.chainId,
+        nonce,
+        serviceLink: this.config.serviceLink,
+        termsVersion: this.config.termsVersion
+      });
       const signature = await this.signMessage(message);
       const verified = await verifyAuthSignature(message, signature);
       if (!verified) {

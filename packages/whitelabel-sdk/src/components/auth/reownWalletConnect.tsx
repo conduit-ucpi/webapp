@@ -9,13 +9,41 @@ import { EmbeddedOnlySIWX } from '@/lib/auth/EmbeddedOnlySIWX'
 import { buildAuthTokenMessage } from '@/lib/auth/siwe-statement'
 import { requestAuthNonce, buildSiweMessage, verifyAuthSignature } from '@/lib/auth/walletAuthClient'
 import { getSiteNameFromDomain } from '@/utils/siteName'
-import { mLog } from '@/utils/mobileLogger'
+import mobileLogger, { mLog } from '@/utils/mobileLogger'
+import { ConnectionController, ConnectorController } from '@reown/appkit-controllers'
 import { classifyAuthError, type AuthFailure } from '@/lib/auth/classifyAuthError'
 import { reportAuthFailure } from '@/lib/auth/reportAuthFailure'
 export { classifyAuthError } from '@/lib/auth/classifyAuthError'
 export type { AuthFailure, AuthFailureKind } from '@/lib/auth/classifyAuthError'
 
 import type { ConnectionMode } from '@/lib/auth/types/unified-provider'
+
+/* A plain copy of a diagnostic payload, safe to queue for the box. AppKit hands
+   its event properties over as valtio proxies, and a single entry that cannot be
+   serialised would wedge the logger's retry queue for the rest of the session. */
+function snapshot(value: unknown): unknown {
+  if (value === undefined) return undefined
+  try {
+    return JSON.parse(JSON.stringify(value, (_key, v) => (typeof v === 'bigint' ? v.toString() : v)))
+  } catch {
+    return { unserialisable: String(value) }
+  }
+}
+
+/* Ship a Reown-path diagnostic to the box's log, and so to Grafana, from every
+   device. mLog only ships from mobile browsers, so a desktop social login that
+   died after the OAuth popup left nothing server-side to read. This goes straight
+   to the logger instance, which also mirrors to the console; when the build has
+   debug logging off the queue is discarded unsent, so nothing leaves the device.
+   `flush` sends at once - for an outcome the user may navigate away from. */
+function ship(level: 'info' | 'warn' | 'error', message: string, data?: unknown, flush = false) {
+  const logger: any = mobileLogger
+  if (!logger || typeof logger[level] !== 'function') return
+  logger[level]('ReownWalletConnect', message, snapshot(data))
+  if (flush && typeof logger.forceFlush === 'function') {
+    void logger.forceFlush()
+  }
+}
 
 export class ReownWalletConnectProvider {
   private appKit: any = null
@@ -236,7 +264,13 @@ export class ReownWalletConnectProvider {
       mLog.info('ReownWalletConnect', 'External wallets always use lazy auth (no connect-time prompt)')
       mLog.info('ReownWalletConnect', '========================================')
 
-      const siwxConfig = embeddedSiwxEnabled ? new EmbeddedOnlySIWX() : undefined
+      const siwxConfig = embeddedSiwxEnabled
+        ? new EmbeddedOnlySIWX({
+            chainId: parseInt(this.config.chainId.toString()),
+            serviceLink: this.config.serviceLink,
+            termsVersion: this.config.termsVersion
+          })
+        : undefined
       this.siwxConfig = siwxConfig
 
       /* If the caller already chose wallet-only before AppKit existed (the very
@@ -272,7 +306,7 @@ export class ReownWalletConnectProvider {
         // AppKit renders it as its own field anyway.
         metadata: {
           name: getSiteNameFromDomain(),
-          description: 'Escrow for stablecoin payments',
+          description: 'Protected stablecoin payments',
           url: origin,
           icons: [`${origin}/icon-512.png`]
         },
@@ -589,6 +623,7 @@ export class ReownWalletConnectProvider {
           checkAttempts++
           if (checkAttempts > maxAttempts) {
             document.removeEventListener('visibilitychange', handleVisibilityChange)
+            ship('error', 'Connection timeout - no address after the polling window', { attempts: checkAttempts }, true)
             resolveOnce({
               success: false,
               error: 'Connection timeout - user may have cancelled'
@@ -622,6 +657,7 @@ export class ReownWalletConnectProvider {
               const address = parts[2] // The address is the third part
 
               console.log('🔧 ReownWalletConnect: ✅ Connected successfully')
+              ship('info', 'Connected successfully', { caipAddress, attempts: checkAttempts }, true)
               console.log('🔧 ReownWalletConnect: CAIP Address:', caipAddress)
               console.log('🔧 ReownWalletConnect: Address:', address)
 
@@ -746,25 +782,47 @@ export class ReownWalletConnectProvider {
             if (this.appKit.subscribeEvents) {
               console.log('🔧 ReownWalletConnect: Setting up event subscriptions...')
 
-              const unsubscribe = this.appKit.subscribeEvents((event: any) => {
-                console.log('🔧 ReownWalletConnect: AppKit event:', event)
+              /* subscribeEvents hands back AppKit's whole EventsController state,
+                 not a single event: the name is at state.data.event and any
+                 detail (provider, error message) at state.data.properties. This
+                 used to log the raw state - an unreadable Proxy in the console -
+                 and compare state.type against names AppKit never emits, so it
+                 never reacted to anything and the one line that explains a
+                 failed social login (SOCIAL_LOGIN_ERROR with its message) was
+                 invisible. */
+              /* The state also changes on every analytics flush (its lastFlush
+                 ticks every ten seconds), which re-delivered the last event each
+                 time. An event is identified by its own timestamp, so each one
+                 is handled once. */
+              let lastEventStamp: unknown = null
+              const unsubscribe = this.appKit.subscribeEvents((state: any) => {
+                const name: string | undefined = state?.data?.event
+                if (!name) return
+                const stamp = state?.timestamp ?? `${name}:${JSON.stringify(state?.data?.properties ?? null)}`
+                if (stamp === lastEventStamp) return
+                lastEventStamp = stamp
+                const properties = state?.data?.properties
+                ship('info', `AppKit event: ${name}`, properties)
 
-                // Check for events that indicate wallet selection/connection attempt
-                if (event?.type === 'wallet_selected' ||
-                    event?.type === 'connect_started' ||
-                    event?.type === 'session_request') {
-                  console.log('🔧 ReownWalletConnect: Connection initiated event detected')
+                if (name === 'SELECT_WALLET' ||
+                    name === 'SOCIAL_LOGIN_STARTED' ||
+                    name === 'EMAIL_LOGIN_SELECTED' ||
+                    name === 'CONNECT_PROXY_ERROR') {
                   if (!hasInitiatedConnection) {
+                    console.log('🔧 ReownWalletConnect: Connection initiated event detected')
                     hasInitiatedConnection = true
                   }
                 }
 
-                // Check on any connection-related event
-                if (event?.type === 'session_event' ||
-                    event?.type === 'connect' ||
-                    event?.type === 'session_update' ||
-                    event?.name === 'accountsChanged') {
-                  console.log('🔧 ReownWalletConnect: Session event detected, checking connection...')
+                if (name === 'SOCIAL_LOGIN_ERROR' || name === 'CONNECT_ERROR') {
+                  ship('error', `AppKit reported a connection error: ${name}`, properties, true)
+                }
+
+                if (name === 'CONNECT_SUCCESS' ||
+                    name === 'SOCIAL_LOGIN_SUCCESS' ||
+                    name === 'SOCIAL_LOGIN_REQUEST_USER_DATA' ||
+                    name === 'EMAIL_VERIFICATION_CODE_PASS') {
+                  console.log('🔧 ReownWalletConnect: Connection event detected, checking connection...')
                   checkConnection()
                 }
               })
@@ -881,7 +939,13 @@ export class ReownWalletConnectProvider {
             sawOpen = true
           }
 
+          let lastOpen: boolean | null = null
           const unsubscribe = this.appKit.subscribeState((state: any) => {
+            const open = !!state?.open
+            if (open !== lastOpen) {
+              lastOpen = open
+              ship('info', `Modal ${open ? 'opened' : 'closed'}`, { view: state?.view, attempts: checkAttempts })
+            }
             if (state?.open) {
               sawOpen = true
               return
@@ -901,6 +965,7 @@ export class ReownWalletConnectProvider {
               }
 
               console.log('🔧 ReownWalletConnect: Modal dismissed without choosing - cancelling')
+              ship('info', 'Modal dismissed without choosing - cancelling', { attempts: checkAttempts }, true)
               resolveOnce({
                 success: false,
                 cancelled: true,
@@ -914,6 +979,83 @@ export class ReownWalletConnectProvider {
           }
         }
 
+        /* The one origin a social result may legitimately come from. AppKit
+           compares against exactly this (ConstantsUtil.SECURE_SITE_ORIGIN), so
+           the rescue path below must hold to the same bar - never a substring
+           match, which would let https://secure.walletconnect.org.evil.example
+           through. The env override mirrors AppKit's own. */
+        const secureSiteOrigin =
+          (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_SECURE_SITE_ORIGIN) ||
+          'https://secure.walletconnect.org'
+
+        /* Finish a social login AppKit received but dropped.
+           AppKit's connecting-social view listens for the OAuth result on the
+           window, but its one-second "has the popup closed?" timer tears that
+           view down - and removes the listener - the moment the Google popup
+           closes. The popup closes itself the instant it posts its result, and
+           when our tab is backgrounded (the popup held focus) that timer wins the
+           race: the resultUri then arrives on a window with no AppKit listener
+           and the connection silently never completes. Grafana showed exactly
+           this on test.conduit-ucpi.com - a resultUri received, modal open, tab
+           hidden, then no REQUEST_USER_DATA / SUCCESS / ERROR.
+
+           We listen on the same window, reliably. So if a result arrives from the
+           secure origin and AppKit has not produced an address shortly after, we
+           drive the same completion AppKit's own view would have: hand the
+           socialUri to the auth connector. Guarded to fire once, only for an
+           exact-origin result with no error, only while still unresolved and not
+           yet connected. On the happy path AppKit wins and this never runs.
+           Nothing here touches the Privy path. */
+        let socialCompletionTried = false
+        const completeSocialFromResult = async (resultUri: string) => {
+          if (socialCompletionTried || isResolved) return
+          socialCompletionTried = true
+          try {
+            if (this.appKit.getCaipAddress?.()) return
+            const authConnector = ConnectorController.getAuthConnector?.()
+            if (!authConnector) {
+              ship('warn', 'resultUri arrived but no auth connector to complete it')
+              return
+            }
+            ship('info', 'Completing social login from the received resultUri (AppKit did not)', { attempts: checkAttempts }, true)
+            await ConnectionController.connectExternal(
+              { id: authConnector.id, type: authConnector.type, socialUri: resultUri } as any,
+              authConnector.chain
+            )
+            // The poll loop below sees the new caipAddress and resolves with auth.
+          } catch (error) {
+            ship('error', 'Social completion from resultUri failed', { message: error instanceof Error ? error.message : String(error) }, true)
+          }
+        }
+
+        const onWindowMessage = (event: MessageEvent) => {
+          const fromSecureSite = event.origin === secureSiteOrigin
+          // Log any walletconnect-origin message for diagnostics, but only ever
+          // act on one that is an exact-origin match.
+          if (typeof event.origin !== 'string' || !event.origin.includes('walletconnect')) return
+          const data: any = event.data
+          const keys = data && typeof data === 'object' ? Object.keys(data).slice(0, 20) : [typeof data]
+          const resultUri: unknown = data?.resultUri
+          ship('info', 'Window message from the secure site', {
+            origin: event.origin,
+            exactOrigin: fromSecureSite,
+            keys,
+            hasResultUri: Boolean(resultUri),
+            visibility: typeof document !== 'undefined' ? document.visibilityState : undefined,
+            modalOpen: (() => { try { return !!this.appKit.getState?.().open } catch { return undefined } })(),
+            attempts: checkAttempts
+          }, true)
+
+          // Rescue only an exact-origin result that carries no error; an error is
+          // AppKit's to surface. Give AppKit first chance via the delay.
+          if (fromSecureSite && typeof resultUri === 'string'
+              && !resultUri.includes('?error=') && !resultUri.includes('&error=')) {
+            setTimeout(() => { void completeSocialFromResult(resultUri) }, 2500)
+          }
+        }
+        window.addEventListener('message', onWindowMessage, false)
+        cleanupFunctions.push(() => window.removeEventListener('message', onWindowMessage, false))
+
         // Set up event subscriptions
         subscribeToEvents()
         subscribeToModalDismissal()
@@ -924,6 +1066,7 @@ export class ReownWalletConnectProvider {
 
     } catch (error) {
       console.error('🔧 ReownWalletConnect: ❌ Connection failed:', error)
+      ship('error', 'Connection failed', { message: error instanceof Error ? error.message : String(error) }, true)
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown connection error'
@@ -1083,7 +1226,13 @@ export class ReownWalletConnectProvider {
       // Step 2: The message the backend parses. Built by the contract, not here, so that every
       // provider produces the same bytes. Config chainId, never the wallet's current network.
       const chainId = this.config.chainId
-      const message = buildSiweMessage({ address, chainId, nonce })
+      const message = buildSiweMessage({
+        address,
+        chainId,
+        nonce,
+        serviceLink: this.config.serviceLink,
+        termsVersion: this.config.termsVersion
+      })
 
       console.log('🔧 ReownWalletConnect: SIWE message created', {
         domain: window.location.host,

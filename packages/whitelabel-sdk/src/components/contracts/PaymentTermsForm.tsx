@@ -14,6 +14,7 @@ import AmountGuidance from '@/components/contracts/AmountGuidance';
 import ReleaseDateField from '@/components/contracts/ReleaseDateField';
 import AdvancedOptions from '@/components/contracts/AdvancedOptions';
 import { TEST_AMOUNT } from '@/utils/escrowFees';
+import { canBuyToken } from '@/utils/buyableToken';
 import { useT } from '../../i18n';
 
 interface PaymentTermsFormProps {
@@ -26,8 +27,16 @@ interface PaymentTermsFormProps {
   onInstantPaymentChange?: (instant: boolean) => void;
   description: string;
   onDescriptionChange: (value: string) => void;
-  arbiterAddress: string;
-  onArbiterChange: (value: string) => void;
+  /** Omit both to hide the arbiter override, for flows that do not take one (/pay). */
+  arbiterAddress?: string;
+  onArbiterChange?: (value: string) => void;
+  /**
+   * The fee and "you receive" guidance under the amount — the SELLER's view. Off where the
+   * person filling this in is the payer and the fee is quoted separately (/pay).
+   */
+  showFeeGuidance?: boolean;
+  /** Headings over the two amount fields; the seller's wording when omitted. */
+  amountLabels?: { requested: string; receiving: string };
   errors: {
     amount?: string;
     expiry?: string;
@@ -41,6 +50,8 @@ interface PaymentTermsFormProps {
   networkLabel?: string;
   /** e.g. "Balance: 342.10 USDC" - omitted while loading */
   balanceText?: string;
+  /** The token a buyer could pay with instead, converted on payment (lib/stablecoinSwap). */
+  payableWith?: string | null;
 }
 
 const DESCRIPTION_MAX = 160;
@@ -56,12 +67,15 @@ export default function PaymentTermsForm({
   onDescriptionChange,
   arbiterAddress,
   onArbiterChange,
+  showFeeGuidance = true,
+  amountLabels,
   errors,
   tokenSymbol,
   tokenOptions,
   onTokenChange,
   networkLabel,
   balanceText,
+  payableWith,
 }: PaymentTermsFormProps) {
   const t = useT();
   return (
@@ -78,14 +92,28 @@ export default function PaymentTermsForm({
           onTokenChange={onTokenChange}
           networkLabel={networkLabel}
           balanceText={balanceText}
+          splitLabels={amountLabels}
           error={errors.amount}
         />
 
-        <AmountGuidance
-          amount={amount}
-          tokenSymbol={tokenSymbol}
-          onUseTestAmount={() => onAmountChange(String(TEST_AMOUNT))}
-        />
+        {/* Said where the token is chosen, so it can still be changed: by the payment screen the
+            buying routes are simply greyed out. showFeeGuidance is the seller's view. */}
+        {/* ⚠️ ONLY WHEN THERE IS SOMETHING TO WARN ABOUT. Where the token can be paid for with one
+            that is easy to buy (payableWith), nothing is said: any note here, however it was
+            worded, read as a problem and put people off choosing the token. */}
+        {!canBuyToken(tokenSymbol) && !payableWith && (
+          <p role="note" className="mt-2 text-sm text-amber-700 dark:text-amber-400">
+            {t(showFeeGuidance ? 'paymentTerms.harderTokenSeller' : 'paymentTerms.harderTokenPayer', { token: tokenSymbol })}
+          </p>
+        )}
+
+        {showFeeGuidance && (
+          <AmountGuidance
+            amount={amount}
+            tokenSymbol={tokenSymbol}
+            onUseTestAmount={() => onAmountChange(String(TEST_AMOUNT))}
+          />
+        )}
       </div>
 
       <div className="rounded-xl border border-secondary-200 dark:border-secondary-700 p-4">
@@ -124,11 +152,13 @@ export default function PaymentTermsForm({
         )}
       </div>
 
-      <AdvancedOptions
-        arbiterAddress={arbiterAddress}
-        onArbiterChange={onArbiterChange}
-        arbiterError={errors.arbiterAddress}
-      />
+      {onArbiterChange && (
+        <AdvancedOptions
+          arbiterAddress={arbiterAddress ?? ''}
+          onArbiterChange={onArbiterChange}
+          arbiterError={errors.arbiterAddress}
+        />
+      )}
     </div>
   );
 }

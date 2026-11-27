@@ -1,15 +1,23 @@
 import { useAuth } from '@/components/auth';
+import { RATE_LIMIT_MESSAGE, isRateLimited } from '@/lib/rpc/rateLimit';
 import { useConfig } from '@/components/auth/ConfigProvider';
 import { ethers } from 'ethers';
 import { useCallback } from 'react';
 import { mLog } from '@/utils/mobileLogger';
+import { encodeSale, encodeSwap, type SwapVenue } from '@/lib/stablecoinSwap';
+
+/** How long to wait for an approval to be mined before the swap that needs it is sent. */
+// About half a minute, looked for unhurriedly: each look is a request against a rate-limited
+// public endpoint.
+const ALLOWANCE_POLLS = 8;
+const ALLOWANCE_POLL_MS = 4000;
 
 /**
  * Simple hook that provides Web3Service for ALL blockchain operations
  * This is the ONLY way components should access blockchain functionality
  */
 export function useSimpleEthers() {
-  const { isConnected, getEthersProvider, authenticatedFetch } = useAuth();
+  const { isConnected, getEthersProvider } = useAuth();
   const { config } = useConfig();
 
   const getWeb3Service = useCallback(async () => {
@@ -55,6 +63,47 @@ export function useSimpleEthers() {
     return web3Service;
   }, [config, getEthersProvider]);
 
+  /**
+   * The first step of either conversion: let the router take up to `amount` of `tokenIn`, and
+   * wait until the chain shows it. Skipped when the router may already take that much.
+   */
+  const letRouterTake = async (venue: SwapVenue, tokenIn: string, tokenInDecimals: number, amount: bigint, prompt?: string) => {
+    const web3Service = await getWeb3Service();
+    const owner = await web3Service.getUserAddress();
+    const allowed = async () =>
+      ethers.parseUnits(await web3Service.getTokenAllowance(owner, venue.router, tokenIn), tokenInDecimals) >= amount;
+
+    if (!(await allowed())) {
+      const approve = new ethers.Interface(['function approve(address spender, uint256 amount) external returns (bool)']);
+      await web3Service.fundAndSendTransaction({
+        to: tokenIn,
+        data: approve.encodeFunctionData('approve', [venue.router, amount]),
+        value: '0',
+        walletDescription: prompt,
+        // An approval spends nothing, and the notice must not say it does next to a sentence
+        // that says it does not.
+        movesFunds: false,
+      });
+      let seen = false;
+      let rateLimited = false;
+      for (let attempt = 0; attempt < ALLOWANCE_POLLS && !seen; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, ALLOWANCE_POLL_MS));
+        seen = await allowed().then(
+          (yes) => ((rateLimited = false), yes),
+          (e) => ((rateLimited = isRateLimited(e)), false)
+        );
+      }
+      if (!seen) {
+        throw new Error(
+          rateLimited
+            ? `Nothing was converted. ${RATE_LIMIT_MESSAGE}`
+            : 'The approval has not shown up yet. Nothing was converted; try again in a moment.'
+        );
+      }
+    }
+    return { web3Service, owner };
+  };
+
   return {
     provider: null, // Legacy compatibility
     isReady: isConnected,
@@ -63,7 +112,7 @@ export function useSimpleEthers() {
     getWeb3Service,
 
     // Transaction methods
-    fundAndSendTransaction: async (txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; }) => {
+    fundAndSendTransaction: async (txParams: { to: string; data: string; value?: string; gasLimit?: bigint; gasPrice?: bigint; walletDescription?: string; movesFunds?: boolean; }) => {
       console.log('🔧 useSimpleEthers: fundAndSendTransaction via Web3Service');
       const web3Service = await getWeb3Service();
       return await web3Service.fundAndSendTransaction(txParams);
@@ -175,53 +224,81 @@ export function useSimpleEthers() {
       });
     },
 
-    depositToContract: async (contractAddress: string) => {
-      console.log('🔧 useSimpleEthers: depositToContract via fundAndSendTransaction');
+    /**
+     * What converting to exactly `amountOut` would cost, in `tokenIn`'s base units. Read-only: no
+     * wallet access. Memoised for the same reason as prewarmTransferToContract.
+     */
+    quoteSwap: useCallback(async (venue: SwapVenue, tokenIn: string, tokenOut: string, amountOut: bigint) => {
+      if (!config) throw new Error('Config not available');
+      const { Web3Service } = await import('@/lib/web3');
+      return await Web3Service.getInstance(config).quoteStablecoinSwap(venue, tokenIn, tokenOut, amountOut);
+    }, [config]),
 
-      // Encode escrow contract deposit function call using hardcoded ABI
-      const escrowAbi = [
-        "function depositFunds() external"
-      ];
-      const escrowInterface = new ethers.Interface(escrowAbi);
-      const data = escrowInterface.encodeFunctionData('depositFunds', []);
+    /**
+     * Convert in the user's own wallet: exactly `amountOut` of `tokenOut` arrives in it, and at
+     * most `amountInMaximum` of `tokenIn` leaves it. Both transactions are gas sponsored like any
+     * other. Nothing is sent anywhere but the wallet itself.
+     *
+     * ⚠️ THE APPROVAL IS FOR THIS SWAP'S MAXIMUM, NOT UNLIMITED, and is skipped when the router may
+     *    already spend enough. The send returns on submission, so the swap waits for the approval
+     *    to show on chain: sent early, its gas estimate reverts.
+     */
+    swapForExactOutput: async (
+      venue: SwapVenue,
+      swap: { tokenIn: string; tokenInDecimals: number; tokenOut: string; amountOut: bigint; amountInMaximum: bigint },
+      /** What the wallet's own prompt says for each of the two steps, in the buyer's language. */
+      prompts?: { approve?: string; convert?: string }
+    ) => {
+      const { web3Service, owner } = await letRouterTake(venue, swap.tokenIn, swap.tokenInDecimals, swap.amountInMaximum, prompts?.approve);
 
-      const web3Service = await getWeb3Service();
       return await web3Service.fundAndSendTransaction({
-        to: contractAddress,
-        data,
-        value: '0' // No ETH value needed for deposit
+        to: venue.router,
+        data: encodeSwap(venue, {
+          tokenIn: swap.tokenIn,
+          tokenOut: swap.tokenOut,
+          recipient: owner,
+          amountOut: swap.amountOut,
+          amountInMaximum: swap.amountInMaximum,
+        }),
+        value: '0',
+        walletDescription: prompts?.convert,
       });
     },
 
-    depositFundsAsProxy: async (contractAddress: string) => {
-      console.log('🔧 useSimpleEthers: depositFundsAsProxy via chainservice');
+    /**
+     * What selling exactly `amountIn` would bring, in `tokenOut`'s base units. Read-only, and
+     * memoised, as quoteSwap is.
+     */
+    quoteSale: useCallback(async (venue: SwapVenue, tokenIn: string, tokenOut: string, amountIn: bigint) => {
+      if (!config) throw new Error('Config not available');
+      const { Web3Service } = await import('@/lib/web3');
+      return await Web3Service.getInstance(config).quoteStablecoinSale(venue, tokenIn, tokenOut, amountIn);
+    }, [config]),
 
-      if (!authenticatedFetch) {
-        throw new Error('authenticatedFetch is not available');
-      }
+    /**
+     * Convert in the user's own wallet the other way round: exactly `amountIn` of `tokenIn`
+     * leaves it and at least `amountOutMinimum` of `tokenOut` arrives. For emptying a balance,
+     * where swapForExactOutput would leave dust. Approved, waited for and sponsored the same way.
+     */
+    sellExactInput: async (
+      venue: SwapVenue,
+      sale: { tokenIn: string; tokenInDecimals: number; tokenOut: string; amountIn: bigint; amountOutMinimum: bigint },
+      prompts?: { approve?: string; convert?: string }
+    ) => {
+      const { web3Service, owner } = await letRouterTake(venue, sale.tokenIn, sale.tokenInDecimals, sale.amountIn, prompts?.approve);
 
-      // Call chainservice to deposit funds as gas payer
-      const response = await authenticatedFetch('/api/chain/fund-approved-contract', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contractHash: contractAddress
-        })
+      return await web3Service.fundAndSendTransaction({
+        to: venue.router,
+        data: encodeSale(venue, {
+          tokenIn: sale.tokenIn,
+          tokenOut: sale.tokenOut,
+          recipient: owner,
+          amountIn: sale.amountIn,
+          amountOutMinimum: sale.amountOutMinimum,
+        }),
+        value: '0',
+        walletDescription: prompts?.convert,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || 'Failed to deposit funds via proxy');
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.error || 'Deposit failed');
-      }
-
-      // Return transaction hash in same format as depositToContract
-      return result.transactionHash;
     },
 
     // Direct ERC20 transfer to a contract address (no approve step needed)
@@ -231,16 +308,26 @@ export function useSimpleEthers() {
      * Same transaction the button will send, estimated early. Safe to call speculatively and
      * safe to call repeatedly: it never throws, and a wrong guess simply goes unused.
      */
-    prewarmTransferToContract: async (tokenAddress: string, contractAddress: string, amount: string) => {
+    // ⚠️ MEMOISED BECAUSE PAGES LIST IT AS AN EFFECT DEPENDENCY. As a plain function it was a new
+    //    identity on every render, so the pay page's prewarm effect re-ran on every render — 20
+    //    estimates (about 100 RPC calls) in the first 40 seconds of one page, enough to get the
+    //    public Base RPC to start refusing the reads the page actually needs.
+    prewarmTransferToContract: useCallback(async (tokenAddress: string, contractAddress: string, amount: string) => {
       const tokenInterface = new ethers.Interface([
         'function transfer(address to, uint256 amount) external returns (bool)'
       ]);
       const data = tokenInterface.encodeFunctionData('transfer', [contractAddress, amount]);
       const web3Service = await getWeb3Service();
       await web3Service.prewarmTransaction({ to: tokenAddress, data, value: '0' });
-    },
+    }, [getWeb3Service]),
 
-    transferToContract: async (tokenAddress: string, contractAddress: string, amount: string) => {
+    transferToContract: async (
+      tokenAddress: string,
+      contractAddress: string,
+      amount: string,
+      /** What the wallet's own prompt says, where the wallet lets us set it (walletPromptChannel). */
+      walletDescription?: string
+    ) => {
       console.log('');
       console.log('='.repeat(80));
       console.log('💸 DIRECT TOKEN TRANSFER');
@@ -267,7 +354,8 @@ export function useSimpleEthers() {
       return await web3Service.fundAndSendTransaction({
         to: tokenAddress, // Send tx TO the token contract
         data,
-        value: '0' // No ETH value needed for ERC20 transfer
+        value: '0', // No ETH value needed for ERC20 transfer
+        walletDescription
       });
     }
   };

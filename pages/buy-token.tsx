@@ -1,218 +1,193 @@
-import { useRouter } from 'next/router';
+import Link from 'next/link';
+import type { GetStaticProps } from 'next';
+import { isr } from '@/utils/isr';
+import SEO from '@/components/SEO';
+import { rampFactsAtBuild, type RampFacts } from '@/lib/server/rampFacts';
+import { useMemo, useState } from 'react';
 import { useAuth } from '@/components/auth';
 import ConnectWalletEmbedded from '@/components/auth/ConnectWalletEmbedded';
-import Button from '@/components/ui/Button';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import TokenGuide from '@/components/ui/TokenGuide';
+import FundingOptions from '@/components/funding/FundingOptions';
+import WalletAddressBox from '@/components/funding/WalletAddressBox';
 import { useWalletAddress } from '@/hooks/useWalletAddress';
 import { useConfig } from '@/components/auth/ConfigProvider';
-import { useState, useEffect } from 'react';
+import { useCoinbaseAvailability } from '@/hooks/useCoinbaseAvailability';
+import { useOnrampMinimum } from '@/hooks/useOnrampMinimum';
+import { getChainName } from '@/utils/chainNames';
+import { useT } from '@/i18n';
 
-export default function BuyToken() {
-  const router = useRouter();
+const card = 'bg-white dark:bg-secondary-800 rounded-lg shadow-md dark:shadow-none p-6 sm:p-8';
+const heading = 'text-xl font-bold text-secondary-900 dark:text-white';
+const blurb = 'mt-1 text-sm text-secondary-600 dark:text-secondary-300';
+
+/**
+ * Every way we know to get the token into the connected wallet, on one page: FundingOptions with
+ * no amount, so it asks. The payment screen shows the same component for what a payment is short
+ * (PaymentActionPanel, "top up this wallet").
+ *
+ * ⚠️ SIGNED OUT, IT IS THE SAME LIST WITH NOTHING TO PRESS, and that is also what the SERVER
+ *    writes, since the server never has a user: it is the HTML a search engine or an AI agent
+ *    reads. It used to be a spinner until sign-in and the config had loaded, so the page a bot
+ *    was sent had no content (2026-11-20). `ramps` (getStaticProps) says which chain, tokens
+ *    and providers, so nothing but the connect button waits on the browser. /wallet does the same.
+ */
+export default function BuyToken({ ramps }: { ramps?: RampFacts }) {
+  const t = useT();
   const { user, isLoading: authLoading } = useAuth();
   const { config, isLoading: configLoading } = useConfig();
   const { walletAddress, isLoading: isWalletAddressLoading } = useWalletAddress();
-  const [widgetStatus, setWidgetStatus] = useState<string>('');
 
-  const tryShowWalletServices = async () => {
-    try {
-      setWidgetStatus('Opening wallet services...');
-      console.log('Trying to show wallet services');
-      // console.log('Web3Auth instance:', web3authInstance);
-      
-      // Web3Auth wallet services not available in this context
-      setWidgetStatus('Wallet services not available');
-      return;
+  const tokens = useMemo(() => {
+    if (config?.supportedTokens?.length) return config.supportedTokens;
+    return config?.defaultToken ? [config.defaultToken] : [];
+  }, [config]);
+  const [chosenSymbol, setChosenSymbol] = useState<string | null>(null);
+  const tokenSymbol = chosenSymbol ?? config?.defaultToken?.symbol ?? config?.tokenSymbol ?? ramps?.tokenSymbols[0] ?? 'USDC';
+  const token = tokens.find((candidate) => candidate.symbol === tokenSymbol);
 
-      // Web3Auth instance not available in this interface abstraction
-      setWidgetStatus('Direct Web3Auth access not available in this interface');
-      return;
+  const chainId = config?.chainId ?? ramps?.chainId;
+  // "Base", not "Base Mainnet": it is the word an exchange's withdrawal screen uses.
+  const networkName = chainId === undefined ? '' : getChainName(chainId).replace(/ Mainnet$/, '');
 
-    } catch (error: any) {
-      console.error('Error showing wallet services:', error);
-      setWidgetStatus(`Could not open wallet services: ${error.message}`);
-    }
-  };
+  const showCoinbase = !!config?.coinbaseProjectId;
+  const coinbase = useCoinbaseAvailability(showCoinbase);
+  const coinbaseMinimum = useOnrampMinimum(tokenSymbol, showCoinbase)?.inTokens;
 
-  // Automatically open wallet services when page loads and user is authenticated
-  useEffect(() => {
-    if (user && walletAddress) {
-      // Small delay to ensure everything is fully loaded
-      const timer = setTimeout(() => {
-        tryShowWalletServices();
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [user, walletAddress]);
-
-  if (authLoading || configLoading || isWalletAddressLoading) {
-    return (
-      <div className="flex justify-center items-center min-h-96">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
-  }
-
-  if (!user || !walletAddress) {
-    return (
-      <div className="max-w-md mx-auto text-center py-20">
-        <h1 className="text-2xl font-bold text-secondary-900 dark:text-white mb-4">Connect Your Wallet</h1>
-        <p className="text-secondary-600 dark:text-secondary-300 mb-6">
-          You need to connect your wallet to buy or sell {config?.tokenSymbol || 'tokens'}.
-        </p>
-        <ConnectWalletEmbedded useSmartRouting={true} />
-      </div>
-    );
-  }
+  // Sign-in or the config still arriving: the page is shown as for a visitor meanwhile, with a
+  // spinner where the connect button will be.
+  const settling = authLoading || configLoading || isWalletAddressLoading;
+  const connected = !settling && !!user && !!walletAddress;
 
   return (
     <div className="py-10 bg-white dark:bg-secondary-900 transition-colors">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-10">
-          <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">Buy or Sell {config?.tokenSymbol || 'Tokens'}</h1>
+      {!connected && (
+        <SEO
+          title={`How to buy ${tokenSymbol}${networkName ? ` on ${networkName}` : ''} - Stabledrop`}
+          description={`Every way to get ${tokenSymbol} into a Stabledrop wallet: card, bank transfer, Coinbase, Kraken, Link, a transfer from another wallet, and exchanges by region.`}
+          canonical="/buy-token"
+        />
+      )}
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-secondary-900 dark:text-white">{t('buyToken.title', { token: tokenSymbol })}</h1>
           <p className="mt-2 text-secondary-600 dark:text-secondary-300">
-            Manual instructions for adding {config?.tokenSymbol || 'tokens'} to your wallet or converting to fiat
+            {networkName ? t('buyToken.introOnNetwork', { network: networkName }) : t('buyToken.intro')}
           </p>
         </div>
 
-        <div className="max-w-2xl mx-auto">
-          {/* Web3Auth Wallet Services Integration */}
-          <div className="bg-white dark:bg-secondary-800 rounded-lg shadow-md dark:shadow-none p-8 mb-8">
-            <div className="text-center mb-6">
-              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                </svg>
-              </div>
-              <h2 className="text-2xl font-bold text-secondary-900 dark:text-white mb-2">Web3Auth Wallet Services</h2>
-              <p className="text-secondary-600 dark:text-secondary-300 mb-4">
-                Use the integrated wallet widget to buy, sell, swap, and manage your crypto
-              </p>
-            </div>
-
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
+        {connected && walletAddress ? (
+          <>
+            <section className={card} aria-labelledby="your-wallet">
+              <h2 id="your-wallet" className={heading}>{t('buyToken.yourWallet')}</h2>
+              <p className={blurb}>{t('buyToken.yourWalletBlurb', { token: tokenSymbol })}</p>
+              <WalletAddressBox walletAddress={walletAddress} />
+              <dl className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <dt className="text-secondary-500 dark:text-secondary-400">{t('buyToken.network')}</dt>
+                  <dd className="font-semibold text-secondary-900 dark:text-white">{networkName}</dd>
                 </div>
-                <div className="ml-3">
-                  <p className="text-sm text-blue-800 dark:text-blue-300">
-                    <span className="font-semibold">Widget Access:</span> Look for the wallet widget button (usually bottom-right corner) 
-                    to access fiat on-ramp, portfolio management, and token swapping features.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-secondary-50 dark:bg-secondary-700 rounded-lg p-4 mb-6">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-secondary-600 dark:text-secondary-300">Connected Wallet:</span>
-                <span className="text-sm font-mono text-secondary-900 dark:text-white">{walletAddress}</span>
-              </div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm text-secondary-600 dark:text-secondary-300">Network:</span>
-                <span className="text-sm text-secondary-900 dark:text-white">
-                  {(() => {
-                    const chainNames: Record<number, string> = {
-                      1: 'Ethereum Mainnet',
-                      11155111: 'Sepolia Testnet',
-                      43114: 'Avalanche C-Chain',
-                      43113: 'Avalanche Fuji Testnet',
-                      137: 'Polygon Mainnet',
-                      80001: 'Mumbai Testnet',
-                      8453: 'Base Mainnet',
-                      84532: 'Base Sepolia',
-                      42161: 'Arbitrum One',
-                      421614: 'Arbitrum Sepolia',
-                      10: 'Optimism Mainnet',
-                      11155420: 'Optimism Sepolia',
-                      56: 'BNB Smart Chain',
-                      97: 'BSC Testnet',
-                    };
-                    return chainNames[config?.chainId || 0] || `Chain ID: ${config?.chainId}`;
-                  })()}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-secondary-600 dark:text-secondary-300">Supported Currency:</span>
-                <span className="text-sm text-secondary-900 dark:text-white">{config?.tokenSymbol || 'USDC'}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Fallback: Show the TokenGuide component with manual instructions */}
-          <details className="bg-white dark:bg-secondary-800 rounded-lg shadow-md dark:shadow-none p-6 mb-8">
-            <summary className="cursor-pointer font-semibold text-secondary-900 dark:text-white mb-4">
-              Alternative: Manual Instructions (click to expand)
-            </summary>
-            <TokenGuide />
-          </details>
-
-          <div className="bg-white dark:bg-secondary-800 rounded-lg shadow-md dark:shadow-none p-6">
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-green-800 dark:text-green-300">
-                    <span className="font-semibold">Active:</span> Web3Auth Wallet Services are now integrated and available through the wallet widget.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              {widgetStatus && (
-                <div className={`p-3 rounded-lg text-sm ${
-                  widgetStatus.includes('not') || widgetStatus.includes('Could not')
-                    ? 'bg-amber-50 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                    : widgetStatus.includes('opened')
-                    ? 'bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-300 border border-green-200 dark:border-green-800'
-                    : 'bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-                }`}>
-                  <div className="flex items-center">
-                    {(widgetStatus.includes('Opening') || widgetStatus.includes('Waiting')) && (
-                      <LoadingSpinner className="w-4 h-4 mr-2" />
+                <div>
+                  <dt className="text-secondary-500 dark:text-secondary-400">
+                    <label htmlFor="buy-token-token">{t('buyToken.token')}</label>
+                  </dt>
+                  <dd className="font-semibold text-secondary-900 dark:text-white">
+                    {tokens.length > 1 ? (
+                      <select
+                        id="buy-token-token"
+                        value={tokenSymbol}
+                        onChange={(e) => setChosenSymbol(e.target.value)}
+                        className="rounded-md border border-secondary-300 dark:border-secondary-600 bg-white dark:bg-secondary-700 px-2 py-1"
+                      >
+                        {tokens.map((candidate) => (
+                          <option key={candidate.symbol} value={candidate.symbol}>{candidate.symbol}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      tokenSymbol
                     )}
-                    {widgetStatus}
-                  </div>
+                  </dd>
                 </div>
+              </dl>
+              <p className="mt-4 rounded-md border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 p-3 text-xs text-yellow-800 dark:text-yellow-300">
+                {t('addFunds.sendOnly', { token: tokenSymbol, network: networkName })}
+              </p>
+            </section>
+
+            <section className={card} aria-labelledby="ways-to-add">
+              <h2 id="ways-to-add" className={heading}>{t('buyToken.ways', { token: tokenSymbol })}</h2>
+              <p className={`${blurb} mb-5`}>
+                {t('buyToken.waysBlurb')}
+              </p>
+              <FundingOptions
+                // A fresh one per token, so nothing chosen for one is carried to the other.
+                key={tokenSymbol}
+                walletAddress={walletAddress}
+                tokenSymbol={tokenSymbol}
+                tokenAddress={token?.address}
+                tokenDecimals={token?.decimals}
+                chainId={chainId}
+                networkName={networkName}
+                minimumPurchase={coinbaseMinimum}
+                coinbaseUnavailable={
+                  coinbase.unavailable
+                    ? t('paymentActionPanel.whyNoCoinbase', { country: coinbase.countryName ?? '' })
+                    : undefined
+                }
+                coinbaseOverrule={{
+                  label: t('paymentActionPanel.notInCountry', { country: coinbase.countryName ?? '' }),
+                  onClick: coinbase.overrule,
+                }}
+                purpose="guide"
+              />
+            </section>
+          </>
+        ) : (
+          <>
+            <section className={`${card} text-center`}>
+              <h2 className={heading}>{t('buyToken.connect.title')}</h2>
+              <p className={`${blurb} mb-6`}>
+                {t('buyToken.connect.blurb')}
+              </p>
+              {settling ? (
+                <div className="flex justify-center"><LoadingSpinner size="lg" /></div>
+              ) : (
+                <ConnectWalletEmbedded useSmartRouting={true} />
               )}
+            </section>
+            <section className={card} aria-labelledby="ways-to-add">
+              <h2 id="ways-to-add" className={heading}>{t('buyToken.ways', { token: tokenSymbol })}</h2>
+              <p className={`${blurb} mb-5`}>{t('buyToken.waysBlurb')}</p>
+              <FundingOptions
+                walletAddress=""
+                tokenSymbol={tokenSymbol}
+                chainId={chainId}
+                networkName={networkName}
+                purpose="guide"
+                lookOnly
+                catalogue={{ coinbase: showCoinbase || !!ramps?.coinbase, card: !!ramps?.card }}
+              />
+            </section>
+          </>
+        )}
 
-              <Button
-                onClick={() => router.push('/dashboard')}
-                className="w-full"
-                size="lg"
-              >
-                Go to Dashboard
-              </Button>
-
-              <div className="text-center">
-                <button
-                  onClick={() => router.back()}
-                  className="text-secondary-500 dark:text-secondary-400 hover:text-secondary-700 dark:hover:text-secondary-200"
-                >
-                  Go Back
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-8 text-center text-sm text-secondary-500 dark:text-secondary-400">
-            <p>
-              Powered by Web3Auth Wallet Services. The widget provides secure access to multiple 
-              fiat on-ramp providers and DeFi services for your convenience.
-            </p>
-          </div>
-        </div>
+        <p className="text-center text-sm text-secondary-500 dark:text-secondary-400">
+          {t('buyToken.cashingOut')}{' '}
+          <Link href="/wallet" className="underline hover:text-secondary-900 dark:hover:text-white">
+            {t('buyToken.goToWallet')}
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );
 }
+
+/**
+ * Written at build time, not per request: the public site is a static export with no server
+ * behind its pages, so getServerSideProps cannot be used here (see rampFactsAtBuild). The box
+ * build refreshes it every few minutes from its own environment.
+ */
+export const getStaticProps: GetStaticProps<{ ramps: RampFacts }> = async () => ({
+  props: { ramps: await rampFactsAtBuild() },
+  ...isr(300),
+});

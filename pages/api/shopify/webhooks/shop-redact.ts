@@ -1,19 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import crypto from 'crypto';
+import { verifyShopifyWebhook } from '@/lib/server/shopifyWebhook';
 import { deleteMerchantSettings } from '@/lib/mongodb';
-
-function verifyShopifyWebhook(req: NextApiRequest): boolean {
-  const hmacHeader = req.headers['x-shopify-hmac-sha256'] as string;
-  if (!hmacHeader || !process.env.SHOPIFY_CLIENT_SECRET) return false;
-
-  const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-  const hash = crypto
-    .createHmac('sha256', process.env.SHOPIFY_CLIENT_SECRET)
-    .update(body, 'utf8')
-    .digest('base64');
-
-  return crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(hmacHeader));
-}
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') {

@@ -163,8 +163,8 @@ conduit-shared-proxy/
 │       │   ├── identity.ts           # Get current user data
 │       │   └── update-email.ts       # Update user email
 │       ├── chain/
-│       │   ├── approve-usdc.ts       # USDC approval transactions
-│       │   ├── deposit-funds.ts      # Fund escrow contracts
+│       │   ├── check-and-activate.ts # Activate an escrow after a direct token transfer
+│       │   ├── deploy-and-activate.ts # Deploy + activate a pre-funded escrow
 │       │   ├── transfer-usdc.ts      # Transfer USDC
 │       │   ├── fund-wallet.ts        # Fund user wallet with gas
 │       │   ├── claim-funds.ts        # Claim from expired contracts

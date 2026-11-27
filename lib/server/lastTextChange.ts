@@ -1,4 +1,4 @@
-import { execFileSync } from 'child_process';
+import { gitFileVersion, TERMS_VERSION_LENGTH } from './gitFileVersion';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -36,19 +36,7 @@ const MONTHS = [
  * @param fallback used only when git cannot answer; see the warning below
  */
 function gitDate(file: string): string | null {
-  let iso = '';
-  try {
-    // %cs = committer date, YYYY-MM-DD. Not %as (author date): a rebase or
-    // cherry-pick can carry an author date older than when the text landed here.
-    iso = execFileSync('git', ['log', '-1', '--format=%cs', '--', file], {
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'ignore'],
-    }).trim();
-  } catch {
-    iso = '';
-  }
-
-  return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : null;
+  return gitFileVersion(file)?.date ?? null;
 }
 
 function warnNoDate(file: string, fallback: string): void {
@@ -68,10 +56,31 @@ export function lastTextChange(file: string, fallback: string): string {
     warnNoDate(file, fallback);
     return fallback;
   }
+  return displayDate(iso);
+}
+
+function displayDate(iso: string): string {
   const [y, m, d] = iso.split('-');
   // A fixed table, not toLocaleDateString: that reads ICU data from the host and
   // would make the output depend on which machine ran the build.
   return `${Number(d)} ${MONTHS[Number(m) - 1]} ${y}`;
+}
+
+/**
+ * The date as lastTextChange gives it, plus the commit that made the change — the version a
+ * reader can cite, and the one a SIWE sign-in names when it accepts the Terms of Service.
+ * `version` is the first TERMS_VERSION_LENGTH hex digits of the SHA, or null without git.
+ */
+export function lastTextChangeVersion(
+  file: string,
+  fallback: string
+): { date: string; version: string | null } {
+  const found = gitFileVersion(file);
+  if (!found) {
+    warnNoDate(file, fallback);
+    return { date: fallback, version: null };
+  }
+  return { date: displayDate(found.date), version: found.sha.slice(0, TERMS_VERSION_LENGTH) };
 }
 
 /**

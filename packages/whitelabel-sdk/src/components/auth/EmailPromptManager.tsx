@@ -3,6 +3,25 @@ import React, { useEffect, useRef } from 'react';
 import { useAuth } from './SimpleAuthProvider';
 import { isValidEmail } from '@/utils/validation';
 
+/** This browser was told another account has this email. Its own, so it can only ever cost a retry. */
+const conflictKey = (userId: string) => `emailAutoCollectConflict:${userId}`;
+
+function knownConflict(userId: string, email: string): boolean {
+  try {
+    return localStorage.getItem(conflictKey(userId)) === email;
+  } catch {
+    return false;
+  }
+}
+
+function rememberConflict(userId: string, email: string): void {
+  try {
+    localStorage.setItem(conflictKey(userId), email);
+  } catch {
+    // Unremembered: the next page load asks again, and is refused again.
+  }
+}
+
 /**
  * Collects a user's email from their auth provider, silently.
  *
@@ -36,6 +55,10 @@ export default function EmailPromptManager({ children }: { children: React.React
         if (providerUserInfo && providerUserInfo.email && typeof providerUserInfo.email === 'string') {
           const emailFromProvider = providerUserInfo.email;
 
+          // ⚠️ ASKING AGAIN CANNOT HELP. The answer stays no until the other account gives the
+          //    address up, and each attempt was a failed request on every page load, for good.
+          if (knownConflict(user.userId, emailFromProvider)) return;
+
           console.log('📧 EmailPromptManager: Found email from provider', {
             email: emailFromProvider.substring(0, 3) + '***', // Log partial email for privacy
             authProvider: providerUserInfo.authProvider
@@ -62,6 +85,9 @@ export default function EmailPromptManager({ children }: { children: React.React
 
                 // Don't show the prompt - email was saved automatically
                 return;
+              } else if (response.status === 409) {
+                console.warn('📧 EmailPromptManager: Another account already has this email; not retrying');
+                rememberConflict(user.userId, emailFromProvider);
               } else {
                 console.error('📧 EmailPromptManager: Failed to auto-save email', {
                   status: response.status

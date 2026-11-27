@@ -5,7 +5,6 @@ on:
     tags:
       - 'v*'
       - 'test*'
-      - 'farcaster-test*'
       - 'cherry*'
       # Client-only release: publishes the static site the cherry release of the same
       # commit built, WITHOUT building anything or touching any box. See deploy-cloudflare.
@@ -16,7 +15,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-and-deploy:
+  build:
     # Tag pushes only. A manual run is for validating the Cloudflare build in isolation and
     # must never touch the production box.
     #
@@ -29,7 +28,13 @@ jobs:
       github.event_name != 'workflow_dispatch' &&
       !startsWith(github.ref, 'refs/tags/cloudflareRelease-')
     runs-on: ubuntu-latest
-    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || startsWith(github.ref, 'refs/tags/cherry') && 'cherry' || startsWith(github.ref, 'refs/tags/test') && 'test' || startsWith(github.ref, 'refs/tags/farcaster-test') && 'test_on_prod' || 'test' }}
+    # The build stays in the environment: Next bakes the environment's settings (and reads some of
+    # its secrets) at build time, so each environment builds its own image.
+    environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || startsWith(github.ref, 'refs/tags/cherry') && 'cherry' || 'test' }}
+    outputs:
+      image: ${{ steps.env_vars.outputs.image }}
+      git_tag: ${{ steps.env_vars.outputs.git_tag }}
+      git_sha: ${{ steps.env_vars.outputs.git_sha }}
     permissions:
       contents: read
       packages: write
@@ -44,7 +49,7 @@ jobs:
         id: env_vars
         env:
           # The same mapping as `environment:` above; a step cannot read the job's environment name.
-          ENV_NAME: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || startsWith(github.ref, 'refs/tags/cherry') && 'cherry' || startsWith(github.ref, 'refs/tags/test') && 'test' || startsWith(github.ref, 'refs/tags/farcaster-test') && 'test_on_prod' || 'test' }}
+          ENV_NAME: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || startsWith(github.ref, 'refs/tags/cherry') && 'cherry' || 'test' }}
         run: |
           echo "ENV_TAG=latest" >> $GITHUB_ENV
           # ⚠️ ONE IMAGE PER COMMIT PER ENVIRONMENT, named <environment>-<sha> (cherry-1a2b3c4d,
@@ -57,6 +62,10 @@ jobs:
           echo "REPO_LOWER=$(echo ${{ github.repository }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
           echo "GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo '')" >> $GITHUB_ENV
           echo "GIT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+          REPO_LOWER=$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')
+          echo "image=ghcr.io/$REPO_LOWER:${ENV_NAME}-${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+          echo "git_tag=$(git describe --tags --abbrev=0 2>/dev/null || echo '')" >> "$GITHUB_OUTPUT"
+          echo "git_sha=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       # Docker steps  
       - name: Login to GitHub Container Registry
@@ -228,163 +237,85 @@ jobs:
           scripts/static-site-image.sh push
 
       # Deploy step
-      - name: Deploy to GCP
-        run: |
-          set -o pipefail
 
-          # The key is held in an agent, never written to disk. `ssh -i` takes a
-          # path and has no way to accept a key as a string, so the choice is a
-          # file or an agent — and a file left in ~/.ssh stays readable by every
-          # later step in the job, including any third-party action.
-          # printf, not echo: ssh-add rejects a key without a trailing newline.
-          eval "$(ssh-agent -s)" > /dev/null
-          trap 'ssh-agent -k > /dev/null 2>&1 || true' EXIT
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" | ssh-add - 2>/dev/null \
-            || { echo "Could not load SSH_PRIVATE_KEY into the agent" >&2; exit 1; }
-
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ vars.VM_IP }} >> ~/.ssh/known_hosts
-
-          SSH="ssh -o BatchMode=yes -o ServerAliveInterval=15 -l gituser ${{ vars.VM_IP }}"
-          IMAGE="ghcr.io/${{ env.REPO_LOWER }}:${{ env.IMAGE_TAG }}"
-
-          # Run a command up to N times with linear backoff.
-          retry() {
-            attempts=$1; shift
-            n=1
-            until "$@"; do
-              if [ "$n" -ge "$attempts" ]; then
-                echo "FAILED after $n attempts: $*" >&2
-                return 1
-              fi
-              echo "Attempt $n failed; retrying in $((n * 10))s: $*" >&2
-              sleep $((n * 10))
-              n=$((n + 1))
-            done
-          }
-
-          # ---------------------------------------------------------------
-          # Ship the image over SSH instead of having the box pull it.
-          #
-          # The production box's egress IP is intermittently refused by
-          # GitHub's edge: measured at 5 failures in 20 TLS handshakes to
-          # ghcr.io, while Google, Cloudflare and Docker Hub were 0 in 20 from
-          # the same host at the same time. DNS and local networking are clean,
-          # so there is nothing to fix on the box — the deploy simply cannot
-          # rely on it reaching ghcr.io. The runner's GitHub connectivity is
-          # fine and SSH to the box is reliable, so we push the bytes down the
-          # connection that works.
-          # ---------------------------------------------------------------
-
-          # The image is multi-platform, so save the one the box can actually
-          # run rather than whichever the runner happens to be.
-          REMOTE_ARCH=$($SSH 'dpkg --print-architecture 2>/dev/null || uname -m')
-          case "$REMOTE_ARCH" in
-            amd64|x86_64)  PLATFORM=linux/amd64 ;;
-            arm64|aarch64) PLATFORM=linux/arm64 ;;
-            *) echo "Unsupported remote architecture: $REMOTE_ARCH" >&2; exit 1 ;;
-          esac
-          echo "Remote architecture: $REMOTE_ARCH -> $PLATFORM"
-
-          # buildx --push uploads straight to the registry without leaving the
-          # image in the runner's local store, so fetch it back before saving.
-          retry 5 docker pull --platform "$PLATFORM" "$IMAGE"
-
-          ship_image() {
-            docker save --platform "$PLATFORM" "$IMAGE" | gzip -1 | $SSH 'gunzip | docker load'
-          }
-
-          if $SSH "docker image inspect '$IMAGE' >/dev/null 2>&1"; then
-            echo "Box already has $IMAGE; skipping transfer."
-          else
-            retry 3 ship_image
-          fi
-
-          # Prove the image is on the box BEFORE the deploy script stops the
-          # running container. Without this a failed transfer would take the
-          # site down and leave nothing to start again.
-          $SSH "docker image inspect '$IMAGE' >/dev/null" \
-            || { echo "Image missing on the box after transfer" >&2; exit 1; }
-
-          # Create deployment script with all values populated
-          cat > /tmp/deploy_script.sh << EOF
-          set -e
-          docker stop ${{ vars.SERVICE_NAME }} || true
-          docker rm ${{ vars.SERVICE_NAME }} || true
-          docker run -d \\
-            --name ${{ vars.SERVICE_NAME }} \\
-            --network ${{ vars.DOCKER_NETWORK }} \\
-            --restart unless-stopped \\
-            --memory=256m \\
-            -e NODE_OPTIONS="--max-old-space-size=192" \\
-            -e CHAIN_ID="${{ vars.CHAIN_ID }}" \\
-            -e RPC_URL="${{ vars.RPC_URL }}" \\
-            -e CHAIN_SERVICE_URL="${{ vars.CHAIN_SERVICE_URL }}" \\
-            -e USER_SERVICE_URL="${{ vars.USER_SERVICE_URL }}" \\
-            -e CONTRACT_SERVICE_URL="${{ vars.CONTRACT_SERVICE_URL }}" \\
-            -e AP2_SERVICE_URL="${{ vars.AP2_SERVICE_URL }}" \\
-            -e DISPUTE_SERVICE_URL="${{ vars.DISPUTE_SERVICE_URL }}" \\
-            -e SANCTION_SERVICE_URL="${{ vars.SANCTION_SERVICE_URL }}" \\
-            -e WHITELABEL_SERVICE_URL="${{ vars.WHITELABEL_SERVICE_URL }}" \\
-            -e MOONPAY_API_KEY="${{ secrets.MOONPAY_API_KEY }}" \\
-            -e X_API_KEY="${{ secrets.X_API_KEY }}" \\
-            -e EMAIL_SERVICE_URL="${{ vars.EMAIL_SERVICE_URL }}" \\
-            -e TO_EMAILSERVICE_API_KEY="${{ secrets.TO_EMAILSERVICE_API_KEY }}" \\
-            -e RECORDINGS_S3_BUCKET="${{ vars.RECORDINGS_S3_BUCKET }}" \\
-            -e RECORDINGS_S3_ENDPOINT="${{ vars.RECORDINGS_S3_ENDPOINT }}" \\
-            -e RECORDINGS_S3_REGION="${{ vars.RECORDINGS_S3_REGION }}" \\
-            -e RECORDINGS_S3_ACCESS_KEY_ID="${{ secrets.RECORDINGS_S3_ACCESS_KEY_ID }}" \\
-            -e RECORDINGS_S3_SECRET_ACCESS_KEY="${{ secrets.RECORDINGS_S3_SECRET_ACCESS_KEY }}" \\
-            -e TO_USERSERVICE_API_KEY="${{ secrets.TO_USERSERVICE_API_KEY }}" \\
-            -e GIT_TAG="${{ env.GIT_TAG }}" \\
-            -e GIT_SHA="${{ env.GIT_SHA }}" \\
-            -e COOKIE_DOMAIN="${{ vars.COOKIE_DOMAIN }}" \\
-            -e BUILD_VERSION="${{ env.BUILD_VERSION }}" \\
-            -e SUPPORTED_TOKENS='${{ vars.SUPPORTED_TOKENS }}' \\
-            -e USDC_CONTRACT_ADDRESS="${{ vars.USDC_CONTRACT_ADDRESS }}" \\
-            -e USDT_CONTRACT_ADDRESS="${{ vars.USDT_CONTRACT_ADDRESS }}" \\
-            -e DEFAULT_TOKEN_SYMBOL="${{ vars.DEFAULT_TOKEN_SYMBOL }}" \\
-            -e MIN_GAS_WEI="${{ vars.MIN_GAS_WEI }}" \\
-            -e MAX_GAS_PRICE_GWEI="${{ vars.MAX_GAS_PRICE_GWEI }}" \\
-            -e MAX_GAS_COST_GWEI="${{ vars.MAX_GAS_COST_GWEI }}" \\
-            -e USDC_GRANT_FOUNDRY_GAS="${{ vars.USDC_GRANT_FOUNDRY_GAS }}" \\
-            -e RESOLUTION_VOTE_FOUNDRY_GAS="${{ vars.RESOLUTION_VOTE_FOUNDRY_GAS }}" \\
-            -e RAISE_DISPUTE_FOUNDRY_GAS="${{ vars.RAISE_DISPUTE_FOUNDRY_GAS }}" \\
-            -e CLAIM_FUNDS_FOUNDRY_GAS="${{ vars.CLAIM_FUNDS_FOUNDRY_GAS }}" \\
-            -e GAS_PRICE_BUFFER="${{ vars.GAS_PRICE_BUFFER }}" \\
-            -e NEXT_PUBLIC_BASE_PATH="${{ vars.NEXT_PUBLIC_BASE_PATH }}" \\
-            -e EXPLORER_BASE_URL="${{ vars.EXPLORER_BASE_URL }}" \\
-            -e PRODUCT_NAME="${{ vars.PRODUCT_NAME }}" \\
-            -e SERVICE_LINK="${{ vars.SERVICE_LINK }}" \\
-            -e NEYNAR_API_KEY="${{ secrets.NEYNAR_API_KEY }}" \\
-            -e NEYNAR_API_URL="${{ vars.NEYNAR_API_URL }}" \\
-            -e WALLETCONNECT_PROJECT_ID="${{ secrets.WALLETCONNECT_PROJECT_ID }}" \\
-            -e PRIVY_APP_ID="${{ vars.PRIVY_APP_ID }}" \\
-            -e SHOW_LEGACY_AUTH="${{ vars.SHOW_LEGACY_AUTH }}" \\
-            -e ALLOWED_FRAME_ANCESTORS="${{ vars.ALLOWED_FRAME_ANCESTORS }}" \\
-            -e PROJECTS_LIVE="${{ vars.PROJECTS_LIVE }}" \\
-            -e EMAIL_VERIFICATION_LIVE="${{ vars.EMAIL_VERIFICATION_LIVE }}" \\
-            -e SHOPIFY_CLIENT_ID="${{ secrets.SHOPIFY_CLIENT_ID }}" \\
-            -e SHOPIFY_CLIENT_SECRET="${{ secrets.SHOPIFY_CLIENT_SECRET }}" \\
-            -e SHOPIFY_NAME="${{ vars.SHOPIFY_NAME }}" \\
-            -e SHOPIFY_SCOPES="${{ vars.SHOPIFY_SCOPES }}" \\
-            -e SESSION_SECRET="${{ secrets.SESSION_SECRET }}" \\
-            -e MONGODB_URI="${{ secrets.MONGODB_URI }}" \\
-            -e NEXT_PUBLIC_APP_URL="${{ vars.NEXT_PUBLIC_APP_URL }}" \\
-            -e NEXT_PUBLIC_REDDIT_PIXEL_ID="${{ vars.NEXT_PUBLIC_REDDIT_PIXEL_ID }}" \\
-            -e NEXT_PUBLIC_EXCHANGE_RATE_API_URL="${{ vars.NEXT_PUBLIC_EXCHANGE_RATE_API_URL }}" \\
-            -e COINBASE_PROJECT_ID="${{ vars.COINBASE_PROJECT_ID }}" \\
-            -e COINBASE_API_KEY_ID="${{ secrets.COINBASE_API_KEY_ID }}" \\
-            -e COINBASE_API_KEY_SECRET="${{ secrets.COINBASE_API_KEY_SECRET }}" \\
-            ghcr.io/${{ env.REPO_LOWER }}:${{ env.IMAGE_TAG }}
-          # Loaded images accumulate now that nothing is pulling and pruning
-          # implicitly; drop only untagged layers, never a tagged image.
-          docker image prune -f
-          EOF
-
-          # Copy script to remote tmpfs and execute
-          retry 3 scp -o BatchMode=yes /tmp/deploy_script.sh gituser@${{ vars.VM_IP }}:/dev/shm/deploy_script.sh
-          $SSH "chmod +x /dev/shm/deploy_script.sh && /dev/shm/deploy_script.sh && rm /dev/shm/deploy_script.sh"
+  # The server image goes to the box through the standard deploy: conduit-ucpi/deploy, pinned by
+  # commit. The box runs only its stabledrop-deploy script for this key, and only this
+  # environment's own build (test-<sha> / cherry-<sha>, its .conf's TAG_PREFIX). Secrets reach the
+  # container through an env file on stdin, never a command line or a file left on either machine.
+  # NAME= is passed empty when unset, exactly as the old `-e NAME=${{ ... }}` did.
+  deploy:
+    needs: build
+    uses: conduit-ucpi/deploy/.github/workflows/deploy.yml@179d180daeb6242671df3cc35428091915b53093
+    permissions:
+      contents: read
+      packages: read
+    # Required: without it a called workflow sees none of the environment's secrets.
+    secrets: inherit
+    with:
+      environment: ${{ startsWith(github.ref, 'refs/tags/v') && 'production' || startsWith(github.ref, 'refs/tags/cherry') && 'cherry' || 'test' }}
+      image: ${{ needs.build.outputs.image }}
+      env-vars: |
+        NODE_OPTIONS=--max-old-space-size=192
+        CHAIN_ID
+        RPC_URL
+        CHAIN_SERVICE_URL
+        USER_SERVICE_URL
+        CONTRACT_SERVICE_URL
+        AP2_SERVICE_URL
+        DISPUTE_SERVICE_URL
+        SANCTION_SERVICE_URL
+        WHITELABEL_SERVICE_URL
+        EMAIL_SERVICE_URL
+        RECORDINGS_S3_BUCKET
+        RECORDINGS_S3_ENDPOINT
+        RECORDINGS_S3_REGION
+        GIT_TAG=${{ needs.build.outputs.git_tag }}
+        GIT_SHA=${{ needs.build.outputs.git_sha }}
+        COOKIE_DOMAIN
+        BUILD_VERSION=
+        SUPPORTED_TOKENS
+        USDC_CONTRACT_ADDRESS=
+        USDT_CONTRACT_ADDRESS=
+        DEFAULT_TOKEN_SYMBOL=
+        MIN_GAS_WEI
+        MAX_GAS_PRICE_GWEI
+        MAX_GAS_COST_GWEI
+        USDC_GRANT_FOUNDRY_GAS
+        RESOLUTION_VOTE_FOUNDRY_GAS
+        RAISE_DISPUTE_FOUNDRY_GAS
+        CLAIM_FUNDS_FOUNDRY_GAS
+        GAS_PRICE_BUFFER
+        NEXT_PUBLIC_BASE_PATH
+        EXPLORER_BASE_URL
+        PRODUCT_NAME
+        SERVICE_LINK
+        NEYNAR_API_URL
+        PRIVY_APP_ID
+        SHOW_LEGACY_AUTH=
+        ALLOWED_FRAME_ANCESTORS
+        PROJECTS_LIVE=
+        EMAIL_VERIFICATION_LIVE
+        SHOPIFY_NAME
+        SHOPIFY_SCOPES
+        NEXT_PUBLIC_APP_URL
+        NEXT_PUBLIC_REDDIT_PIXEL_ID=
+        NEXT_PUBLIC_EXCHANGE_RATE_API_URL=
+        COINBASE_PROJECT_ID
+      env-secrets: |
+        MOONPAY_API_KEY=
+        X_API_KEY
+        TO_EMAILSERVICE_API_KEY
+        RECORDINGS_S3_ACCESS_KEY_ID
+        RECORDINGS_S3_SECRET_ACCESS_KEY
+        TO_USERSERVICE_API_KEY
+        NEYNAR_API_KEY=
+        WALLETCONNECT_PROJECT_ID
+        SHOPIFY_CLIENT_ID=
+        SHOPIFY_CLIENT_SECRET=
+        SESSION_SECRET=
+        MONGODB_URI=
+        COINBASE_API_KEY_ID
+        COINBASE_API_KEY_SECRET
 
   # ---------------------------------------------------------------------------
   # Cloudflare Pages deploy — the client release, on its own tag. Publishes the
@@ -396,7 +327,7 @@ jobs:
   # exactly what was built with cherry's settings. No cherry release on the commit, no image:
   # the run fails and says so.
   #
-  # No `needs:` on build-and-deploy, and none is possible: the two jobs no longer
+  # No `needs:` on build or deploy, and none is possible: the two jobs no longer
   # share a trigger, so on any given run exactly one of them is live. Ordering
   # between a client and an API release is now the tagger's, not the workflow's —
   # see the `if:` below.
@@ -412,7 +343,7 @@ jobs:
     # cherry-v* deploys webapp-prod and publishes nothing.
     #
     # The client deliberately does NOT ride cherry-v* any more. What it must not ride
-    # is test*/farcaster-test*, which deploy webapp-test: publishing the client
+    # is test*, which deploys webapp-test: publishing the client
     # on those would push it ahead of the webapp-prod API that api.stabledrop.me
     # actually proxies. That is the drift the Client/API version rows expose, and
     # a dedicated client tag cannot cause it — this job simply never runs on a

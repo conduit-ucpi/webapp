@@ -35,7 +35,7 @@ describe('POST /api/telemetry/csp-report', () => {
   it('logs the directive, and only the origin and path of each URL', () => {
     expect(post(report({}))._getStatusCode()).toBe(204);
     expect(log).toHaveBeenCalledWith(
-      'CSP VIOLATION connect-src: blocked https://stats.example on https://stabledrop.me/contract-pay/'
+      'CSP VIOLATION connect-src: would block https://stats.example on https://stabledrop.me/contract-pay/'
     );
   });
 
@@ -46,12 +46,42 @@ describe('POST /api/telemetry/csp-report', () => {
 
   it('names an inline violation by keyword', () => {
     post(report({ 'blocked-uri': 'inline', 'effective-directive': 'script-src-elem' }));
-    expect(log.mock.calls[0][0]).toContain('script-src-elem: blocked inline on');
+    expect(log.mock.calls[0][0]).toContain('script-src-elem: would block inline on');
   });
 
   it('cannot be made to forge a log line', () => {
     post(report({ 'blocked-uri': 'x\nCSP VIOLATION forged', 'effective-directive': 'a\nb', 'document-uri': 'nope\nforged' }));
-    expect(log.mock.calls[0][0]).toBe('CSP VIOLATION a: blocked other on unknown');
+    expect(log.mock.calls[0][0]).toBe('CSP VIOLATION a: would block other on unknown');
+  });
+
+  it('says blocked only when the browser enforced it', () => {
+    post(report({ disposition: 'enforce' }));
+    post(report({ disposition: 'report' }));
+    expect(log.mock.calls[0][0]).toContain(': blocked https://stats.example');
+    expect(log.mock.calls[1][0]).toContain(': would block https://stats.example');
+  });
+
+  it('names the script that did it, by origin, path and line', () => {
+    post(
+      report({
+        'blocked-uri': 'eval',
+        'effective-directive': 'script-src',
+        'source-file': 'https://stabledrop.me/_next/static/chunks/abc.js?v=secret',
+        'line-number': 2,
+        'column-number': 4417,
+      })
+    );
+    expect(log.mock.calls[0][0]).toBe(
+      'CSP VIOLATION script-src: would block eval on https://stabledrop.me/contract-pay/ ' +
+        'from https://stabledrop.me/_next/static/chunks/abc.js:2:4417'
+    );
+  });
+
+  it('leaves out a source file that is not a URL, or a line that is not a number', () => {
+    post(report({ 'source-file': 'x\nforged', 'line-number': '3\nforged' }));
+    post(report({ 'source-file': 'https://cdn.example/a.js', 'line-number': '3\nforged', 'column-number': 9 }));
+    expect(log.mock.calls[0][0]).not.toContain(' from ');
+    expect(log.mock.calls[1][0]).toMatch(/from https:\/\/cdn\.example\/a\.js$/);
   });
 
   it('drops reports caused by browser extensions', () => {

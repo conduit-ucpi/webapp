@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { methodGuard } from '@/lib/server/serviceProxy';
 import { clientAddress, rateLimiter } from '@/lib/server/publicFormLimit';
+import { CSP_HEADER } from '../../../config/csp';
 
 /**
  * Where browsers send what the Content-Security-Policy (config/csp.js) blocked or would have, as one
@@ -29,6 +30,26 @@ const httpUrl = (value: unknown): URL | null => {
   } catch {
     return null;
   }
+};
+
+/** Whether the browser stopped it: the report says so, else it follows the header we send. */
+const verbFor = (disposition: unknown) => {
+  const enforced =
+    disposition === 'enforce' || disposition === 'report'
+      ? disposition === 'enforce'
+      : !CSP_HEADER.endsWith('-Report-Only');
+  return enforced ? 'blocked' : 'would block';
+};
+
+const position = (value: unknown) =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0 ? `:${value}` : '';
+
+/** The script that did it, as origin + path + line, so an eval or inline violation has an owner. */
+const sourceOf = (report: Record<string, unknown>) => {
+  const file = httpUrl(report['source-file']);
+  if (!file) return '';
+  const line = position(report['line-number']);
+  return ` from ${file.origin}${file.pathname.slice(0, 120)}${line && line + position(report['column-number'])}`;
 };
 
 /** Browsers send application/csp-report, which Next hands over unparsed. */
@@ -65,8 +86,8 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
         ? blocked
         : 'other';
     console.log(
-      `CSP VIOLATION ${name || 'unknown'}: blocked ${source} ` +
-        `on ${page ? `${page.origin}${page.pathname.slice(0, 120)}` : 'unknown'}`
+      `CSP VIOLATION ${name || 'unknown'}: ${verbFor(report['disposition'])} ${source} ` +
+        `on ${page ? `${page.origin}${page.pathname.slice(0, 120)}` : 'unknown'}${sourceOf(report)}`
     );
   }
   res.status(204).end();
